@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero">
+  <div class="container">
+    <p class="eyebrow">Персональные песни в подарок</p>
+    <h1>Создайте песню по вашей истории</h1>
+    <p class="lead">
+      До 3 полноценных вариантов текста бесплатно. Потом — выбор, оплата и готовая песня в личном кабинете.
+    </p>
+
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="/questionnaire/">Хочу песню</a>
+      <a class="btn btn-secondary" href="{{ request.url_for('home') }}#portfolio">Послушать примеры</a>
+    </div>
+  </div>
+</section>
+
+<section id="portfolio" class="section">
+  <div class="container">
+    <h2>Портфолио</h2>
+    <p>Здесь позже выведем реальные примеры песен.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <h2>Как это работает</h2>
+    <ol>
+      <li>Рассказываете историю текстом или голосом</li>
+      <li>Получаете до 3 вариантов текста</li>
+      <li>Выбираете лучший вариант</li>
+      <li>Оплачиваете и получаете готовую песню</li>
+    </ol>
+  </div>
+</section>
+{% endblock %}
