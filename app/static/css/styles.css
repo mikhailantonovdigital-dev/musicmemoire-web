@@ -183,3 +183,133 @@ h2 {
     font-size: 18px;
   }
 }
+
+.lead-small {
+  font-size: 18px;
+  line-height: 1.6;
+  color: var(--muted);
+  margin-bottom: 28px;
+}
+
+.form-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 28px;
+}
+
+.form-block + .form-block {
+  margin-top: 28px;
+}
+
+.form-title {
+  font-size: 24px;
+  margin: 0 0 16px;
+}
+
+.radio-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.radio-card {
+  display: block;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.radio-card input {
+  margin-bottom: 12px;
+}
+
+.radio-card-title {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.radio-card-text {
+  display: block;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+
+.notice {
+  background: #eef4ff;
+  border: 1px solid #cfe0ff;
+  color: #1d4ed8;
+  border-radius: 14px;
+  padding: 16px 18px;
+  margin-bottom: 20px;
+}
+
+.notice-success {
+  background: #ecfdf3;
+  border-color: #ccebd7;
+  color: #067647;
+}
+
+.notice-error {
+  background: #fef3f2;
+  border-color: #fecdca;
+  color: #b42318;
+}
+
+.form-label {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.textarea {
+  width: 100%;
+  min-height: 260px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px;
+  font: inherit;
+  line-height: 1.6;
+  resize: vertical;
+  background: #fff;
+}
+
+.step-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 20px;
+  color: var(--muted);
+}
+
+.step-meta span {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 8px 12px;
+}
+
+@media (max-width: 640px) {
+  .radio-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-card {
+    padding: 20px;
+  }
+
+  .textarea {
+    min-height: 220px;
+  }
+}
