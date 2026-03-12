@@ -8,7 +8,7 @@
       {% if draft.lyrics_mode == "custom" %}
         Вставь готовый текст песни
       {% elif draft.story_source == "voice" %}
-        Добавь историю / расшифровку
+        Добавь голосовую историю
       {% else %}
         Напиши историю для песни
       {% endif %}
@@ -20,9 +20,15 @@
       <span>Режим: <strong>{{ "Свой текст" if draft.lyrics_mode == "custom" else "Генерация 3 вариантов" }}</strong></span>
     </div>
 
+    {% if voice_uploaded %}
+      <div class="notice notice-success">
+        Голосовое загружено и сохранено на сервере.
+      </div>
+    {% endif %}
+
     {% if saved %}
       <div class="notice notice-success">
-        Черновик сохранён в Postgres. На следующем коммите подключим следующий шаг анкеты.
+        Черновик сохранён. На следующем коммите подключим авторасшифровку и следующий шаг анкеты.
       </div>
     {% endif %}
 
@@ -31,10 +37,35 @@
     {% endif %}
 
     {% if draft.story_source == "voice" and draft.lyrics_mode != "custom" %}
-      <div class="notice">
-        Ветка голосовых уже заложена в анкете и базе данных. В следующем коммите добавим
-        загрузку / запись голосового и авторасшифровку. Пока сюда можно вставить текст истории
-        или готовую расшифровку вручную.
+      <div class="form-card voice-upload-card">
+        <h2 class="form-title">1. Загрузить голосовое</h2>
+        <p class="lead-small">
+          Сейчас сохраняем файл и привязываем его к черновику. Авторасшифровку подключим следующим коммитом.
+        </p>
+
+        <form method="post" action="/questionnaire/voice-upload" enctype="multipart/form-data">
+          <label class="upload-box">
+            <span class="upload-title">Выбери аудиофайл</span>
+            <span class="upload-text">Поддерживаются mp3, wav, m4a, ogg, webm и другие аудиоформаты</span>
+            <input class="file-input" type="file" name="voice_file" accept="audio/*" capture />
+          </label>
+
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Загрузить голосовое</button>
+          </div>
+        </form>
+
+        {% if latest_voice %}
+          <div class="audio-card">
+            <div class="audio-meta">
+              <strong>{{ latest_voice.original_filename or "Голосовое сообщение" }}</strong>
+              {% if latest_voice_size %}
+                <span>{{ latest_voice_size }}</span>
+              {% endif %}
+            </div>
+            <audio controls preload="metadata" src="{{ request.url_for('questionnaire_voice_stream', voice_public_id=latest_voice.public_id) }}"></audio>
+          </div>
+        {% endif %}
       </div>
     {% endif %}
 
@@ -49,13 +80,16 @@
         >{{ draft.custom_lyrics_text or "" }}</textarea>
 
       {% elif draft.story_source == "voice" %}
-        <label class="form-label" for="transcript_text">История / расшифровка</label>
+        <label class="form-label" for="transcript_text">Заметки / расшифровка</label>
         <textarea
           id="transcript_text"
           name="transcript_text"
           class="textarea"
-          placeholder="Вставь сюда расшифровку голосового или просто напиши историю..."
+          placeholder="Пока можно оставить краткое описание истории или вручную вставить расшифровку..."
         >{{ draft.transcript_text or "" }}</textarea>
+        <p class="helper-text">
+          Если голосовое уже загружено, это поле можно заполнить позже. В следующем коммите сюда подставим авторасшифровку.
+        </p>
 
       {% else %}
         <label class="form-label" for="story_text">История для песни</label>
