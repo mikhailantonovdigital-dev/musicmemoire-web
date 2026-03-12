@@ -41,5 +41,8 @@ class Settings(BaseSettings):
 
     PRICE_RUB: int = 4900
 
+    UPLOADS_DIR: str = "/var/data/musicmemoire/uploads"
+    MAX_VOICE_FILE_MB: int = 25
+
 
 settings = Settings()
