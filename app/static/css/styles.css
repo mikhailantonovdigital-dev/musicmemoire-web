@@ -313,3 +313,62 @@ h2 {
     min-height: 220px;
   }
 }
+.voice-upload-card {
+  margin-bottom: 20px;
+}
+
+.upload-box {
+  display: block;
+  border: 1px dashed var(--line);
+  border-radius: 18px;
+  padding: 20px;
+  background: #fff;
+}
+
+.upload-title {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.upload-text {
+  display: block;
+  color: var(--muted);
+  margin-bottom: 14px;
+  line-height: 1.5;
+}
+
+.file-input {
+  width: 100%;
+  font: inherit;
+}
+
+.audio-card {
+  margin-top: 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px;
+  background: #fff;
+}
+
+.audio-card audio {
+  width: 100%;
+  margin-top: 12px;
+}
+
+.audio-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.audio-meta span {
+  color: var(--muted);
+}
+
+.helper-text {
+  margin-top: 10px;
+  color: var(--muted);
+  line-height: 1.5;
+}
