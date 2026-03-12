@@ -11,6 +11,7 @@ from app.core.db import Base
 
 if TYPE_CHECKING:
     from app.models.user import User
+    from app.models.voice_input import VoiceInput
 
 
 def generate_order_number() -> str:
@@ -54,11 +55,11 @@ class Order(Base):
 
     story_source: Mapped[str] = mapped_column(
         String(20),
-        default="text",  # text | voice
+        default="text",
     )
     lyrics_mode: Mapped[str] = mapped_column(
         String(20),
-        default="generate",  # generate | custom
+        default="generate",
     )
 
     story_text: Mapped[str | None] = mapped_column(
@@ -90,6 +91,10 @@ class Order(Base):
         back_populates="orders",
     )
     events: Mapped[list["OrderEvent"]] = relationship(
+        back_populates="order",
+        cascade="all, delete-orphan",
+    )
+    voice_inputs: Mapped[list["VoiceInput"]] = relationship(
         back_populates="order",
         cascade="all, delete-orphan",
     )
