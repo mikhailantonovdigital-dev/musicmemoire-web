@@ -39,6 +39,7 @@ def get_session_user(request: Request, db: Session) -> User | None:
 @router.get("/login", response_class=HTMLResponse)
 async def account_login_page(request: Request):
     sent = request.query_params.get("sent") == "1"
+    stub_login_url = request.session.get("stub_account_login_url")
 
     return templates.TemplateResponse(
         "account/login.html",
@@ -46,6 +47,8 @@ async def account_login_page(request: Request):
             "request": request,
             "page_title": "Вход в кабинет",
             "sent": sent,
+            "stub_mode": settings.MAGIC_LINK_STUB_MODE,
+            "stub_login_url": stub_login_url,
             "error": None,
         },
     )
@@ -65,6 +68,8 @@ async def account_login_submit(
                 "request": request,
                 "page_title": "Вход в кабинет",
                 "sent": False,
+                "stub_mode": settings.MAGIC_LINK_STUB_MODE,
+                "stub_login_url": None,
                 "error": "Укажи корректный email.",
             },
             status_code=400,
@@ -89,7 +94,7 @@ async def account_login_submit(
         login_url = f"{settings.BASE_URL}/account/magic-login?token={raw_token}"
 
         try:
-            send_magic_link_email(
+            delivery = send_magic_link_email(
                 recipient_email=email,
                 login_url=login_url,
             )
@@ -100,10 +105,15 @@ async def account_login_submit(
                     "request": request,
                     "page_title": "Вход в кабинет",
                     "sent": False,
+                    "stub_mode": settings.MAGIC_LINK_STUB_MODE,
+                    "stub_login_url": None,
                     "error": "Не удалось отправить письмо со ссылкой для входа.",
                 },
                 status_code=400,
             )
+
+        if delivery.mode == "stub":
+            request.session["stub_account_login_url"] = delivery.login_url
 
     return RedirectResponse(
         url=f"{request.url_for('account_login_page')}?sent=1",
@@ -139,6 +149,8 @@ async def account_magic_login(
 
     magic_token.used_at = now
     request.session["account_user_id"] = magic_token.user_id
+    request.session.pop("stub_account_login_url", None)
+    request.session.pop("stub_questionnaire_login_url", None)
     db.commit()
 
     return RedirectResponse(
