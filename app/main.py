@@ -7,7 +7,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from app.core.config import settings
 from app.core.db import init_db
 from app.core.storage import ensure_storage_dirs
-from app.routers import public, questionnaire, account, admin, songs
+from app.routers import public, questionnaire, account, admin, songs, checkout
 
 
 @asynccontextmanager
@@ -35,5 +35,6 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 app.include_router(public.router)
 app.include_router(questionnaire.router)
 app.include_router(account.router)
+app.include_router(checkout.router)
 app.include_router(songs.router)
 app.include_router(admin.router)
