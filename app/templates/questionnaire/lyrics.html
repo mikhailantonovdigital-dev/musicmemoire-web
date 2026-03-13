@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="section">
+  <div class="container">
+    <p class="eyebrow">Анкета · Шаг 4 из 4</p>
+    <h1>Выбери лучшую версию текста</h1>
+
+    <div class="consultant-box">
+      <strong>Комментарий консультанта</strong>
+      <p>
+        Ниже ты видишь 2 версии: одну сделал OpenAI, вторую — Gemini. Выбери ту, которая ближе по настроению,
+        и при необходимости сразу отредактируй финальный текст.
+      </p>
+    </div>
+
+    <div class="step-meta">
+      <span>Черновик: <strong>{{ draft.order_number }}</strong></span>
+      <span>Режим: <strong>2 версии бесплатно</strong></span>
+    </div>
+
+    {% if generated %}
+      <div class="notice notice-success">
+        Готово: 2 версии текста сгенерированы.
+      </div>
+    {% endif %}
+
+    {% if saved %}
+      <div class="notice notice-success">
+        Выбранный вариант и финальный текст сохранены.
+      </div>
+    {% endif %}
+
+    {% if error %}
+      <div class="notice notice-error">{{ error }}</div>
+    {% endif %}
+
+    <div class="lyrics-grid">
+      {% for version in versions %}
+        <article class="lyrics-card">
+          <div class="lyrics-card-head">
+            <div>
+              <h2>{{ "OpenAI" if version.provider == "openai" else "Gemini" }}</h2>
+              <p class="lyrics-angle">{{ version.angle_label }}</p>
+            </div>
+            <span class="provider-chip provider-chip-{{ version.provider }}">
+              {{ "OpenAI" if version.provider == "openai" else "Gemini" }}
+            </span>
+          </div>
+
+          <textarea class="textarea textarea-readonly" readonly>{{ version.lyrics_text }}</textarea>
+        </article>
+      {% endfor %}
+    </div>
+
+    <form class="form-card" method="post" action="/questionnaire/lyrics" data-lyrics-picker>
+      <h2 class="form-title">Финальный выбор</h2>
+
+      <div class="radio-grid">
+        {% for version in versions %}
+          <label class="radio-card">
+            <input
+              type="radio"
+              name="selected_version_public_id"
+              value="{{ version.public_id }}"
+              {% if version.public_id == selected_version.public_id %}checked{% endif %}
+              data-lyrics-source-id="{{ version.public_id }}"
+            />
+            <span class="radio-card-title">
+              {{ "OpenAI" if version.provider == "openai" else "Gemini" }}
+            </span>
+            <span class="radio-card-text">{{ version.angle_label }}</span>
+          </label>
+
+          <textarea
+            hidden
+            data-lyrics-source-text="{{ version.public_id }}"
+          >{% if version.public_id == selected_version.public_id and version.edited_lyrics_text %}{{ version.edited_lyrics_text }}{% else %}{{ version.lyrics_text }}{% endif %}</textarea>
+        {% endfor %}
+      </div>
+
+      <label class="form-label" for="final_lyrics_text">Финальный текст</label>
+      <textarea
+        id="final_lyrics_text"
+        name="final_lyrics_text"
+        class="textarea"
+        data-final-lyrics-text
+        placeholder="Здесь можно сразу отредактировать выбранную версию..."
+      >{{ final_lyrics_text }}</textarea>
+
+      <div class="form-actions">
+        <a href="/questionnaire/story" class="btn btn-secondary">Назад</a>
+        <button type="submit" class="btn btn-primary">Сохранить выбранный вариант</button>
+      </div>
+    </form>
+  </div>
+</section>
+{% endblock %}
