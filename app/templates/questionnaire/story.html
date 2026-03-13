@@ -37,21 +37,54 @@
     {% endif %}
 
     {% if draft.story_source == "voice" and draft.lyrics_mode != "custom" %}
-      <div class="form-card voice-upload-card">
-        <h2 class="form-title">1. Загрузить голосовое</h2>
+      <div class="form-card voice-upload-card" data-voice-recorder>
+        <h2 class="form-title">1. Записать голосом или загрузить файл</h2>
         <p class="lead-small">
-          Сейчас сохраняем файл и привязываем его к черновику. Авторасшифровку подключим следующим коммитом.
+          Здесь пользователь может надиктовать историю прямо на сайте — почти как в Telegram. 
+          Если запись неудобна, можно загрузить готовый аудиофайл.
         </p>
 
-        <form method="post" action="/questionnaire/voice-upload" enctype="multipart/form-data">
+        <div class="recorder-panel">
+          <div class="recorder-actions">
+            <button class="btn btn-primary" type="button" data-recorder-start>Записать голосом</button>
+            <button class="btn btn-secondary" type="button" data-recorder-stop disabled>Остановить запись</button>
+            <button class="btn btn-secondary" type="button" data-recorder-reset disabled>Удалить запись</button>
+          </div>
+
+          <div class="recorder-status" data-recorder-status hidden></div>
+
+          <div class="audio-card" data-recorder-preview-wrap hidden>
+            <div class="audio-meta">
+              <strong>Предпрослушивание записи</strong>
+              <span>Ещё не отправлено</span>
+            </div>
+            <audio controls preload="metadata" data-recorder-preview></audio>
+          </div>
+        </div>
+
+        <form
+          method="post"
+          action="/questionnaire/voice-upload"
+          enctype="multipart/form-data"
+          data-voice-upload-form
+        >
           <label class="upload-box">
-            <span class="upload-title">Выбери аудиофайл</span>
+            <span class="upload-title">Или выбери готовый аудиофайл</span>
             <span class="upload-text">Поддерживаются mp3, wav, m4a, ogg, webm и другие аудиоформаты</span>
-            <input class="file-input" type="file" name="voice_file" accept="audio/*" capture />
+            <input
+              class="file-input"
+              type="file"
+              name="voice_file"
+              accept="audio/*"
+              capture
+              data-voice-file-input
+            />
           </label>
 
           <div class="form-actions">
-            <button type="submit" class="btn btn-primary">Загрузить голосовое</button>
+            <button type="submit" class="btn btn-primary" data-voice-upload-btn>
+              Отправить голосовое
+            </button>
           </div>
         </form>
 
@@ -88,7 +121,7 @@
           placeholder="Пока можно оставить краткое описание истории или вручную вставить расшифровку..."
         >{{ draft.transcript_text or "" }}</textarea>
         <p class="helper-text">
-          Если голосовое уже загружено, это поле можно заполнить позже. В следующем коммите сюда подставим авторасшифровку.
+          Пока здесь можно вручную дописать важные детали. В следующем коммите сюда подставим авторасшифровку.
         </p>
 
       {% else %}
