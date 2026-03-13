@@ -1,0 +1,288 @@
+from __future__ import annotations
+
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.templating import Jinja2Templates
+from sqlalchemy.orm import Session
+
+from app.core.config import settings
+from app.core.db import get_db
+from app.core.security import utcnow
+from app.models import Order, OrderEvent, OrderPayment, User
+from app.services.yookassa_service import YooKassaError, create_redirect_payment, fetch_payment
+
+router = APIRouter(prefix="/checkout", tags=["checkout"])
+templates = Jinja2Templates(directory="app/templates")
+
+FINAL_PAYMENT_STATUSES = {"succeeded", "canceled"}
+PENDING_PAYMENT_STATUSES = {"pending", "waiting_for_capture"}
+
+
+def get_session_user(request: Request, db: Session) -> User | None:
+    user_id = request.session.get("account_user_id")
+    if not user_id:
+        return None
+    return db.query(User).filter(User.id == int(user_id)).first()
+
+
+def get_checkout_order(request: Request, db: Session, order_public_id: str) -> Order | None:
+    order = db.query(Order).filter(Order.public_id == order_public_id).first()
+    if order is None:
+        return None
+
+    draft_order_id = request.session.get("draft_order_id")
+    if draft_order_id and int(draft_order_id) == order.id:
+        return order
+
+    user = get_session_user(request, db)
+    if user and order.user_id == user.id:
+        return order
+
+    return None
+
+
+def humanize_payment_status(status: str | None) -> str:
+    mapping = {
+        "pending": "Ожидает оплаты",
+        "waiting_for_capture": "Ожидает подтверждения",
+        "succeeded": "Оплачено",
+        "canceled": "Не оплачено",
+    }
+    return mapping.get(status or "", "Не начата")
+
+
+def sync_payment_with_remote(db: Session, payment: OrderPayment, *, event_name: str | None = None) -> None:
+    if not payment.yookassa_payment_id:
+        return
+
+    remote = fetch_payment(payment.yookassa_payment_id)
+
+    payment.status = remote.status
+    payment.confirmation_url = remote.confirmation_url
+    payment.raw_payload = remote.raw
+
+    order = payment.order
+
+    if remote.status == "succeeded":
+        if payment.paid_at is None:
+            payment.paid_at = utcnow()
+        order.status = "paid"
+        if event_name:
+            db.add(
+                OrderEvent(
+                    order=order,
+                    event_type=event_name,
+                    payload={
+                        "payment_public_id": payment.public_id,
+                        "yookassa_payment_id": payment.yookassa_payment_id,
+                        "status": remote.status,
+                    },
+                )
+            )
+    elif remote.status == "canceled":
+        order.status = "payment_canceled"
+        if event_name:
+            db.add(
+                OrderEvent(
+                    order=order,
+                    event_type=event_name,
+                    payload={
+                        "payment_public_id": payment.public_id,
+                        "yookassa_payment_id": payment.yookassa_payment_id,
+                        "status": remote.status,
+                    },
+                )
+            )
+    else:
+        order.status = "payment_pending"
+
+
+@router.post("/start/{order_public_id}")
+async def checkout_start(order_public_id: str, request: Request, db: Session = Depends(get_db)):
+    order = get_checkout_order(request, db, order_public_id)
+    if order is None:
+        raise HTTPException(status_code=403, detail="Нет доступа к заказу.")
+
+    if not (order.final_lyrics_text or "").strip():
+        return RedirectResponse(url="/questionnaire/lyrics", status_code=303)
+
+    if order.user_id is None:
+        return RedirectResponse(url="/questionnaire/access", status_code=303)
+
+    latest_payment = order.payments[0] if order.payments else None
+    if latest_payment and latest_payment.status in PENDING_PAYMENT_STATUSES and latest_payment.confirmation_url:
+        return RedirectResponse(url=latest_payment.confirmation_url, status_code=303)
+
+    if latest_payment and latest_payment.status == "succeeded":
+        return RedirectResponse(url=f"/checkout/status?payment={latest_payment.public_id}", status_code=303)
+
+    payment = OrderPayment(
+        order_id=order.id,
+        user_id=order.user_id,
+        provider="yookassa",
+        status="pending",
+        amount_value=f"{settings.PRICE_RUB:.2f}",
+        currency="RUB",
+    )
+    db.add(payment)
+    db.flush()
+
+    return_url = f"{settings.BASE_URL}/checkout/status?payment={payment.public_id}"
+    payment.return_url = return_url
+
+    try:
+        result = create_redirect_payment(
+            order_number=order.order_number,
+            order_public_id=order.public_id,
+            user_public_id=order.user.public_id if order.user else None,
+            payment_public_id=payment.public_id,
+            amount_rub=settings.PRICE_RUB,
+            return_url=return_url,
+        )
+    except YooKassaError as exc:
+        db.add(
+            OrderEvent(
+                order=order,
+                event_type="payment_create_failed",
+                payload={
+                    "payment_public_id": payment.public_id,
+                    "error": str(exc),
+                },
+            )
+        )
+        db.commit()
+        return templates.TemplateResponse(
+            "checkout/status.html",
+            {
+                "request": request,
+                "page_title": "Оплата",
+                "payment": payment,
+                "order": order,
+                "payment_status_label": humanize_payment_status(payment.status),
+                "is_success": False,
+                "is_pending": False,
+                "is_canceled": False,
+                "error": str(exc),
+                "metrica_counter_id": settings.METRICA_COUNTER_ID,
+                "price_rub": settings.PRICE_RUB,
+            },
+            status_code=400,
+        )
+
+    payment.yookassa_payment_id = result.payment.id
+    payment.idempotence_key = result.idempotence_key
+    payment.status = result.payment.status
+    payment.confirmation_url = result.payment.confirmation_url
+    payment.raw_payload = result.payment.raw
+    order.status = "paid" if result.payment.status == "succeeded" else "payment_pending"
+
+    if result.payment.status == "succeeded" and payment.paid_at is None:
+        payment.paid_at = utcnow()
+
+    db.add(
+        OrderEvent(
+            order=order,
+            event_type="payment_created",
+            payload={
+                "payment_public_id": payment.public_id,
+                "yookassa_payment_id": payment.yookassa_payment_id,
+                "status": payment.status,
+                "amount_value": payment.amount_value,
+            },
+        )
+    )
+    db.commit()
+
+    if payment.status == "succeeded":
+        return RedirectResponse(url=f"/checkout/status?payment={payment.public_id}", status_code=303)
+
+    if not payment.confirmation_url:
+        raise HTTPException(status_code=500, detail="ЮKassa не вернула ссылку на оплату.")
+
+    return RedirectResponse(url=payment.confirmation_url, status_code=303)
+
+
+@router.get("/status", response_class=HTMLResponse)
+async def checkout_status(payment: str, request: Request, db: Session = Depends(get_db)):
+    payment_obj = db.query(OrderPayment).filter(OrderPayment.public_id == payment).first()
+    if payment_obj is None:
+        raise HTTPException(status_code=404, detail="Платёж не найден.")
+
+    status_sync_error = None
+    if payment_obj.yookassa_payment_id and payment_obj.status not in FINAL_PAYMENT_STATUSES:
+        try:
+            sync_payment_with_remote(db, payment_obj)
+            db.commit()
+        except YooKassaError as exc:
+            status_sync_error = str(exc)
+            db.rollback()
+            payment_obj = db.query(OrderPayment).filter(OrderPayment.public_id == payment).first()
+
+    return templates.TemplateResponse(
+        "checkout/status.html",
+        {
+            "request": request,
+            "page_title": "Статус оплаты",
+            "payment": payment_obj,
+            "order": payment_obj.order,
+            "payment_status_label": humanize_payment_status(payment_obj.status),
+            "is_success": payment_obj.status == "succeeded",
+            "is_pending": payment_obj.status in PENDING_PAYMENT_STATUSES,
+            "is_canceled": payment_obj.status == "canceled",
+            "error": status_sync_error,
+            "metrica_counter_id": settings.METRICA_COUNTER_ID,
+            "price_rub": settings.PRICE_RUB,
+        },
+    )
+
+
+@router.post("/webhook/yookassa")
+async def checkout_yookassa_webhook(request: Request, db: Session = Depends(get_db)):
+    payload = await request.json()
+    event = payload.get("event")
+    obj = payload.get("object") or {}
+    payment_id = obj.get("id")
+
+    if not event or not payment_id:
+        raise HTTPException(status_code=400, detail="Некорректное уведомление ЮKassa.")
+
+    payment = db.query(OrderPayment).filter(OrderPayment.yookassa_payment_id == payment_id).first()
+    if payment is None:
+        return JSONResponse({"ok": True, "ignored": "payment_not_found"})
+
+    try:
+        remote = fetch_payment(payment_id)
+    except YooKassaError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    if remote.id != payment_id or remote.status != obj.get("status"):
+        raise HTTPException(status_code=400, detail="Не удалось подтвердить статус платежа.")
+
+    payment.status = remote.status
+    payment.confirmation_url = remote.confirmation_url
+    payment.raw_payload = remote.raw
+
+    if remote.status == "succeeded":
+        if payment.paid_at is None:
+            payment.paid_at = utcnow()
+        payment.order.status = "paid"
+    elif remote.status == "canceled":
+        payment.order.status = "payment_canceled"
+    else:
+        payment.order.status = "payment_pending"
+
+    db.add(
+        OrderEvent(
+            order=payment.order,
+            event_type="payment_webhook_received",
+            payload={
+                "payment_public_id": payment.public_id,
+                "yookassa_payment_id": payment.yookassa_payment_id,
+                "event": event,
+                "status": remote.status,
+            },
+        )
+    )
+    db.commit()
+
+    return JSONResponse({"ok": True})
