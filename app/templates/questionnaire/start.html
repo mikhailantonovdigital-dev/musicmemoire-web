@@ -3,15 +3,20 @@
 {% block content %}
 <section class="section">
   <div class="container narrow">
-    <p class="eyebrow">Анкета · Шаг 1</p>
-    <h1>Как тебе удобнее передать историю?</h1>
-    <p class="lead-small">
-      Сначала сохраним черновик заказа и поймём, по какому сценарию вести пользователя дальше.
-    </p>
+    <p class="eyebrow">Анкета · Шаг 1 из 3</p>
+    <h1>У тебя уже есть готовый текст песни?</h1>
+
+    <div class="consultant-box">
+      <strong>Комментарий консультанта</strong>
+      <p>
+        Если текст уже написан, просто вставь его на следующем шаге — не будем задавать лишние вопросы.
+        Если текста пока нет, мы позже подготовим для тебя 2 версии бесплатно.
+      </p>
+    </div>
 
     {% if draft %}
       <div class="notice">
-        <strong>Черновик уже есть:</strong> {{ draft.order_number }}
+        <strong>Черновик:</strong> {{ draft.order_number }}
       </div>
     {% endif %}
 
@@ -20,58 +25,28 @@
     {% endif %}
 
     <form class="form-card" method="post" action="/questionnaire/start">
-      <div class="form-block">
-        <h2 class="form-title">1. История для песни</h2>
-        <div class="radio-grid">
-          <label class="radio-card">
-            <input
-              type="radio"
-              name="story_source"
-              value="text"
-              {% if (form_story_source or (draft.story_source if draft else "text")) == "text" %}checked{% endif %}
-            />
-            <span class="radio-card-title">Текстом</span>
-            <span class="radio-card-text">Пользователь сам пишет историю в форме.</span>
-          </label>
+      <div class="radio-grid">
+        <label class="radio-card">
+          <input
+            type="radio"
+            name="lyrics_mode"
+            value="custom"
+            {% if (form_lyrics_mode or (draft.lyrics_mode if draft else "")) == "custom" %}checked{% endif %}
+          />
+          <span class="radio-card-title">Да, у меня уже есть свой текст</span>
+          <span class="radio-card-text">Сразу перейдём к вставке готового текста песни.</span>
+        </label>
 
-          <label class="radio-card">
-            <input
-              type="radio"
-              name="story_source"
-              value="voice"
-              {% if (form_story_source or (draft.story_source if draft else "")) == "voice" %}checked{% endif %}
-            />
-            <span class="radio-card-title">Голосом</span>
-            <span class="radio-card-text">Ветка под голосовые уже закладывается в MVP.</span>
-          </label>
-        </div>
-      </div>
-
-      <div class="form-block">
-        <h2 class="form-title">2. Что делать с текстом песни?</h2>
-        <div class="radio-grid">
-          <label class="radio-card">
-            <input
-              type="radio"
-              name="lyrics_mode"
-              value="generate"
-              {% if (form_lyrics_mode or (draft.lyrics_mode if draft else "generate")) == "generate" %}checked{% endif %}
-            />
-            <span class="radio-card-title">Сгенерировать 3 варианта</span>
-            <span class="radio-card-text">Основной продуктовый сценарий MVP.</span>
-          </label>
-
-          <label class="radio-card">
-            <input
-              type="radio"
-              name="lyrics_mode"
-              value="custom"
-              {% if (form_lyrics_mode or (draft.lyrics_mode if draft else "")) == "custom" %}checked{% endif %}
-            />
-            <span class="radio-card-title">У меня уже есть готовый текст</span>
-            <span class="radio-card-text">Пользователь вставляет свой текст песни.</span>
-          </label>
-        </div>
+        <label class="radio-card">
+          <input
+            type="radio"
+            name="lyrics_mode"
+            value="generate"
+            {% if (form_lyrics_mode or (draft.lyrics_mode if draft else "generate")) == "generate" %}checked{% endif %}
+          />
+          <span class="radio-card-title">Нет, хочу 2 версии бесплатно</span>
+          <span class="radio-card-text">Дальше уточним, как тебе удобнее рассказать историю для песни.</span>
+        </label>
       </div>
 
       <div class="form-actions">
