@@ -9,19 +9,26 @@
     <div class="consultant-box">
       <strong>Комментарий консультанта</strong>
       <p>
-        Ниже ты видишь 2 версии: одну сделал OpenAI, вторую — Gemini. Выбери ту, которая ближе по настроению,
-        и при необходимости сразу отредактируй финальный текст.
+        Ниже ты видишь доступные версии текста. Если одна из моделей временно не ответила, всё равно можно
+        продолжить работу с той версией, которая уже получилась.
       </p>
     </div>
 
     <div class="step-meta">
       <span>Черновик: <strong>{{ draft.order_number }}</strong></span>
       <span>Режим: <strong>2 версии бесплатно</strong></span>
+      <span>Доступно версий: <strong>{{ versions|length }}</strong></span>
     </div>
 
     {% if generated %}
       <div class="notice notice-success">
-        Готово: 2 версии текста сгенерированы.
+        Генерация завершена.
+      </div>
+    {% endif %}
+
+    {% if partial and generation_warning %}
+      <div class="notice notice-warning">
+        {{ generation_warning }}
       </div>
     {% endif %}
 
