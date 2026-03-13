@@ -199,9 +199,9 @@ async def generate_versions_for_draft(
             )
         )
 
-    provider_errors = [
+    variant_errors = [
         {
-            "provider": err.provider,
+            "slot_label": err.slot_label,
             "user_message": err.user_message,
             "technical_message": err.technical_message,
         }
@@ -213,15 +213,15 @@ async def generate_versions_for_draft(
             order=draft,
             event_type="lyrics_generation_done",
             payload={
-                "providers": [item.provider for item in result.versions],
-                "models": [item.model_name for item in result.versions],
-                "errors": provider_errors,
+                "versions_count": len(result.versions),
+                "model": result.versions[0].model_name if result.versions else None,
+                "errors": variant_errors,
             },
         )
     )
     db.commit()
 
-    return provider_errors
+    return variant_errors
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -679,7 +679,7 @@ async def questionnaire_story_submit(
 
     if action == "generate":
         try:
-            provider_errors = await generate_versions_for_draft(db, draft)
+            variant_errors = await generate_versions_for_draft(db, draft)
         except LyricsGenerationError as exc:
             return templates.TemplateResponse(
                 "questionnaire/story.html",
@@ -702,13 +702,13 @@ async def questionnaire_story_submit(
                 status_code=400,
             )
 
-        if provider_errors:
+        if variant_errors:
             request.session["lyrics_generation_warning"] = " ".join(
-                item["user_message"] for item in provider_errors
+                item["user_message"] for item in variant_errors
             )
 
         redirect_url = f"{request.url_for('questionnaire_lyrics')}?generated=1"
-        if provider_errors:
+        if variant_errors:
             redirect_url += "&partial=1"
 
         return RedirectResponse(
@@ -816,7 +816,7 @@ async def questionnaire_lyrics_submit(
             order=draft,
             event_type="lyrics_version_selected",
             payload={
-                "provider": selected_version.provider,
+                "variant": selected_version.angle_label,
                 "version_id": selected_version.public_id,
                 "chars": len(value),
             },
