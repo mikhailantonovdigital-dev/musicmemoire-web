@@ -11,6 +11,10 @@ from sqlalchemy.orm import Session
 from app.core.db import get_db
 from app.core.storage import save_voice_file
 from app.models import Order, OrderEvent, VoiceInput
+from app.services.transcription_service import (
+    TranscriptionServiceError,
+    transcribe_audio_file,
+)
 
 templates = Jinja2Templates(directory="app/templates")
 
@@ -58,6 +62,73 @@ def format_size(size_bytes: int | None) -> str | None:
     if size_bytes is None:
         return None
     return f"{size_bytes / (1024 * 1024):.2f} МБ"
+
+
+def humanize_transcription_status(status: str | None) -> str:
+    mapping = {
+        "uploaded": "Загружено",
+        "transcribing": "Распознаём",
+        "done": "Расшифровано",
+        "failed": "Ошибка распознавания",
+    }
+    return mapping.get(status or "", "—")
+
+
+async def run_transcription_for_voice(
+    db: Session,
+    request: Request,
+    draft: Order,
+    voice_input: VoiceInput,
+) -> bool:
+    voice_input.transcription_status = "transcribing"
+
+    db.add(
+        OrderEvent(
+            order=draft,
+            event_type="voice_transcription_started",
+            payload={
+                "voice_input_id": voice_input.public_id,
+            },
+        )
+    )
+    db.commit()
+
+    try:
+        result = await transcribe_audio_file(voice_input.storage_path)
+    except TranscriptionServiceError as exc:
+        voice_input.transcription_status = "failed"
+        db.add(
+            OrderEvent(
+                order=draft,
+                event_type="voice_transcription_failed",
+                payload={
+                    "voice_input_id": voice_input.public_id,
+                    "error": str(exc),
+                },
+            )
+        )
+        db.commit()
+        request.session["voice_transcription_error"] = str(exc)
+        return False
+
+    voice_input.transcription_status = "done"
+    voice_input.transcript_text = result.text
+    draft.transcript_text = result.text
+
+    db.add(
+        OrderEvent(
+            order=draft,
+            event_type="voice_transcription_done",
+            payload={
+                "voice_input_id": voice_input.public_id,
+                "model": result.model,
+                "language": result.language,
+                "chars": len(result.text),
+            },
+        )
+    )
+    db.commit()
+    return True
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -145,6 +216,9 @@ async def questionnaire_story(request: Request, db: Session = Depends(get_db)):
     latest_voice = get_latest_voice_input(db, draft.id)
     saved = request.query_params.get("saved") == "1"
     voice_uploaded = request.query_params.get("voice_uploaded") == "1"
+    transcribed = request.query_params.get("transcribed") == "1"
+    transcription_failed = request.query_params.get("transcription_failed") == "1"
+    transcription_error = request.session.pop("voice_transcription_error", None)
 
     return templates.TemplateResponse(
         "questionnaire/story.html",
@@ -154,8 +228,14 @@ async def questionnaire_story(request: Request, db: Session = Depends(get_db)):
             "draft": draft,
             "latest_voice": latest_voice,
             "latest_voice_size": format_size(latest_voice.size_bytes) if latest_voice else None,
+            "latest_voice_status_label": humanize_transcription_status(
+                latest_voice.transcription_status if latest_voice else None
+            ),
             "saved": saved,
             "voice_uploaded": voice_uploaded,
+            "transcribed": transcribed,
+            "transcription_failed": transcription_failed,
+            "transcription_error": transcription_error,
             "error": None,
         },
     )
@@ -187,8 +267,14 @@ async def questionnaire_voice_upload(
                 "draft": draft,
                 "latest_voice": latest_voice,
                 "latest_voice_size": format_size(latest_voice.size_bytes) if latest_voice else None,
+                "latest_voice_status_label": humanize_transcription_status(
+                    latest_voice.transcription_status if latest_voice else None
+                ),
                 "saved": False,
                 "voice_uploaded": False,
+                "transcribed": False,
+                "transcription_failed": False,
+                "transcription_error": None,
                 "error": str(exc),
             },
             status_code=400,
@@ -217,13 +303,54 @@ async def questionnaire_voice_upload(
             },
         )
     )
-
     db.commit()
+    db.refresh(voice_input)
 
-    return RedirectResponse(
-        url=f"{request.url_for('questionnaire_story')}?voice_uploaded=1",
-        status_code=303,
-    )
+    success = await run_transcription_for_voice(db, request, draft, voice_input)
+
+    redirect_url = f"{request.url_for('questionnaire_story')}?voice_uploaded=1"
+    if success:
+        redirect_url += "&transcribed=1"
+    else:
+        redirect_url += "&transcription_failed=1"
+
+    return RedirectResponse(url=redirect_url, status_code=303)
+
+
+@router.post("/voice-retranscribe", response_class=HTMLResponse)
+async def questionnaire_voice_retranscribe(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    draft = get_current_draft(db, request)
+    if draft is None:
+        return RedirectResponse(url=request.url_for("questionnaire_start"), status_code=303)
+
+    latest_voice = get_latest_voice_input(db, draft.id)
+    if latest_voice is None:
+        request.session["voice_transcription_error"] = "Нет загруженного голосового для расшифровки."
+        return RedirectResponse(
+            url=f"{request.url_for('questionnaire_story')}?transcription_failed=1",
+            status_code=303,
+        )
+
+    file_path = Path(latest_voice.storage_path)
+    if not file_path.exists():
+        request.session["voice_transcription_error"] = "Файл голосового не найден на сервере."
+        return RedirectResponse(
+            url=f"{request.url_for('questionnaire_story')}?transcription_failed=1",
+            status_code=303,
+        )
+
+    success = await run_transcription_for_voice(db, request, draft, latest_voice)
+
+    redirect_url = str(request.url_for("questionnaire_story"))
+    if success:
+        redirect_url += "?transcribed=1"
+    else:
+        redirect_url += "?transcription_failed=1"
+
+    return RedirectResponse(url=redirect_url, status_code=303)
 
 
 @router.get("/voice/{voice_public_id}")
@@ -303,8 +430,14 @@ async def questionnaire_story_submit(
                 "draft": draft,
                 "latest_voice": latest_voice,
                 "latest_voice_size": format_size(latest_voice.size_bytes) if latest_voice else None,
+                "latest_voice_status_label": humanize_transcription_status(
+                    latest_voice.transcription_status if latest_voice else None
+                ),
                 "saved": False,
                 "voice_uploaded": False,
+                "transcribed": False,
+                "transcription_failed": False,
+                "transcription_error": None,
                 "error": error,
             },
             status_code=400,
