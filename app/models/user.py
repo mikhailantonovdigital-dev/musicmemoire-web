@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from app.models.order import Order
     from app.models.magic_login_token import MagicLoginToken
     from app.models.order_payment import OrderPayment
+    from app.models.song_generation import SongGeneration
 
 
 class User(Base):
@@ -43,3 +44,4 @@ class User(Base):
         cascade="all, delete-orphan",
     )
     payments: Mapped[list["OrderPayment"]] = relationship(back_populates="user")
+    song_generations: Mapped[list["SongGeneration"]] = relationship(back_populates="user")
