@@ -12,6 +12,7 @@ from app.core.db import get_db
 from app.core.storage import save_voice_file
 from app.models import LyricsVersion, Order, OrderEvent, VoiceInput
 from app.services.lyrics_generation_service import (
+    DualGenerationResult,
     LyricsGenerationError,
     generate_dual_lyrics_versions,
 )
@@ -142,7 +143,10 @@ async def run_transcription_for_voice(
     return True
 
 
-async def generate_versions_for_draft(db: Session, draft: Order) -> None:
+async def generate_versions_for_draft(
+    db: Session,
+    draft: Order,
+) -> list[dict]:
     if draft.lyrics_mode != "generate":
         raise LyricsGenerationError("Генерация версий доступна только для режима без готового текста.")
 
@@ -159,15 +163,13 @@ async def generate_versions_for_draft(db: Session, draft: Order) -> None:
         OrderEvent(
             order=draft,
             event_type="lyrics_generation_started",
-            payload={
-                "story_source": draft.story_source,
-            },
+            payload={"story_source": draft.story_source},
         )
     )
     db.commit()
 
     try:
-        generated_versions = await generate_dual_lyrics_versions(source_text)
+        result: DualGenerationResult = await generate_dual_lyrics_versions(source_text)
     except LyricsGenerationError as exc:
         db.add(
             OrderEvent(
@@ -179,9 +181,11 @@ async def generate_versions_for_draft(db: Session, draft: Order) -> None:
         db.commit()
         raise
 
-    db.query(LyricsVersion).filter(LyricsVersion.order_id == draft.id).delete()
+    db.query(LyricsVersion).filter(
+        LyricsVersion.order_id == draft.id
+    ).delete(synchronize_session=False)
 
-    for item in generated_versions:
+    for item in result.versions:
         db.add(
             LyricsVersion(
                 order_id=draft.id,
@@ -195,17 +199,29 @@ async def generate_versions_for_draft(db: Session, draft: Order) -> None:
             )
         )
 
+    provider_errors = [
+        {
+            "provider": err.provider,
+            "user_message": err.user_message,
+            "technical_message": err.technical_message,
+        }
+        for err in result.errors
+    ]
+
     db.add(
         OrderEvent(
             order=draft,
             event_type="lyrics_generation_done",
             payload={
-                "providers": [item.provider for item in generated_versions],
-                "models": [item.model_name for item in generated_versions],
+                "providers": [item.provider for item in result.versions],
+                "models": [item.model_name for item in result.versions],
+                "errors": provider_errors,
             },
         )
     )
     db.commit()
+
+    return provider_errors
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -663,7 +679,7 @@ async def questionnaire_story_submit(
 
     if action == "generate":
         try:
-            await generate_versions_for_draft(db, draft)
+            provider_errors = await generate_versions_for_draft(db, draft)
         except LyricsGenerationError as exc:
             return templates.TemplateResponse(
                 "questionnaire/story.html",
@@ -686,8 +702,17 @@ async def questionnaire_story_submit(
                 status_code=400,
             )
 
+        if provider_errors:
+            request.session["lyrics_generation_warning"] = " ".join(
+                item["user_message"] for item in provider_errors
+            )
+
+        redirect_url = f"{request.url_for('questionnaire_lyrics')}?generated=1"
+        if provider_errors:
+            redirect_url += "&partial=1"
+
         return RedirectResponse(
-            url=f"{request.url_for('questionnaire_lyrics')}?generated=1",
+            url=redirect_url,
             status_code=303,
         )
 
@@ -712,6 +737,8 @@ async def questionnaire_lyrics(request: Request, db: Session = Depends(get_db)):
 
     generated = request.query_params.get("generated") == "1"
     saved = request.query_params.get("saved") == "1"
+    partial = request.query_params.get("partial") == "1"
+    generation_warning = request.session.pop("lyrics_generation_warning", None)
 
     selected_version = next((item for item in versions if item.is_selected), versions[0])
     final_lyrics_text = selected_version.edited_lyrics_text or selected_version.lyrics_text
@@ -727,6 +754,8 @@ async def questionnaire_lyrics(request: Request, db: Session = Depends(get_db)):
             "final_lyrics_text": final_lyrics_text,
             "generated": generated,
             "saved": saved,
+            "partial": partial,
+            "generation_warning": generation_warning,
             "error": None,
         },
     )
@@ -770,6 +799,8 @@ async def questionnaire_lyrics_submit(
                 "final_lyrics_text": value or (fallback_selected.edited_lyrics_text or fallback_selected.lyrics_text),
                 "generated": False,
                 "saved": False,
+                "partial": False,
+                "generation_warning": None,
                 "error": "Выбери одну версию и оставь непустой финальный текст.",
             },
             status_code=400,
