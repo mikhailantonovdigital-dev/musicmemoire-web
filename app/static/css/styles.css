@@ -372,3 +372,52 @@ h2 {
   color: var(--muted);
   line-height: 1.5;
 }
+.recorder-panel {
+  margin-bottom: 20px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #fff;
+}
+
+.recorder-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.recorder-status {
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.recorder-status-info {
+  background: #eef4ff;
+  border: 1px solid #cfe0ff;
+  color: #1d4ed8;
+}
+
+.recorder-status-success {
+  background: #ecfdf3;
+  border: 1px solid #ccebd7;
+  color: #067647;
+}
+
+.recorder-status-error {
+  background: #fef3f2;
+  border: 1px solid #fecdca;
+  color: #b42318;
+}
+
+@media (max-width: 640px) {
+  .recorder-actions {
+    flex-direction: column;
+  }
+
+  .recorder-actions .btn {
+    width: 100%;
+  }
+}
