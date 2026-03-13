@@ -36,6 +36,16 @@ def get_session_user(request: Request, db: Session) -> User | None:
     return db.query(User).filter(User.id == int(user_id)).first()
 
 
+def humanize_payment_status(status: str | None) -> str:
+    mapping = {
+        "pending": "Ожидает оплаты",
+        "waiting_for_capture": "Ожидает подтверждения",
+        "succeeded": "Оплачено",
+        "canceled": "Не оплачено",
+    }
+    return mapping.get(status or "", "Не начата")
+
+
 @router.get("/login", response_class=HTMLResponse)
 async def account_login_page(request: Request):
     sent = request.query_params.get("sent") == "1"
@@ -178,6 +188,17 @@ async def account_dashboard(request: Request, db: Session = Depends(get_db)):
         .all()
     )
 
+    order_cards = []
+    for item in orders:
+        latest_payment = item.payments[0] if item.payments else None
+        order_cards.append(
+            {
+                "order": item,
+                "latest_payment": latest_payment,
+                "payment_status_label": humanize_payment_status(latest_payment.status if latest_payment else None),
+            }
+        )
+
     return templates.TemplateResponse(
         "account/dashboard.html",
         {
@@ -185,6 +206,8 @@ async def account_dashboard(request: Request, db: Session = Depends(get_db)):
             "page_title": "Личный кабинет",
             "user": user,
             "orders": orders,
+            "order_cards": order_cards,
+            "price_rub": settings.PRICE_RUB,
         },
     )
 
@@ -211,6 +234,8 @@ async def account_order_detail(
     if order is None:
         return RedirectResponse(url=request.url_for("account_dashboard"), status_code=303)
 
+    latest_payment = order.payments[0] if order.payments else None
+
     return templates.TemplateResponse(
         "account/order_detail.html",
         {
@@ -218,5 +243,8 @@ async def account_order_detail(
             "page_title": f"Заказ {order.order_number}",
             "user": user,
             "order": order,
+            "latest_payment": latest_payment,
+            "payment_status_label": humanize_payment_status(latest_payment.status if latest_payment else None),
+            "price_rub": settings.PRICE_RUB,
         },
     )
