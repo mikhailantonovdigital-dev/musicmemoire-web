@@ -86,9 +86,7 @@ async def run_transcription_for_voice(
         OrderEvent(
             order=draft,
             event_type="voice_transcription_started",
-            payload={
-                "voice_input_id": voice_input.public_id,
-            },
+            payload={"voice_input_id": voice_input.public_id},
         )
     )
     db.commit()
@@ -149,14 +147,12 @@ async def questionnaire_start(request: Request, db: Session = Depends(get_db)):
 @router.post("/start", response_class=HTMLResponse)
 async def questionnaire_start_submit(
     request: Request,
-    story_source: str = Form(...),
     lyrics_mode: str = Form(...),
     db: Session = Depends(get_db),
 ):
-    story_source = story_source.strip().lower()
     lyrics_mode = lyrics_mode.strip().lower()
 
-    if story_source not in ALLOWED_STORY_SOURCES or lyrics_mode not in ALLOWED_LYRICS_MODES:
+    if lyrics_mode not in ALLOWED_LYRICS_MODES:
         draft = get_current_draft(db, request)
         return templates.TemplateResponse(
             "questionnaire/start.html",
@@ -164,8 +160,7 @@ async def questionnaire_start_submit(
                 "request": request,
                 "page_title": "Анкета заказа",
                 "draft": draft,
-                "error": "Пожалуйста, выбери корректные варианты.",
-                "form_story_source": story_source,
+                "error": "Пожалуйста, выбери один вариант.",
                 "form_lyrics_mode": lyrics_mode,
             },
             status_code=400,
@@ -175,34 +170,161 @@ async def questionnaire_start_submit(
     draft = get_current_draft(db, request)
 
     if draft is None:
-        draft = Order(
-            session_id=visitor_id,
-            status="draft",
-        )
+        draft = Order(session_id=visitor_id, status="draft")
         db.add(draft)
         db.flush()
 
-    draft.story_source = story_source
     draft.lyrics_mode = lyrics_mode
 
     db.add(
         OrderEvent(
             order=draft,
-            event_type="questionnaire_started",
-            payload={
-                "story_source": story_source,
-                "lyrics_mode": lyrics_mode,
-            },
+            event_type="lyrics_mode_selected",
+            payload={"lyrics_mode": lyrics_mode},
         )
     )
 
     db.commit()
     db.refresh(draft)
-
     request.session["draft_order_id"] = draft.id
+
+    if lyrics_mode == "custom":
+        return RedirectResponse(
+            url=request.url_for("questionnaire_custom_text"),
+            status_code=303,
+        )
+
+    return RedirectResponse(
+        url=request.url_for("questionnaire_story_source"),
+        status_code=303,
+    )
+
+
+@router.get("/story-source", response_class=HTMLResponse)
+async def questionnaire_story_source(request: Request, db: Session = Depends(get_db)):
+    draft = get_current_draft(db, request)
+    if draft is None:
+        return RedirectResponse(url=request.url_for("questionnaire_start"), status_code=303)
+
+    if draft.lyrics_mode == "custom":
+        return RedirectResponse(url=request.url_for("questionnaire_custom_text"), status_code=303)
+
+    return templates.TemplateResponse(
+        "questionnaire/story_source.html",
+        {
+            "request": request,
+            "page_title": "Анкета — как рассказать историю",
+            "draft": draft,
+            "error": None,
+        },
+    )
+
+
+@router.post("/story-source", response_class=HTMLResponse)
+async def questionnaire_story_source_submit(
+    request: Request,
+    story_source: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    draft = get_current_draft(db, request)
+    if draft is None:
+        return RedirectResponse(url=request.url_for("questionnaire_start"), status_code=303)
+
+    story_source = story_source.strip().lower()
+
+    if story_source not in ALLOWED_STORY_SOURCES:
+        return templates.TemplateResponse(
+            "questionnaire/story_source.html",
+            {
+                "request": request,
+                "page_title": "Анкета — как рассказать историю",
+                "draft": draft,
+                "error": "Пожалуйста, выбери один вариант.",
+                "form_story_source": story_source,
+            },
+            status_code=400,
+        )
+
+    draft.story_source = story_source
+
+    db.add(
+        OrderEvent(
+            order=draft,
+            event_type="story_source_selected",
+            payload={"story_source": story_source},
+        )
+    )
+    db.commit()
 
     return RedirectResponse(
         url=request.url_for("questionnaire_story"),
+        status_code=303,
+    )
+
+
+@router.get("/custom-text", response_class=HTMLResponse)
+async def questionnaire_custom_text(request: Request, db: Session = Depends(get_db)):
+    draft = get_current_draft(db, request)
+    if draft is None:
+        return RedirectResponse(url=request.url_for("questionnaire_start"), status_code=303)
+
+    if draft.lyrics_mode != "custom":
+        return RedirectResponse(url=request.url_for("questionnaire_story_source"), status_code=303)
+
+    saved = request.query_params.get("saved") == "1"
+
+    return templates.TemplateResponse(
+        "questionnaire/custom_text.html",
+        {
+            "request": request,
+            "page_title": "Анкета — готовый текст",
+            "draft": draft,
+            "saved": saved,
+            "error": None,
+        },
+    )
+
+
+@router.post("/custom-text", response_class=HTMLResponse)
+async def questionnaire_custom_text_submit(
+    request: Request,
+    custom_lyrics_text: str = Form(default=""),
+    db: Session = Depends(get_db),
+):
+    draft = get_current_draft(db, request)
+    if draft is None:
+        return RedirectResponse(url=request.url_for("questionnaire_start"), status_code=303)
+
+    if draft.lyrics_mode != "custom":
+        return RedirectResponse(url=request.url_for("questionnaire_story_source"), status_code=303)
+
+    value = custom_lyrics_text.strip()
+    if not value:
+        return templates.TemplateResponse(
+            "questionnaire/custom_text.html",
+            {
+                "request": request,
+                "page_title": "Анкета — готовый текст",
+                "draft": draft,
+                "saved": False,
+                "error": "Вставь готовый текст песни.",
+            },
+            status_code=400,
+        )
+
+    draft.custom_lyrics_text = value
+
+    db.add(
+        OrderEvent(
+            order=draft,
+            event_type="custom_lyrics_saved",
+            payload={"chars": len(value)},
+        )
+    )
+    db.commit()
+
+    return RedirectResponse(
+        url=f"{request.url_for('questionnaire_custom_text')}?saved=1",
         status_code=303,
     )
 
@@ -212,6 +334,12 @@ async def questionnaire_story(request: Request, db: Session = Depends(get_db)):
     draft = get_current_draft(db, request)
     if draft is None:
         return RedirectResponse(url=request.url_for("questionnaire_start"), status_code=303)
+
+    if draft.lyrics_mode == "custom":
+        return RedirectResponse(url=request.url_for("questionnaire_custom_text"), status_code=303)
+
+    if draft.story_source not in ALLOWED_STORY_SOURCES:
+        return RedirectResponse(url=request.url_for("questionnaire_story_source"), status_code=303)
 
     latest_voice = get_latest_voice_input(db, draft.id)
     saved = request.query_params.get("saved") == "1"
@@ -328,7 +456,7 @@ async def questionnaire_voice_retranscribe(
 
     latest_voice = get_latest_voice_input(db, draft.id)
     if latest_voice is None:
-        request.session["voice_transcription_error"] = "Нет загруженного голосового для расшифровки."
+        request.session["voice_transcription_error"] = "Нет записанного голосового для расшифровки."
         return RedirectResponse(
             url=f"{request.url_for('questionnaire_story')}?transcription_failed=1",
             status_code=303,
@@ -390,36 +518,30 @@ async def questionnaire_story_submit(
     request: Request,
     story_text: str = Form(default=""),
     transcript_text: str = Form(default=""),
-    custom_lyrics_text: str = Form(default=""),
     db: Session = Depends(get_db),
 ):
     draft = get_current_draft(db, request)
     if draft is None:
         return RedirectResponse(url=request.url_for("questionnaire_start"), status_code=303)
 
+    if draft.lyrics_mode == "custom":
+        return RedirectResponse(url=request.url_for("questionnaire_custom_text"), status_code=303)
+
     latest_voice = get_latest_voice_input(db, draft.id)
     error = None
 
-    if draft.lyrics_mode == "custom":
-        value = custom_lyrics_text.strip()
-        if not value:
-            error = "Вставь готовый текст песни."
+    if draft.story_source == "voice":
+        value = transcript_text.strip()
+        if not value and latest_voice is None:
+            error = "Сначала запиши голосовое сообщение."
         else:
-            draft.custom_lyrics_text = value
-
+            draft.transcript_text = value or draft.transcript_text
     else:
-        if draft.story_source == "voice":
-            value = transcript_text.strip()
-            if not value and latest_voice is None:
-                error = "Загрузи голосовое или вставь расшифровку вручную."
-            else:
-                draft.transcript_text = value or draft.transcript_text
+        value = story_text.strip()
+        if not value:
+            error = "Напиши историю для песни."
         else:
-            value = story_text.strip()
-            if not value:
-                error = "Напиши историю для песни."
-            else:
-                draft.story_text = value
+            draft.story_text = value
 
     if error:
         return templates.TemplateResponse(
@@ -452,10 +574,10 @@ async def questionnaire_story_submit(
                 "lyrics_mode": draft.lyrics_mode,
                 "has_voice_upload": latest_voice is not None,
                 "has_transcript_text": bool((draft.transcript_text or "").strip()),
+                "has_story_text": bool((draft.story_text or "").strip()),
             },
         )
     )
-
     db.commit()
 
     return RedirectResponse(
