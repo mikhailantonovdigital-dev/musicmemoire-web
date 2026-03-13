@@ -9,13 +9,32 @@
     <div class="consultant-box">
       <strong>Как это работает</strong>
       <p>
-        Введи email, который использовался при заказе. Мы отправим ссылку для входа в кабинет.
+        Введи email, который использовался при заказе.
+        {% if stub_mode %}
+          Пока письмо не отправляем: покажем временную ссылку для входа прямо на сайте.
+        {% else %}
+          Мы отправим ссылку для входа в кабинет.
+        {% endif %}
       </p>
     </div>
 
-    {% if sent %}
+    {% if sent and not stub_mode %}
       <div class="notice notice-success">
         Если этот email есть в системе, ссылка для входа уже отправлена.
+      </div>
+    {% endif %}
+
+    {% if sent and stub_mode and stub_login_url %}
+      <div class="notice notice-success">
+        Временная ссылка для входа готова.
+      </div>
+
+      <div class="form-card">
+        <p style="margin-top: 0;">Используй её, пока доменная почта ещё не подключена.</p>
+        <div class="form-actions">
+          <a href="{{ stub_login_url }}" class="btn btn-primary">Войти в кабинет</a>
+        </div>
+        <p class="muted" style="margin-bottom: 0; word-break: break-all;">{{ stub_login_url }}</p>
       </div>
     {% endif %}
 
@@ -35,7 +54,7 @@
       />
 
       <div class="form-actions">
-        <button type="submit" class="btn btn-primary">Отправить ссылку</button>
+        <button type="submit" class="btn btn-primary">Продолжить</button>
       </div>
     </form>
   </div>
