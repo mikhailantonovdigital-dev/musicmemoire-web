@@ -11,6 +11,7 @@ from app.core.db import Base
 
 if TYPE_CHECKING:
     from app.models.order import Order
+    from app.models.magic_login_token import MagicLoginToken
 
 
 class User(Base):
@@ -35,6 +36,8 @@ class User(Base):
         nullable=False,
     )
 
-    orders: Mapped[list["Order"]] = relationship(
+    orders: Mapped[list["Order"]] = relationship(back_populates="user")
+    magic_login_tokens: Mapped[list["MagicLoginToken"]] = relationship(
         back_populates="user",
+        cascade="all, delete-orphan",
     )
