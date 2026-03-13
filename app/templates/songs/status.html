@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="section">
+  <div class="container narrow">
+    <p class="eyebrow">Генерация песни</p>
+    <h1>{{ order.order_number }}</h1>
+
+    <div class="step-meta">
+      <span>Статус заказа: <strong>{{ order.status }}</strong></span>
+      <span>Статус генерации: <strong>{{ song_status_label }}</strong></span>
+      {% if song %}
+        <span>Попытка: <strong>{{ song.attempt_no }}</strong></span>
+      {% endif %}
+    </div>
+
+    {% if is_ready %}
+      <div class="notice notice-success">
+        Песня готова.
+      </div>
+    {% elif is_running %}
+      <div class="notice">
+        Генерация уже идёт. Страница обновится автоматически.
+      </div>
+    {% elif is_failed %}
+      <div class="notice notice-warning">
+        Генерация завершилась ошибкой.
+      </div>
+    {% endif %}
+
+    {% if error %}
+      <div class="notice notice-error">{{ error }}</div>
+    {% endif %}
+
+    {% if song and song.error_message and not error %}
+      <div class="notice notice-error">{{ song.error_message }}</div>
+    {% endif %}
+
+    <div class="form-card">
+      <h2 class="form-title">Финальный текст</h2>
+      <textarea class="textarea textarea-readonly" readonly>{{ order.final_lyrics_text or "Финальный текст пока не сохранён." }}</textarea>
+    </div>
+
+    <div class="form-card" style="margin-top: 20px;">
+      <h2 class="form-title">Результат</h2>
+
+      {% if song and song.audio_url %}
+        <audio class="audio-player" controls preload="none" src="{{ song.audio_url }}"></audio>
+      {% elif is_ready and suno_stub_mode %}
+        <p class="muted">В заглушке задача считается выполненной, но реальный аудиофайл появится после подключения настоящей интеграции Suno.</p>
+      {% elif is_running %}
+        <p class="muted">Подожди немного. Мы проверим статус ещё раз автоматически.</p>
+      {% else %}
+        <p class="muted">Аудиорезультат пока не доступен.</p>
+      {% endif %}
+    </div>
+
+    <div class="form-actions">
+      <a href="/account/orders/{{ order.public_id }}" class="btn btn-secondary">Вернуться к заказу</a>
+
+      {% if is_running and song %}
+        <a href="/songs/status?job={{ song.public_id }}" class="btn btn-primary">Обновить статус</a>
+      {% elif is_failed and song %}
+        <form method="post" action="/songs/retry/{{ song.public_id }}">
+          <button type="submit" class="btn btn-primary">Повторить генерацию</button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+{% if is_running and song %}
+<script>
+  setTimeout(function () {
+    window.location.href = "/songs/status?job={{ song.public_id }}";
+  }, 5000);
+</script>
+{% endif %}
+{% endblock %}
