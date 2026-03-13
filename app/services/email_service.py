@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import smtplib
 import ssl
+from dataclasses import dataclass
 from email.message import EmailMessage
 
 from app.core.config import settings
@@ -11,7 +12,16 @@ class EmailServiceError(RuntimeError):
     pass
 
 
-def send_magic_link_email(*, recipient_email: str, login_url: str) -> None:
+@dataclass(slots=True)
+class MagicLinkDeliveryResult:
+    mode: str
+    login_url: str
+
+
+def send_magic_link_email(*, recipient_email: str, login_url: str) -> MagicLinkDeliveryResult:
+    if settings.MAGIC_LINK_STUB_MODE:
+        return MagicLinkDeliveryResult(mode="stub", login_url=login_url)
+
     if not settings.SMTP_HOST or not settings.SMTP_USER or not settings.SMTP_PASSWORD:
         raise EmailServiceError("SMTP не настроен. Проверь SMTP_HOST, SMTP_USER и SMTP_PASSWORD.")
 
@@ -49,3 +59,5 @@ def send_magic_link_email(*, recipient_email: str, login_url: str) -> None:
                 server.send_message(msg)
     except Exception as exc:
         raise EmailServiceError("Не удалось отправить письмо со ссылкой для входа.") from exc
+
+    return MagicLinkDeliveryResult(mode="email", login_url=login_url)
