@@ -25,6 +25,9 @@ class Settings(BaseSettings):
 
     SUNO_API_KEY: str | None = None
     SUNO_MODEL: str | None = None
+    SUNO_STUB_MODE: bool = True
+    SUNO_STUB_DELAY_SECONDS: int = 12
+    SUNO_STUB_AUDIO_URL: str | None = None
 
     OPENAI_API_KEY: str | None = None
     OPENAI_MODEL: str | None = None
