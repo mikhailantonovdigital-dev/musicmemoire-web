@@ -12,7 +12,7 @@ from app.core.db import Base
 if TYPE_CHECKING:
     from app.models.order import Order
     from app.models.magic_login_token import MagicLoginToken
-    from app.models.song_generation import SongGeneration
+    from app.models.order_payment import OrderPayment
 
 
 class User(Base):
@@ -42,4 +42,4 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan",
     )
-    song_generations: Mapped[list["SongGeneration"]] = relationship(back_populates="user")
+    payments: Mapped[list["OrderPayment"]] = relationship(back_populates="user")
