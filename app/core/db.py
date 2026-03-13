@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from app.core.config import settings
@@ -47,7 +47,23 @@ def get_db():
         db.close()
 
 
+def run_bootstrap_migrations() -> None:
+    inspector = inspect(engine)
+
+    if "orders" in inspector.get_table_names():
+        order_columns = {col["name"] for col in inspector.get_columns("orders")}
+
+        if "final_lyrics_text" not in order_columns:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE orders ADD COLUMN final_lyrics_text TEXT"))
+
+    if "magic_login_tokens" not in inspector.get_table_names():
+        # table creation will be handled by create_all below, this branch is only for clarity
+        pass
+
+
 def init_db() -> None:
     import app.models  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
+    run_bootstrap_migrations()
