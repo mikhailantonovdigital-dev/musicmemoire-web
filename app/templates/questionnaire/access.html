@@ -9,7 +9,12 @@
     <div class="consultant-box">
       <strong>Комментарий консультанта</strong>
       <p>
-        Укажи email, и мы создадим тебе личный кабинет с этим заказом. На почту придёт ссылка для входа.
+        Укажи email, и мы создадим тебе личный кабинет с этим заказом.
+        {% if stub_mode %}
+          Пока письмо не отправляем: после сохранения покажем временную кнопку входа прямо на сайте.
+        {% else %}
+          На почту придёт ссылка для входа.
+        {% endif %}
         На следующем этапе сюда же будет привязываться оплата и история заказов.
       </p>
     </div>
@@ -25,9 +30,23 @@
       </div>
     {% endif %}
 
-    {% if sent %}
+    {% if sent and not stub_mode %}
       <div class="notice notice-success">
         Ссылка для входа в кабинет отправлена на email.
+      </div>
+    {% endif %}
+
+    {% if sent and stub_mode and stub_login_url %}
+      <div class="notice notice-success">
+        Кабинет создан. Пока почта не подключена, используй временную ссылку для входа ниже.
+      </div>
+
+      <div class="form-card">
+        <p style="margin-top: 0;">Эта ссылка временная и нужна только для текущего тестового режима.</p>
+        <div class="form-actions">
+          <a href="{{ stub_login_url }}" class="btn btn-primary">Войти в кабинет</a>
+        </div>
+        <p class="muted" style="margin-bottom: 0; word-break: break-all;">{{ stub_login_url }}</p>
       </div>
     {% endif %}
 
@@ -50,7 +69,7 @@
         <a href="{% if draft.lyrics_mode == 'custom' %}/questionnaire/custom-text{% else %}/questionnaire/lyrics{% endif %}" class="btn btn-secondary">
           Назад
         </a>
-        <button type="submit" class="btn btn-primary">Создать кабинет и отправить ссылку</button>
+        <button type="submit" class="btn btn-primary">Создать кабинет</button>
       </div>
     </form>
   </div>
