@@ -3,7 +3,7 @@ from app.models.order import Order, OrderEvent
 from app.models.voice_input import VoiceInput
 from app.models.lyrics_version import LyricsVersion
 from app.models.magic_login_token import MagicLoginToken
-from app.models.order_payment import OrderPayment
+from app.models.song_generation import SongGeneration
 
 __all__ = [
     "User",
@@ -12,5 +12,5 @@ __all__ = [
     "VoiceInput",
     "LyricsVersion",
     "MagicLoginToken",
-    "OrderPayment",
+    "SongGeneration",
 ]
