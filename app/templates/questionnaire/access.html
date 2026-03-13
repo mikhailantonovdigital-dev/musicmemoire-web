@@ -44,7 +44,10 @@
       <div class="form-card">
         <p style="margin-top: 0;">Эта ссылка временная и нужна только для текущего тестового режима.</p>
         <div class="form-actions">
-          <a href="{{ stub_login_url }}" class="btn btn-primary">Войти в кабинет</a>
+          <a href="{{ stub_login_url }}" class="btn btn-secondary">Войти в кабинет</a>
+          <form method="post" action="/checkout/start/{{ draft.public_id }}">
+            <button type="submit" class="btn btn-primary">Оплатить {{ price_rub }} ₽</button>
+          </form>
         </div>
         <p class="muted" style="margin-bottom: 0; word-break: break-all;">{{ stub_login_url }}</p>
       </div>
