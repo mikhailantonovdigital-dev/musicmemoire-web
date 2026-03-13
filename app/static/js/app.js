@@ -288,6 +288,29 @@ function initVoiceRecorder() {
   });
 }
 
+function initLyricsPicker() {
+  const root = document.querySelector("[data-lyrics-picker]");
+  if (!root) return;
+
+  const radios = root.querySelectorAll('input[name="selected_version_public_id"]');
+  const finalTextarea = root.querySelector("[data-final-lyrics-text]");
+
+  if (!finalTextarea || !radios.length) return;
+
+  function updateTextarea(versionId) {
+    const source = root.querySelector(`[data-lyrics-source-text="${versionId}"]`);
+    if (!source) return;
+    finalTextarea.value = source.value;
+  }
+
+  radios.forEach((radio) => {
+    radio.addEventListener("change", () => {
+      updateTextarea(radio.value);
+    });
+  });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   initVoiceRecorder();
+  initLyricsPicker();
 });
