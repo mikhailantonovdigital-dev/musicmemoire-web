@@ -7,10 +7,23 @@
     <h1>{{ order.order_number }}</h1>
 
     <div class="step-meta">
-      <span>Статус: <strong>{{ order.status }}</strong></span>
+      <span>Статус заказа: <strong>{{ order.status }}</strong></span>
+      <span>Статус оплаты: <strong>{{ payment_status_label }}</strong></span>
       <span>Режим: <strong>{{ "Свой текст" if order.lyrics_mode == "custom" else "2 версии бесплатно" }}</strong></span>
       <span>Источник: <strong>{{ "Голос" if order.story_source == "voice" else "Текст" }}</strong></span>
     </div>
+
+    {% if latest_payment and latest_payment.status == 'succeeded' %}
+      <div class="notice notice-success">
+        Оплата успешно получена.
+      </div>
+    {% endif %}
+
+    {% if latest_payment and latest_payment.status == 'canceled' %}
+      <div class="notice notice-warning">
+        Предыдущая попытка оплаты не завершилась.
+      </div>
+    {% endif %}
 
     <div class="form-card">
       <h2 class="form-title">Финальный текст</h2>
@@ -19,6 +32,11 @@
 
     <div class="form-actions">
       <a href="/account/" class="btn btn-secondary">Назад в кабинет</a>
+      {% if not latest_payment or latest_payment.status != 'succeeded' %}
+        <form method="post" action="/checkout/start/{{ order.public_id }}">
+          <button type="submit" class="btn btn-primary">Оплатить {{ price_rub }} ₽</button>
+        </form>
+      {% endif %}
     </div>
   </div>
 </section>
