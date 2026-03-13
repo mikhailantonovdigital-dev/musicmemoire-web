@@ -4,7 +4,6 @@ import asyncio
 import logging
 from dataclasses import dataclass
 
-from google import genai
 from openai import AsyncOpenAI
 
 from app.core.config import settings
@@ -19,12 +18,12 @@ class LyricsGenerationError(RuntimeError):
 class ProviderLyricsGenerationError(LyricsGenerationError):
     def __init__(
         self,
-        provider: str,
+        slot_label: str,
         user_message: str,
         technical_message: str,
     ) -> None:
         super().__init__(user_message)
-        self.provider = provider
+        self.slot_label = slot_label
         self.user_message = user_message
         self.technical_message = technical_message
 
@@ -64,73 +63,116 @@ def normalize_lyrics_text(text: str) -> str:
     return value.strip()
 
 
-def build_openai_prompt(story_text: str) -> str:
+def build_variant_1_prompt(story_text: str) -> str:
     return f"""
 Ты — сильный русскоязычный автор песенных текстов.
 
 Задача:
 написать персональный текст песни на основе истории клиента.
 
+Это Вариант 1.
 Подход этой версии:
 - эмоционально
-- ярко
-- современно
-- с сильными образами
-- с цепляющим припевом
-- без банальных штампов
+- образно
+- цепляюще
+- романтично или трогательно по ситуации
+- сильный и запоминающийся припев
+- больше красивых формулировок и образов
+
+Очень важно:
+- текст должен быть пригоден для дальнейшей генерации песни в Suno
+- выдай текст СТРОГО в такой структуре:
+[Verse 1]
+...
+[Chorus]
+...
+[Verse 2]
+...
+[Chorus]
+...
+[Bridge]
+...
+[Final Chorus]
+...
 
 Правила:
-- пиши только текст песни
-- без объяснений, без комментариев, без markdown
-- не добавляй заголовок и служебные пометки вроде "Куплет 1"
-- текст должен быть естественным для вокального исполнения
-- используй конкретные детали из истории
+- только текст песни
+- без пояснений
+- без markdown-блоков
+- без лишних комментариев
 - русский язык
+- используй реальные детали из истории
+- избегай банальностей и избитых штампов
+- строки должны быть удобны для вокального исполнения
 
 История клиента:
 {story_text}
 """.strip()
 
 
-def build_gemini_prompt(story_text: str) -> str:
+def build_variant_2_prompt(story_text: str) -> str:
     return f"""
 Ты — опытный русскоязычный сонграйтер.
 
 Нужно написать персональный текст песни на основе истории клиента.
 
+Это Вариант 2.
 Подход этой версии:
 - более структурно
-- цельно
-- музыкально
-- понятные куплеты и сильный припев
-- хороший баланс эмоции и ясности
-- без перегруза и без лишнего пафоса
+- более чётко
+- проще и музыкальнее
+- ясные формулировки
+- хороший ритм фраз
+- текст должен лучше подходить для последующей генерации песни
+
+Очень важно:
+- текст должен быть пригоден для дальнейшей генерации песни в Suno
+- выдай текст СТРОГО в такой структуре:
+[Verse 1]
+...
+[Chorus]
+...
+[Verse 2]
+...
+[Chorus]
+...
+[Bridge]
+...
+[Final Chorus]
+...
 
 Правила:
-- выдай только текст песни
-- не пиши пояснений
-- не используй markdown
-- не добавляй заголовок
-- текст должен легко ложиться на музыку
-- опирайся на реальные детали из истории
+- только текст песни
+- без пояснений
+- без markdown-блоков
+- без лишних комментариев
 - русский язык
+- опирайся на реальные детали истории
+- делай припев сильным, но понятным
+- текст должен легко ложиться на музыку
 
 История клиента:
 {story_text}
 """.strip()
 
 
-async def generate_openai_lyrics(prompt_text: str) -> GeneratedLyricsVersion:
+async def generate_openai_variant(
+    *,
+    slot_label: str,
+    prompt_text: str,
+    angle_label: str,
+) -> GeneratedLyricsVersion:
     if not settings.OPENAI_API_KEY:
         raise ProviderLyricsGenerationError(
-            provider="openai",
-            user_message="OpenAI временно недоступен.",
+            slot_label=slot_label,
+            user_message=f"Не удалось сгенерировать {angle_label.lower()}.",
             technical_message="OPENAI_API_KEY is not configured.",
         )
+
     if not settings.OPENAI_MODEL:
         raise ProviderLyricsGenerationError(
-            provider="openai",
-            user_message="OpenAI временно недоступен.",
+            slot_label=slot_label,
+            user_message=f"Не удалось сгенерировать {angle_label.lower()}.",
             technical_message="OPENAI_MODEL is not configured.",
         )
 
@@ -143,10 +185,10 @@ async def generate_openai_lyrics(prompt_text: str) -> GeneratedLyricsVersion:
         )
     except Exception as exc:
         technical = f"{exc.__class__.__name__}: {exc}"
-        logger.exception("OpenAI lyrics generation failed")
+        logger.exception("Lyrics generation failed for %s", slot_label)
         raise ProviderLyricsGenerationError(
-            provider="openai",
-            user_message="OpenAI не смог сгенерировать первую версию текста.",
+            slot_label=slot_label,
+            user_message=f"Не удалось сгенерировать {angle_label.lower()}.",
             technical_message=technical,
         ) from exc
     finally:
@@ -155,62 +197,15 @@ async def generate_openai_lyrics(prompt_text: str) -> GeneratedLyricsVersion:
     text = normalize_lyrics_text(response.output_text or "")
     if not text:
         raise ProviderLyricsGenerationError(
-            provider="openai",
-            user_message="OpenAI вернул пустую версию текста.",
-            technical_message="OpenAI response.output_text is empty.",
+            slot_label=slot_label,
+            user_message=f"{angle_label} получился пустым.",
+            technical_message=f"{slot_label}: OpenAI response.output_text is empty.",
         )
 
     return GeneratedLyricsVersion(
         provider="openai",
         model_name=settings.OPENAI_MODEL,
-        angle_label="Эмоциональная версия",
-        prompt_text=prompt_text,
-        lyrics_text=text,
-    )
-
-
-def generate_gemini_lyrics_sync(prompt_text: str) -> GeneratedLyricsVersion:
-    if not settings.GEMINI_API_KEY:
-        raise ProviderLyricsGenerationError(
-            provider="gemini",
-            user_message="Gemini временно недоступен.",
-            technical_message="GEMINI_API_KEY is not configured.",
-        )
-    if not settings.GEMINI_MODEL_PRIMARY:
-        raise ProviderLyricsGenerationError(
-            provider="gemini",
-            user_message="Gemini временно недоступен.",
-            technical_message="GEMINI_MODEL_PRIMARY is not configured.",
-        )
-
-    client = genai.Client(api_key=settings.GEMINI_API_KEY)
-
-    try:
-        response = client.models.generate_content(
-            model=settings.GEMINI_MODEL_PRIMARY,
-            contents=prompt_text,
-        )
-    except Exception as exc:
-        technical = f"{exc.__class__.__name__}: {exc}"
-        logger.exception("Gemini lyrics generation failed")
-        raise ProviderLyricsGenerationError(
-            provider="gemini",
-            user_message="Gemini не смог сгенерировать вторую версию текста.",
-            technical_message=technical,
-        ) from exc
-
-    text = normalize_lyrics_text(response.text or "")
-    if not text:
-        raise ProviderLyricsGenerationError(
-            provider="gemini",
-            user_message="Gemini вернул пустую версию текста.",
-            technical_message="Gemini response.text is empty.",
-        )
-
-    return GeneratedLyricsVersion(
-        provider="gemini",
-        model_name=settings.GEMINI_MODEL_PRIMARY,
-        angle_label="Структурная версия",
+        angle_label=angle_label,
         prompt_text=prompt_text,
         lyrics_text=text,
     )
@@ -221,12 +216,20 @@ async def generate_dual_lyrics_versions(story_text: str) -> DualGenerationResult
     if not source_text:
         raise LyricsGenerationError("Сначала нужно заполнить историю для песни.")
 
-    openai_prompt = build_openai_prompt(source_text)
-    gemini_prompt = build_gemini_prompt(source_text)
+    prompt_1 = build_variant_1_prompt(source_text)
+    prompt_2 = build_variant_2_prompt(source_text)
 
     results = await asyncio.gather(
-        generate_openai_lyrics(openai_prompt),
-        asyncio.to_thread(generate_gemini_lyrics_sync, gemini_prompt),
+        generate_openai_variant(
+            slot_label="variant_1",
+            prompt_text=prompt_1,
+            angle_label="Вариант 1",
+        ),
+        generate_openai_variant(
+            slot_label="variant_2",
+            prompt_text=prompt_2,
+            angle_label="Вариант 2",
+        ),
         return_exceptions=True,
     )
 
@@ -246,8 +249,8 @@ async def generate_dual_lyrics_versions(story_text: str) -> DualGenerationResult
         logger.exception("Unknown lyrics generation error", exc_info=result)
         errors.append(
             ProviderLyricsGenerationError(
-                provider="unknown",
-                user_message="Одна из моделей не смогла сгенерировать текст.",
+                slot_label="unknown",
+                user_message="Одна из версий текста не смогла сгенерироваться.",
                 technical_message=technical,
             )
         )
@@ -256,7 +259,12 @@ async def generate_dual_lyrics_versions(story_text: str) -> DualGenerationResult
         joined = " ".join(item.user_message for item in errors) or "Не удалось сгенерировать ни одной версии текста."
         raise LyricsGenerationError(joined)
 
-    versions.sort(key=lambda item: 0 if item.provider == "openai" else 1)
+    order_map = {
+        "Вариант 1": 0,
+        "Вариант 2": 1,
+    }
+    versions.sort(key=lambda item: order_map.get(item.angle_label, 999))
+
     return DualGenerationResult(
         versions=versions,
         errors=errors,
