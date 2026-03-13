@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="section">
+  <div class="container narrow">
+    <p class="eyebrow">Личный кабинет</p>
+    <h1>Войти по email</h1>
+
+    <div class="consultant-box">
+      <strong>Как это работает</strong>
+      <p>
+        Введи email, который использовался при заказе. Мы отправим ссылку для входа в кабинет.
+      </p>
+    </div>
+
+    {% if sent %}
+      <div class="notice notice-success">
+        Если этот email есть в системе, ссылка для входа уже отправлена.
+      </div>
+    {% endif %}
+
+    {% if error %}
+      <div class="notice notice-error">{{ error }}</div>
+    {% endif %}
+
+    <form class="form-card" method="post" action="/account/login">
+      <label class="form-label" for="email">Email</label>
+      <input
+        id="email"
+        name="email"
+        type="email"
+        class="text-input"
+        placeholder="name@example.com"
+        required
+      />
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Отправить ссылку</button>
+      </div>
+    </form>
+  </div>
+</section>
+{% endblock %}
