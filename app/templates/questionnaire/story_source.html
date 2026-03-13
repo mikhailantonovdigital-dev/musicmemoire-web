@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="section">
+  <div class="container narrow">
+    <p class="eyebrow">Анкета · Шаг 2 из 3</p>
+    <h1>Как тебе удобнее рассказать историю?</h1>
+
+    <div class="consultant-box">
+      <strong>Комментарий консультанта</strong>
+      <p>
+        Если удобнее спокойно описать всё самому — выбирай текст.
+        Если проще рассказать своими словами, как сообщение в мессенджере — выбирай голос.
+      </p>
+    </div>
+
+    {% if error %}
+      <div class="notice notice-error">{{ error }}</div>
+    {% endif %}
+
+    <form class="form-card" method="post" action="/questionnaire/story-source">
+      <div class="radio-grid">
+        <label class="radio-card">
+          <input
+            type="radio"
+            name="story_source"
+            value="text"
+            {% if (form_story_source or (draft.story_source if draft else "text")) == "text" %}checked{% endif %}
+          />
+          <span class="radio-card-title">Текстом</span>
+          <span class="radio-card-text">Напишешь историю в форме на следующем шаге.</span>
+        </label>
+
+        <label class="radio-card">
+          <input
+            type="radio"
+            name="story_source"
+            value="voice"
+            {% if (form_story_source or (draft.story_source if draft else "")) == "voice" %}checked{% endif %}
+          />
+          <span class="radio-card-title">Голосом</span>
+          <span class="radio-card-text">Надиктуешь историю прямо на сайте, почти как в Telegram.</span>
+        </label>
+      </div>
+
+      <div class="form-actions">
+        <a href="/questionnaire/" class="btn btn-secondary">Назад</a>
+        <button type="submit" class="btn btn-primary">Продолжить</button>
+      </div>
+    </form>
+  </div>
+</section>
+{% endblock %}
