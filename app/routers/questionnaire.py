@@ -859,6 +859,7 @@ async def questionnaire_access(request: Request, db: Session = Depends(get_db)):
 
     saved = request.query_params.get("saved") == "1"
     sent = request.query_params.get("sent") == "1"
+    stub_login_url = request.session.get("stub_questionnaire_login_url")
 
     return templates.TemplateResponse(
         "questionnaire/access.html",
@@ -868,6 +869,8 @@ async def questionnaire_access(request: Request, db: Session = Depends(get_db)):
             "draft": draft,
             "saved": saved,
             "sent": sent,
+            "stub_mode": settings.MAGIC_LINK_STUB_MODE,
+            "stub_login_url": stub_login_url,
             "error": None,
         },
     )
@@ -897,6 +900,8 @@ async def questionnaire_access_submit(
                 "draft": draft,
                 "saved": False,
                 "sent": False,
+                "stub_mode": settings.MAGIC_LINK_STUB_MODE,
+                "stub_login_url": None,
                 "error": "Укажи корректный email.",
             },
             status_code=400,
@@ -937,7 +942,7 @@ async def questionnaire_access_submit(
     login_url = f"{settings.BASE_URL}/account/magic-login?token={raw_token}"
 
     try:
-        send_magic_link_email(
+        delivery = send_magic_link_email(
             recipient_email=email,
             login_url=login_url,
         )
@@ -950,10 +955,15 @@ async def questionnaire_access_submit(
                 "draft": draft,
                 "saved": False,
                 "sent": False,
+                "stub_mode": settings.MAGIC_LINK_STUB_MODE,
+                "stub_login_url": None,
                 "error": str(exc),
             },
             status_code=400,
         )
+
+    if delivery.mode == "stub":
+        request.session["stub_questionnaire_login_url"] = delivery.login_url
 
     return RedirectResponse(
         url=f"{request.url_for('questionnaire_access')}?sent=1",
