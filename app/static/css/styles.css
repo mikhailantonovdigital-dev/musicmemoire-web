@@ -576,3 +576,90 @@ h2 {
   width: 100%;
   margin-top: 16px;
 }
+.admin-toolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.admin-search-form {
+  margin: 24px 0;
+}
+
+.admin-search-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.admin-search-row .text-input {
+  flex: 1 1 320px;
+}
+
+.admin-status-grid,
+.admin-detail-grid,
+.admin-orders-list {
+  display: grid;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.admin-status-grid {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.admin-detail-grid {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.preview-box {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 14px 16px;
+  background: #fbfcfe;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  color: var(--text);
+}
+
+.admin-events {
+  display: grid;
+  gap: 14px;
+}
+
+.admin-event {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px;
+  background: #fbfcfe;
+}
+
+.admin-event-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.admin-event-head span {
+  color: var(--muted);
+}
+
+.admin-pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+@media (max-width: 900px) {
+  .admin-status-grid,
+  .admin-detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
