@@ -3,28 +3,147 @@
 {% block content %}
 <section class="section">
   <div class="container">
-    <p class="eyebrow">Админка</p>
-    <h1>Панель управления</h1>
-    <p>Здесь позже будет воронка, список заказов, пользователи, ошибки и ручные ретраи.</p>
+    <div class="admin-toolbar">
+      <div>
+        <p class="eyebrow">Админка</p>
+        <h1>Панель управления</h1>
+      </div>
+
+      <div class="form-actions">
+        {% if admin_token_enabled %}
+          <a href="/admin/logout" class="btn btn-secondary">Выйти</a>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if not admin_token_enabled %}
+      <div class="notice notice-warning">
+        ADMIN_TOKEN не задан. Сейчас админка открыта без защиты. На боевом сервисе обязательно добавь токен в Render env.
+      </div>
+    {% endif %}
+
+    {% if flash %}
+      <div class="notice notice-{{ flash.kind }}">{{ flash.text }}</div>
+    {% endif %}
+
+    <form class="form-card admin-search-form" method="get" action="/admin/">
+      <label class="form-label" for="q">Поиск по номеру заказа или email</label>
+      <div class="admin-search-row">
+        <input
+          id="q"
+          name="q"
+          type="text"
+          class="text-input"
+          placeholder="Например: MM-260313 или client@example.com"
+          value="{{ q }}"
+        />
+        <button type="submit" class="btn btn-primary">Найти</button>
+        {% if q %}
+          <a href="/admin/" class="btn btn-secondary">Сбросить</a>
+        {% endif %}
+      </div>
+    </form>
 
     <div class="grid">
       <div class="metric-card">
         <span>Новые пользователи сегодня</span>
-        <strong>—</strong>
+        <strong>{{ new_users_today }}</strong>
       </div>
       <div class="metric-card">
         <span>Уникальные пользователи за всё время</span>
-        <strong>—</strong>
+        <strong>{{ total_users }}</strong>
       </div>
       <div class="metric-card">
         <span>Заказы сегодня</span>
-        <strong>—</strong>
+        <strong>{{ orders_today }}</strong>
       </div>
       <div class="metric-card">
-        <span>Оплаты сегодня</span>
-        <strong>—</strong>
+        <span>Оплаченные за всё время</span>
+        <strong>{{ total_paid_orders }}</strong>
+      </div>
+      <div class="metric-card">
+        <span>Ошибки генерации песен</span>
+        <strong>{{ failed_song_jobs }}</strong>
+      </div>
+      <div class="metric-card">
+        <span>Ожидающие оплаты</span>
+        <strong>{{ pending_payments }}</strong>
       </div>
     </div>
+
+    <div class="admin-status-grid">
+      <div class="form-card">
+        <h2 class="form-title">Статусы заказов</h2>
+        <div class="step-meta">
+          {% for status, count in order_status_counts %}
+            <span>{{ status }} · <strong>{{ count }}</strong></span>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="form-card">
+        <h2 class="form-title">Статусы оплат</h2>
+        <div class="step-meta">
+          {% for status, count in payment_status_counts %}
+            <span>{{ status }} · <strong>{{ count }}</strong></span>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="form-card">
+        <h2 class="form-title">Статусы генерации песен</h2>
+        <div class="step-meta">
+          {% for status, count in song_status_counts %}
+            <span>{{ status }} · <strong>{{ count }}</strong></span>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    {% if order_cards %}
+      <div class="admin-orders-list">
+        {% for card in order_cards %}
+          {% set order = card.order %}
+          {% set latest_payment = card.latest_payment %}
+          {% set latest_song = card.latest_song %}
+
+          <article class="lyrics-card">
+            <div class="lyrics-card-head">
+              <div>
+                <h2>{{ order.order_number }}</h2>
+                <p class="lyrics-angle">Email: {{ order.user.email if order.user and order.user.email else "—" }}</p>
+                <p class="lyrics-angle">Статус заказа: {{ order.status }}</p>
+                <p class="lyrics-angle">Оплата: {{ card.payment_status_label }}</p>
+                <p class="lyrics-angle">Песня: {{ card.song_status_label }}</p>
+              </div>
+              <span class="variant-chip">Заказ</span>
+            </div>
+
+            <div class="preview-box">
+              {{ (order.final_lyrics_text or "Финальный текст пока не сохранён.")[:400] }}{% if order.final_lyrics_text and order.final_lyrics_text|length > 400 %}…{% endif %}
+            </div>
+
+            <div class="form-actions">
+              <a href="/admin/orders/{{ order.public_id }}" class="btn btn-secondary">Открыть</a>
+
+              {% if latest_song and latest_song.status == "failed" %}
+                <form method="post" action="/admin/orders/{{ order.public_id }}/song-run">
+                  <button type="submit" class="btn btn-primary">Повторить песню</button>
+                </form>
+              {% elif not latest_song and card.can_run_song %}
+                <form method="post" action="/admin/orders/{{ order.public_id }}/song-run">
+                  <button type="submit" class="btn btn-primary">Запустить песню</button>
+                </form>
+              {% endif %}
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="notice">
+        По текущему фильтру ничего не найдено.
+      </div>
+    {% endif %}
   </div>
 </section>
 {% endblock %}
