@@ -57,7 +57,7 @@ def get_current_draft(db: Session, request: Request) -> Order | None:
 
     query = db.query(Order).filter(
         Order.session_id == visitor_id,
-        Order.status == "draft",
+        Order.status.in_(["draft", "awaiting_payment"]),
     )
 
     if draft_order_id:
