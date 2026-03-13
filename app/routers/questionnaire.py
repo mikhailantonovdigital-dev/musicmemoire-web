@@ -871,6 +871,7 @@ async def questionnaire_access(request: Request, db: Session = Depends(get_db)):
             "sent": sent,
             "stub_mode": settings.MAGIC_LINK_STUB_MODE,
             "stub_login_url": stub_login_url,
+            "price_rub": settings.PRICE_RUB,
             "error": None,
         },
     )
@@ -902,6 +903,7 @@ async def questionnaire_access_submit(
                 "sent": False,
                 "stub_mode": settings.MAGIC_LINK_STUB_MODE,
                 "stub_login_url": None,
+                "price_rub": settings.PRICE_RUB,
                 "error": "Укажи корректный email.",
             },
             status_code=400,
@@ -914,6 +916,7 @@ async def questionnaire_access_submit(
         db.flush()
 
     draft.user_id = user.id
+    draft.status = "awaiting_payment"
 
     raw_token = generate_magic_token()
     token_hash = hash_magic_token(raw_token)
@@ -957,6 +960,7 @@ async def questionnaire_access_submit(
                 "sent": False,
                 "stub_mode": settings.MAGIC_LINK_STUB_MODE,
                 "stub_login_url": None,
+                "price_rub": settings.PRICE_RUB,
                 "error": str(exc),
             },
             status_code=400,
