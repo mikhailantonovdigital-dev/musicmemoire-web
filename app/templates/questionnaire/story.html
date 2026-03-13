@@ -4,7 +4,7 @@
 <section class="section">
   <div class="container narrow">
     {% if draft.story_source == "voice" %}
-      <p class="eyebrow">Анкета · Шаг 3 из 3</p>
+      <p class="eyebrow">Анкета · Шаг 3 из 4</p>
       <h1>Расскажи историю голосом</h1>
 
       <div class="consultant-box">
@@ -15,14 +15,14 @@
         </p>
       </div>
     {% else %}
-      <p class="eyebrow">Анкета · Шаг 3 из 3</p>
+      <p class="eyebrow">Анкета · Шаг 3 из 4</p>
       <h1>Напиши историю для песни</h1>
 
       <div class="consultant-box">
         <strong>Комментарий консультанта</strong>
         <p>
           Опиши, кому нужна песня, по какому поводу, какие события и детали обязательно нужно упомянуть.
-          Чем живее и конкретнее история, тем сильнее получатся варианты текста.
+          Чем живее и конкретнее история, тем сильнее получатся 2 версии текста.
         </p>
       </div>
     {% endif %}
@@ -65,7 +65,7 @@
       <div class="form-card voice-upload-card" data-voice-recorder>
         <h2 class="form-title">Запись голосового</h2>
         <p class="lead-small">
-          Нажми кнопку записи, расскажи историю, останови запись и отправь её. Это основной сценарий для голосовых.
+          Нажми кнопку записи, расскажи историю, останови запись и отправь её.
         </p>
 
         <div class="recorder-panel">
@@ -150,7 +150,8 @@
 
       <div class="form-actions">
         <a href="/questionnaire/story-source" class="btn btn-secondary">Назад</a>
-        <button type="submit" class="btn btn-primary">Сохранить черновик</button>
+        <button type="submit" name="action" value="save" class="btn btn-secondary">Сохранить черновик</button>
+        <button type="submit" name="action" value="generate" class="btn btn-primary">Получить 2 версии</button>
       </div>
     </form>
   </div>
