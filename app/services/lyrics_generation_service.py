@@ -75,24 +75,23 @@ def build_variant_1_prompt(story_text: str) -> str:
 - эмоционально
 - образно
 - цепляюще
-- романтично или трогательно по ситуации
+- трогательно
 - сильный и запоминающийся припев
 - больше красивых формулировок и образов
 
 Очень важно:
-- текст должен быть пригоден для дальнейшей генерации песни в Suno
 - выдай текст СТРОГО в такой структуре:
-[Verse 1]
+[Куплет 1]
 ...
-[Chorus]
+[Припев]
 ...
-[Verse 2]
+[Куплет 2]
 ...
-[Chorus]
+[Припев]
 ...
-[Bridge]
+[Бридж]
 ...
-[Final Chorus]
+[Финальный припев]
 ...
 
 Правила:
@@ -126,19 +125,18 @@ def build_variant_2_prompt(story_text: str) -> str:
 - текст должен лучше подходить для последующей генерации песни
 
 Очень важно:
-- текст должен быть пригоден для дальнейшей генерации песни в Suno
 - выдай текст СТРОГО в такой структуре:
-[Verse 1]
+[Куплет 1]
 ...
-[Chorus]
+[Припев]
 ...
-[Verse 2]
+[Куплет 2]
 ...
-[Chorus]
+[Припев]
 ...
-[Bridge]
+[Бридж]
 ...
-[Final Chorus]
+[Финальный припев]
 ...
 
 Правила:
@@ -259,10 +257,7 @@ async def generate_dual_lyrics_versions(story_text: str) -> DualGenerationResult
         joined = " ".join(item.user_message for item in errors) or "Не удалось сгенерировать ни одной версии текста."
         raise LyricsGenerationError(joined)
 
-    order_map = {
-        "Вариант 1": 0,
-        "Вариант 2": 1,
-    }
+    order_map = {"Вариант 1": 0, "Вариант 2": 1}
     versions.sort(key=lambda item: order_map.get(item.angle_label, 999))
 
     return DualGenerationResult(
