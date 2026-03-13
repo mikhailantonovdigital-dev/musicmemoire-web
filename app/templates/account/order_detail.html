@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="section">
+  <div class="container narrow">
+    <p class="eyebrow">Личный кабинет</p>
+    <h1>{{ order.order_number }}</h1>
+
+    <div class="step-meta">
+      <span>Статус: <strong>{{ order.status }}</strong></span>
+      <span>Режим: <strong>{{ "Свой текст" if order.lyrics_mode == "custom" else "2 версии бесплатно" }}</strong></span>
+      <span>Источник: <strong>{{ "Голос" if order.story_source == "voice" else "Текст" }}</strong></span>
+    </div>
+
+    <div class="form-card">
+      <h2 class="form-title">Финальный текст</h2>
+      <textarea class="textarea textarea-readonly" readonly>{{ order.final_lyrics_text or "Финальный текст пока не сохранён." }}</textarea>
+    </div>
+
+    <div class="form-actions">
+      <a href="/account/" class="btn btn-secondary">Назад в кабинет</a>
+    </div>
+  </div>
+</section>
+{% endblock %}
