@@ -26,9 +26,21 @@
       </div>
     {% endif %}
 
+    {% if transcribed %}
+      <div class="notice notice-success">
+        Голосовое автоматически расшифровано. Текст уже подставлен в поле ниже.
+      </div>
+    {% endif %}
+
+    {% if transcription_failed and transcription_error %}
+      <div class="notice notice-error">
+        {{ transcription_error }}
+      </div>
+    {% endif %}
+
     {% if saved %}
       <div class="notice notice-success">
-        Черновик сохранён. На следующем коммите подключим авторасшифровку и следующий шаг анкеты.
+        Черновик сохранён.
       </div>
     {% endif %}
 
@@ -40,8 +52,8 @@
       <div class="form-card voice-upload-card" data-voice-recorder>
         <h2 class="form-title">1. Записать голосом или загрузить файл</h2>
         <p class="lead-small">
-          Здесь пользователь может надиктовать историю прямо на сайте — почти как в Telegram. 
-          Если запись неудобна, можно загрузить готовый аудиофайл.
+          Можно надиктовать историю прямо на сайте или загрузить готовый аудиофайл.
+          После отправки сервис попробует сразу сделать авторасшифровку.
         </p>
 
         <div class="recorder-panel">
@@ -92,11 +104,23 @@
           <div class="audio-card">
             <div class="audio-meta">
               <strong>{{ latest_voice.original_filename or "Голосовое сообщение" }}</strong>
-              {% if latest_voice_size %}
-                <span>{{ latest_voice_size }}</span>
-              {% endif %}
+              <div class="audio-meta-right">
+                {% if latest_voice_size %}
+                  <span>{{ latest_voice_size }}</span>
+                {% endif %}
+                <span class="status-chip status-chip-{{ latest_voice.transcription_status }}">
+                  {{ latest_voice_status_label }}
+                </span>
+              </div>
             </div>
+
             <audio controls preload="metadata" src="{{ request.url_for('questionnaire_voice_stream', voice_public_id=latest_voice.public_id) }}"></audio>
+
+            {% if latest_voice.transcription_status != "done" %}
+              <form method="post" action="/questionnaire/voice-retranscribe" class="retry-form">
+                <button type="submit" class="btn btn-secondary">Перерасшифровать</button>
+              </form>
+            {% endif %}
           </div>
         {% endif %}
       </div>
@@ -118,10 +142,10 @@
           id="transcript_text"
           name="transcript_text"
           class="textarea"
-          placeholder="Пока можно оставить краткое описание истории или вручную вставить расшифровку..."
+          placeholder="Сюда автоматически подставится расшифровка голосового. При необходимости можно поправить текст вручную..."
         >{{ draft.transcript_text or "" }}</textarea>
         <p class="helper-text">
-          Пока здесь можно вручную дописать важные детали. В следующем коммите сюда подставим авторасшифровку.
+          После авторасшифровки проверь текст и при необходимости поправь его перед следующим шагом.
         </p>
 
       {% else %}
