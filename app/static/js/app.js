@@ -222,7 +222,7 @@ function initVoiceRecorder() {
       canUpload: false,
     });
 
-    setStatus("Отправляем голосовое на сервер...", "info");
+    setStatus("Отправляем голосовое и распознаём речь. Это может занять немного времени...", "info");
 
     try {
       const response = await fetch(uploadForm.action, {
