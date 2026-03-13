@@ -28,6 +28,7 @@ class Settings(BaseSettings):
 
     OPENAI_API_KEY: str | None = None
     OPENAI_MODEL: str | None = None
+    OPENAI_TRANSCRIBE_MODEL: str = "gpt-4o-mini-transcribe"
 
     GEMINI_API_KEY: str | None = None
     GEMINI_MODEL_PRIMARY: str | None = None
@@ -43,6 +44,7 @@ class Settings(BaseSettings):
 
     UPLOADS_DIR: str = "/var/data/musicmemoire/uploads"
     MAX_VOICE_FILE_MB: int = 25
+    AUDIO_TRANSCRIBE_LANGUAGE: str = "ru"
 
 
 settings = Settings()
