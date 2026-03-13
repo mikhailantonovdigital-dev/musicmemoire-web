@@ -916,7 +916,6 @@ async def questionnaire_access_submit(
         db.flush()
 
     draft.user_id = user.id
-    draft.status = "awaiting_payment"
 
     raw_token = generate_magic_token()
     token_hash = hash_magic_token(raw_token)
