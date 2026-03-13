@@ -11,14 +11,17 @@
       <p>{{ user.email }}</p>
     </div>
 
-    {% if orders %}
+    {% if order_cards %}
       <div class="lyrics-grid">
-        {% for order in orders %}
+        {% for card in order_cards %}
+          {% set order = card.order %}
+          {% set latest_payment = card.latest_payment %}
           <article class="lyrics-card">
             <div class="lyrics-card-head">
               <div>
                 <h2>{{ order.order_number }}</h2>
-                <p class="lyrics-angle">Статус: {{ order.status }}</p>
+                <p class="lyrics-angle">Статус заказа: {{ order.status }}</p>
+                <p class="lyrics-angle">Статус оплаты: {{ card.payment_status_label }}</p>
               </div>
               <span class="variant-chip">Заказ</span>
             </div>
@@ -26,7 +29,12 @@
             <textarea class="textarea textarea-readonly" readonly>{{ order.final_lyrics_text or "Финальный текст пока не сохранён." }}</textarea>
 
             <div class="form-actions">
-              <a class="btn btn-primary" href="/account/orders/{{ order.public_id }}">Открыть заказ</a>
+              <a class="btn btn-secondary" href="/account/orders/{{ order.public_id }}">Открыть заказ</a>
+              {% if not latest_payment or latest_payment.status != 'succeeded' %}
+                <form method="post" action="/checkout/start/{{ order.public_id }}">
+                  <button type="submit" class="btn btn-primary">Оплатить {{ price_rub }} ₽</button>
+                </form>
+              {% endif %}
             </div>
           </article>
         {% endfor %}
