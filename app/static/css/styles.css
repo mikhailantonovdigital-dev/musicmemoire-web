@@ -421,3 +421,44 @@ h2 {
     width: 100%;
   }
 }
+
+.audio-meta-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+
+.status-chip-uploaded,
+.status-chip-transcribing {
+  background: #eef4ff;
+  border-color: #cfe0ff;
+  color: #1d4ed8;
+}
+
+.status-chip-done {
+  background: #ecfdf3;
+  border-color: #ccebd7;
+  color: #067647;
+}
+
+.status-chip-failed {
+  background: #fef3f2;
+  border-color: #fecdca;
+  color: #b42318;
+}
+
+.retry-form {
+  margin-top: 14px;
+}
