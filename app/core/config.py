@@ -53,6 +53,7 @@ class Settings(BaseSettings):
     SMTP_FROM_EMAIL: str | None = None
     SMTP_FROM_NAME: str = "Music Memoire"
 
+    MAGIC_LINK_TTL_MINUTES: int = 30
     MAGIC_LINK_STUB_MODE: bool = True
 
 
