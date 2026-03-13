@@ -546,3 +546,8 @@ h2 {
     grid-template-columns: 1fr;
   }
 }
+.notice-warning {
+  background: #fffaeb;
+  border-color: #fedf89;
+  color: #b54708;
+}
