@@ -2,10 +2,40 @@
 
 {% block content %}
 <section class="section">
-  <div class="container narrow">
+  <div class="container">
     <p class="eyebrow">Личный кабинет</p>
-    <h1>Кабинет пользователя</h1>
-    <p>Здесь позже будет история заказов, статусы, плеер и скачивание песен.</p>
+    <h1>Ваши заказы</h1>
+
+    <div class="consultant-box">
+      <strong>Email:</strong>
+      <p>{{ user.email }}</p>
+    </div>
+
+    {% if orders %}
+      <div class="lyrics-grid">
+        {% for order in orders %}
+          <article class="lyrics-card">
+            <div class="lyrics-card-head">
+              <div>
+                <h2>{{ order.order_number }}</h2>
+                <p class="lyrics-angle">Статус: {{ order.status }}</p>
+              </div>
+              <span class="variant-chip">Заказ</span>
+            </div>
+
+            <textarea class="textarea textarea-readonly" readonly>{{ order.final_lyrics_text or "Финальный текст пока не сохранён." }}</textarea>
+
+            <div class="form-actions">
+              <a class="btn btn-primary" href="/account/orders/{{ order.public_id }}">Открыть заказ</a>
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="notice">
+        Пока заказов нет.
+      </div>
+    {% endif %}
   </div>
 </section>
 {% endblock %}
