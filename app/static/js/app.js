@@ -9,7 +9,6 @@ function initVoiceRecorder() {
   const previewWrap = root.querySelector("[data-recorder-preview-wrap]");
   const previewAudio = root.querySelector("[data-recorder-preview]");
   const uploadForm = root.querySelector("[data-voice-upload-form]");
-  const fileInput = root.querySelector("[data-voice-file-input]");
   const uploadBtn = root.querySelector("[data-voice-upload-btn]");
 
   let mediaRecorder = null;
@@ -99,10 +98,6 @@ function initVoiceRecorder() {
       previewWrap.hidden = true;
     }
 
-    if (fileInput) {
-      fileInput.value = "";
-    }
-
     stopTracks();
     mediaRecorder = null;
 
@@ -124,7 +119,7 @@ function initVoiceRecorder() {
       !navigator.mediaDevices.getUserMedia ||
       typeof MediaRecorder === "undefined"
     ) {
-      setStatus("В этом браузере запись с микрофона недоступна. Используй загрузку файла.", "error");
+      setStatus("В этом браузере запись с микрофона недоступна.", "error");
       return;
     }
 
@@ -184,7 +179,7 @@ function initVoiceRecorder() {
     } catch (error) {
       stopTracks();
       mediaRecorder = null;
-      setStatus("Не удалось получить доступ к микрофону. Разреши доступ или загрузи файл.", "error");
+      setStatus("Не удалось получить доступ к микрофону. Разреши доступ в браузере.", "error");
     }
   }
 
@@ -199,7 +194,7 @@ function initVoiceRecorder() {
 
   function resetRecordedBlob() {
     resetRecordingState();
-    setStatus("Запись удалена. Можно записать заново или загрузить файл.", "info");
+    setStatus("Запись удалена. Можно записать заново.", "info");
   }
 
   async function submitRecordedBlob(event) {
@@ -248,34 +243,7 @@ function initVoiceRecorder() {
         canUpload: true,
       });
 
-      setStatus("Не удалось отправить запись. Попробуй ещё раз или загрузи файл вручную.", "error");
-    }
-  }
-
-  function handleManualFileSelection() {
-    if (fileInput && fileInput.files && fileInput.files.length > 0) {
-      recordedBlob = null;
-      cleanupPreviewUrl();
-
-      if (previewAudio) {
-        previewAudio.pause();
-        previewAudio.removeAttribute("src");
-        previewAudio.load();
-      }
-
-      if (previewWrap) {
-        previewWrap.hidden = true;
-      }
-
-      updateButtons({
-        canStart: true,
-        canStop: false,
-        canReset: false,
-        canUpload: true,
-      });
-
-      const file = fileInput.files[0];
-      setStatus(`Выбран файл: ${file.name}`, "success");
+      setStatus("Не удалось отправить запись. Попробуй ещё раз.", "error");
     }
   }
 
@@ -300,25 +268,15 @@ function initVoiceRecorder() {
     });
   }
 
-  if (fileInput) {
-    fileInput.addEventListener("change", handleManualFileSelection);
-  }
-
   if (uploadForm) {
     uploadForm.addEventListener("submit", async (event) => {
-      const hasManualFile = fileInput && fileInput.files && fileInput.files.length > 0;
-
-      if (hasManualFile) {
-        return;
-      }
-
       if (recordedBlob) {
         await submitRecordedBlob(event);
         return;
       }
 
       event.preventDefault();
-      setStatus("Сначала запиши голосовое или выбери аудиофайл.", "error");
+      setStatus("Сначала запиши голосовое сообщение.", "error");
     });
   }
 
