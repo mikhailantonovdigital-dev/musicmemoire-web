@@ -563,3 +563,12 @@ h2 {
   border: 1px solid #cfe0ff;
   color: #1d4ed8;
 }
+.text-input {
+  width: 100%;
+  min-height: 52px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 0 16px;
+  font: inherit;
+  background: #fff;
+}
