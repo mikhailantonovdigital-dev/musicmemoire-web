@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.db import get_db
 from app.core.security import generate_magic_token, hash_magic_token, utcnow
-from app.models import MagicLoginToken, Order, User
+from app.models import MagicLoginToken, Order, SongGeneration, User
 from app.services.email_service import EmailServiceError, send_magic_link_email
 
 templates = Jinja2Templates(directory="app/templates")
@@ -19,6 +19,7 @@ templates = Jinja2Templates(directory="app/templates")
 router = APIRouter(prefix="/account", tags=["account"])
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+RUNNING_SONG_STATUSES = {"queued", "processing"}
 
 
 def normalize_email(value: str) -> str:
@@ -36,14 +37,25 @@ def get_session_user(request: Request, db: Session) -> User | None:
     return db.query(User).filter(User.id == int(user_id)).first()
 
 
-def humanize_payment_status(status: str | None) -> str:
+def humanize_song_status(status: str | None) -> str:
     mapping = {
-        "pending": "Ожидает оплаты",
-        "waiting_for_capture": "Ожидает подтверждения",
-        "succeeded": "Оплачено",
-        "canceled": "Не оплачено",
+        "queued": "В очереди",
+        "processing": "Генерируется",
+        "succeeded": "Готово",
+        "failed": "Ошибка",
+        "canceled": "Отменено",
     }
-    return mapping.get(status or "", "Не начата")
+    return mapping.get(status or "", "Не запускалась")
+
+
+def get_latest_song(order: Order) -> SongGeneration | None:
+    if not order.song_generations:
+        return None
+    return sorted(order.song_generations, key=lambda item: item.id or 0, reverse=True)[0]
+
+
+def can_start_song(order: Order) -> bool:
+    return settings.SUNO_STUB_MODE or order.status == "paid"
 
 
 @router.get("/login", response_class=HTMLResponse)
@@ -189,13 +201,17 @@ async def account_dashboard(request: Request, db: Session = Depends(get_db)):
     )
 
     order_cards = []
-    for item in orders:
-        latest_payment = item.payments[0] if item.payments else None
+    for order in orders:
+        latest_song = get_latest_song(order)
         order_cards.append(
             {
-                "order": item,
-                "latest_payment": latest_payment,
-                "payment_status_label": humanize_payment_status(latest_payment.status if latest_payment else None),
+                "order": order,
+                "latest_song": latest_song,
+                "song_status_label": humanize_song_status(latest_song.status if latest_song else None),
+                "can_start_song": can_start_song(order),
+                "song_is_running": latest_song is not None and latest_song.status in RUNNING_SONG_STATUSES,
+                "song_is_ready": latest_song is not None and latest_song.status == "succeeded",
+                "song_is_failed": latest_song is not None and latest_song.status == "failed",
             }
         )
 
@@ -207,7 +223,7 @@ async def account_dashboard(request: Request, db: Session = Depends(get_db)):
             "user": user,
             "orders": orders,
             "order_cards": order_cards,
-            "price_rub": settings.PRICE_RUB,
+            "suno_stub_mode": settings.SUNO_STUB_MODE,
         },
     )
 
@@ -234,7 +250,7 @@ async def account_order_detail(
     if order is None:
         return RedirectResponse(url=request.url_for("account_dashboard"), status_code=303)
 
-    latest_payment = order.payments[0] if order.payments else None
+    latest_song = get_latest_song(order)
 
     return templates.TemplateResponse(
         "account/order_detail.html",
@@ -243,8 +259,12 @@ async def account_order_detail(
             "page_title": f"Заказ {order.order_number}",
             "user": user,
             "order": order,
-            "latest_payment": latest_payment,
-            "payment_status_label": humanize_payment_status(latest_payment.status if latest_payment else None),
-            "price_rub": settings.PRICE_RUB,
+            "latest_song": latest_song,
+            "song_status_label": humanize_song_status(latest_song.status if latest_song else None),
+            "can_start_song": can_start_song(order),
+            "song_is_running": latest_song is not None and latest_song.status in RUNNING_SONG_STATUSES,
+            "song_is_ready": latest_song is not None and latest_song.status == "succeeded",
+            "song_is_failed": latest_song is not None and latest_song.status == "failed",
+            "suno_stub_mode": settings.SUNO_STUB_MODE,
         },
     )
