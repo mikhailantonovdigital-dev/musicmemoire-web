@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="section">
+  <div class="container narrow">
+    <p class="eyebrow">Админка</p>
+    <h1>Вход</h1>
+
+    <div class="consultant-box">
+      <strong>Доступ к панели</strong>
+      <p>Введите ADMIN_TOKEN из Render env.</p>
+    </div>
+
+    {% if error %}
+      <div class="notice notice-error">{{ error }}</div>
+    {% endif %}
+
+    <form class="form-card" method="post" action="/admin/login">
+      <label class="form-label" for="token">ADMIN_TOKEN</label>
+      <input
+        id="token"
+        name="token"
+        type="password"
+        class="text-input"
+        placeholder="Введите токен"
+        required
+      />
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Войти</button>
+      </div>
+    </form>
+  </div>
+</section>
+{% endblock %}
