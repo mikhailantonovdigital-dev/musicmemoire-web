@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="section">
+  <div class="container narrow">
+    <p class="eyebrow">Анкета · Шаг 2 из 2</p>
+    <h1>Вставь готовый текст песни</h1>
+
+    <div class="consultant-box">
+      <strong>Комментарий консультанта</strong>
+      <p>
+        Сюда нужно вставить уже готовый текст песни целиком. Историю отдельно рассказывать не нужно —
+        будем работать только с этим текстом.
+      </p>
+    </div>
+
+    <div class="step-meta">
+      <span>Черновик: <strong>{{ draft.order_number }}</strong></span>
+      <span>Режим: <strong>Свой текст</strong></span>
+    </div>
+
+    {% if saved %}
+      <div class="notice notice-success">
+        Черновик с готовым текстом сохранён.
+      </div>
+    {% endif %}
+
+    {% if error %}
+      <div class="notice notice-error">{{ error }}</div>
+    {% endif %}
+
+    <form class="form-card" method="post" action="/questionnaire/custom-text">
+      <label class="form-label" for="custom_lyrics_text">Готовый текст песни</label>
+      <textarea
+        id="custom_lyrics_text"
+        name="custom_lyrics_text"
+        class="textarea"
+        placeholder="Вставь сюда готовый текст песни..."
+      >{{ draft.custom_lyrics_text or "" }}</textarea>
+
+      <div class="form-actions">
+        <a href="/questionnaire/" class="btn btn-secondary">Назад</a>
+        <button type="submit" class="btn btn-primary">Сохранить черновик</button>
+      </div>
+    </form>
+  </div>
+</section>
+{% endblock %}
