@@ -4,20 +4,20 @@
 <section class="section">
   <div class="container">
     <p class="eyebrow">Анкета · Шаг 4 из 4</p>
-    <h1>Выбери лучшую версию текста</h1>
+    <h1>Выбери лучший вариант текста</h1>
 
     <div class="consultant-box">
       <strong>Комментарий консультанта</strong>
       <p>
-        Ниже ты видишь доступные версии текста. Если одна из моделей временно не ответила, всё равно можно
-        продолжить работу с той версией, которая уже получилась.
+        Ниже ты видишь готовые варианты текста. Выбери тот, который ближе по настроению,
+        и при необходимости сразу отредактируй финальный текст.
       </p>
     </div>
 
     <div class="step-meta">
       <span>Черновик: <strong>{{ draft.order_number }}</strong></span>
       <span>Режим: <strong>2 версии бесплатно</strong></span>
-      <span>Доступно версий: <strong>{{ versions|length }}</strong></span>
+      <span>Доступно вариантов: <strong>{{ versions|length }}</strong></span>
     </div>
 
     {% if generated %}
@@ -47,12 +47,10 @@
         <article class="lyrics-card">
           <div class="lyrics-card-head">
             <div>
-              <h2>{{ "OpenAI" if version.provider == "openai" else "Gemini" }}</h2>
-              <p class="lyrics-angle">{{ version.angle_label }}</p>
+              <h2>Вариант {{ loop.index }}</h2>
+              <p class="lyrics-angle">Персональный текст песни</p>
             </div>
-            <span class="provider-chip provider-chip-{{ version.provider }}">
-              {{ "OpenAI" if version.provider == "openai" else "Gemini" }}
-            </span>
+            <span class="variant-chip">Вариант {{ loop.index }}</span>
           </div>
 
           <textarea class="textarea textarea-readonly" readonly>{{ version.lyrics_text }}</textarea>
@@ -73,10 +71,8 @@
               {% if version.public_id == selected_version.public_id %}checked{% endif %}
               data-lyrics-source-id="{{ version.public_id }}"
             />
-            <span class="radio-card-title">
-              {{ "OpenAI" if version.provider == "openai" else "Gemini" }}
-            </span>
-            <span class="radio-card-text">{{ version.angle_label }}</span>
+            <span class="radio-card-title">Вариант {{ loop.index }}</span>
+            <span class="radio-card-text">Выбери этот вариант как основу финального текста.</span>
           </label>
 
           <textarea
@@ -92,7 +88,7 @@
         name="final_lyrics_text"
         class="textarea"
         data-final-lyrics-text
-        placeholder="Здесь можно сразу отредактировать выбранную версию..."
+        placeholder="Здесь можно сразу отредактировать выбранный вариант..."
       >{{ final_lyrics_text }}</textarea>
 
       <div class="form-actions">
