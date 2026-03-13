@@ -75,6 +75,10 @@ class Order(Base):
         Text,
         nullable=True,
     )
+    final_lyrics_text: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -88,9 +92,7 @@ class Order(Base):
         nullable=False,
     )
 
-    user: Mapped["User | None"] = relationship(
-        back_populates="orders",
-    )
+    user: Mapped["User | None"] = relationship(back_populates="orders")
     events: Mapped[list["OrderEvent"]] = relationship(
         back_populates="order",
         cascade="all, delete-orphan",
@@ -127,6 +129,4 @@ class OrderEvent(Base):
         nullable=False,
     )
 
-    order: Mapped["Order"] = relationship(
-        back_populates="events",
-    )
+    order: Mapped["Order"] = relationship(back_populates="events")
