@@ -10,7 +10,11 @@ from sqlalchemy.orm import Session
 
 from app.core.db import get_db
 from app.core.storage import save_voice_file
-from app.models import Order, OrderEvent, VoiceInput
+from app.models import LyricsVersion, Order, OrderEvent, VoiceInput
+from app.services.lyrics_generation_service import (
+    LyricsGenerationError,
+    generate_dual_lyrics_versions,
+)
 from app.services.transcription_service import (
     TranscriptionServiceError,
     transcribe_audio_file,
@@ -55,6 +59,15 @@ def get_latest_voice_input(db: Session, order_id: int) -> VoiceInput | None:
         .filter(VoiceInput.order_id == order_id)
         .order_by(VoiceInput.id.desc())
         .first()
+    )
+
+
+def get_lyrics_versions(db: Session, order_id: int) -> list[LyricsVersion]:
+    return (
+        db.query(LyricsVersion)
+        .filter(LyricsVersion.order_id == order_id)
+        .order_by(LyricsVersion.id.asc())
+        .all()
     )
 
 
@@ -127,6 +140,72 @@ async def run_transcription_for_voice(
     )
     db.commit()
     return True
+
+
+async def generate_versions_for_draft(db: Session, draft: Order) -> None:
+    if draft.lyrics_mode != "generate":
+        raise LyricsGenerationError("Генерация версий доступна только для режима без готового текста.")
+
+    source_text = ""
+    if draft.story_source == "voice":
+        source_text = (draft.transcript_text or "").strip()
+    else:
+        source_text = (draft.story_text or "").strip()
+
+    if not source_text:
+        raise LyricsGenerationError("Сначала нужно заполнить историю для песни.")
+
+    db.add(
+        OrderEvent(
+            order=draft,
+            event_type="lyrics_generation_started",
+            payload={
+                "story_source": draft.story_source,
+            },
+        )
+    )
+    db.commit()
+
+    try:
+        generated_versions = await generate_dual_lyrics_versions(source_text)
+    except LyricsGenerationError as exc:
+        db.add(
+            OrderEvent(
+                order=draft,
+                event_type="lyrics_generation_failed",
+                payload={"error": str(exc)},
+            )
+        )
+        db.commit()
+        raise
+
+    db.query(LyricsVersion).filter(LyricsVersion.order_id == draft.id).delete()
+
+    for item in generated_versions:
+        db.add(
+            LyricsVersion(
+                order_id=draft.id,
+                provider=item.provider,
+                model_name=item.model_name,
+                angle_label=item.angle_label,
+                prompt_text=item.prompt_text,
+                lyrics_text=item.lyrics_text,
+                edited_lyrics_text=None,
+                is_selected=False,
+            )
+        )
+
+    db.add(
+        OrderEvent(
+            order=draft,
+            event_type="lyrics_generation_done",
+            payload={
+                "providers": [item.provider for item in generated_versions],
+                "models": [item.model_name for item in generated_versions],
+            },
+        )
+    )
+    db.commit()
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -516,6 +595,7 @@ async def questionnaire_voice_stream(
 @router.post("/story", response_class=HTMLResponse)
 async def questionnaire_story_submit(
     request: Request,
+    action: str = Form(default="save"),
     story_text: str = Form(default=""),
     transcript_text: str = Form(default=""),
     db: Session = Depends(get_db),
@@ -575,12 +655,145 @@ async def questionnaire_story_submit(
                 "has_voice_upload": latest_voice is not None,
                 "has_transcript_text": bool((draft.transcript_text or "").strip()),
                 "has_story_text": bool((draft.story_text or "").strip()),
+                "action": action,
+            },
+        )
+    )
+    db.commit()
+
+    if action == "generate":
+        try:
+            await generate_versions_for_draft(db, draft)
+        except LyricsGenerationError as exc:
+            return templates.TemplateResponse(
+                "questionnaire/story.html",
+                {
+                    "request": request,
+                    "page_title": "Анкета — история",
+                    "draft": draft,
+                    "latest_voice": latest_voice,
+                    "latest_voice_size": format_size(latest_voice.size_bytes) if latest_voice else None,
+                    "latest_voice_status_label": humanize_transcription_status(
+                        latest_voice.transcription_status if latest_voice else None
+                    ),
+                    "saved": False,
+                    "voice_uploaded": False,
+                    "transcribed": False,
+                    "transcription_failed": False,
+                    "transcription_error": None,
+                    "error": str(exc),
+                },
+                status_code=400,
+            )
+
+        return RedirectResponse(
+            url=f"{request.url_for('questionnaire_lyrics')}?generated=1",
+            status_code=303,
+        )
+
+    return RedirectResponse(
+        url=f"{request.url_for('questionnaire_story')}?saved=1",
+        status_code=303,
+    )
+
+
+@router.get("/lyrics", response_class=HTMLResponse)
+async def questionnaire_lyrics(request: Request, db: Session = Depends(get_db)):
+    draft = get_current_draft(db, request)
+    if draft is None:
+        return RedirectResponse(url=request.url_for("questionnaire_start"), status_code=303)
+
+    if draft.lyrics_mode != "generate":
+        return RedirectResponse(url=request.url_for("questionnaire_custom_text"), status_code=303)
+
+    versions = get_lyrics_versions(db, draft.id)
+    if not versions:
+        return RedirectResponse(url=request.url_for("questionnaire_story"), status_code=303)
+
+    generated = request.query_params.get("generated") == "1"
+    saved = request.query_params.get("saved") == "1"
+
+    selected_version = next((item for item in versions if item.is_selected), versions[0])
+    final_lyrics_text = selected_version.edited_lyrics_text or selected_version.lyrics_text
+
+    return templates.TemplateResponse(
+        "questionnaire/lyrics.html",
+        {
+            "request": request,
+            "page_title": "Анкета — версии текста",
+            "draft": draft,
+            "versions": versions,
+            "selected_version": selected_version,
+            "final_lyrics_text": final_lyrics_text,
+            "generated": generated,
+            "saved": saved,
+            "error": None,
+        },
+    )
+
+
+@router.post("/lyrics", response_class=HTMLResponse)
+async def questionnaire_lyrics_submit(
+    request: Request,
+    selected_version_public_id: str = Form(...),
+    final_lyrics_text: str = Form(default=""),
+    db: Session = Depends(get_db),
+):
+    draft = get_current_draft(db, request)
+    if draft is None:
+        return RedirectResponse(url=request.url_for("questionnaire_start"), status_code=303)
+
+    if draft.lyrics_mode != "generate":
+        return RedirectResponse(url=request.url_for("questionnaire_custom_text"), status_code=303)
+
+    versions = get_lyrics_versions(db, draft.id)
+    if not versions:
+        return RedirectResponse(url=request.url_for("questionnaire_story"), status_code=303)
+
+    selected_version = next(
+        (item for item in versions if item.public_id == selected_version_public_id),
+        None,
+    )
+
+    value = final_lyrics_text.strip()
+    if selected_version is None or not value:
+        fallback_selected = next((item for item in versions if item.is_selected), versions[0])
+
+        return templates.TemplateResponse(
+            "questionnaire/lyrics.html",
+            {
+                "request": request,
+                "page_title": "Анкета — версии текста",
+                "draft": draft,
+                "versions": versions,
+                "selected_version": fallback_selected,
+                "final_lyrics_text": value or (fallback_selected.edited_lyrics_text or fallback_selected.lyrics_text),
+                "generated": False,
+                "saved": False,
+                "error": "Выбери одну версию и оставь непустой финальный текст.",
+            },
+            status_code=400,
+        )
+
+    for version in versions:
+        version.is_selected = version.public_id == selected_version.public_id
+
+    selected_version.edited_lyrics_text = value
+
+    db.add(
+        OrderEvent(
+            order=draft,
+            event_type="lyrics_version_selected",
+            payload={
+                "provider": selected_version.provider,
+                "version_id": selected_version.public_id,
+                "chars": len(value),
             },
         )
     )
     db.commit()
 
     return RedirectResponse(
-        url=f"{request.url_for('questionnaire_story')}?saved=1",
+        url=f"{request.url_for('questionnaire_lyrics')}?saved=1",
         status_code=303,
     )
