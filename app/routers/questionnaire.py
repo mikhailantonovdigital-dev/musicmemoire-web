@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+from datetime import timedelta
 from pathlib import Path
 from uuid import uuid4
 
@@ -8,9 +10,12 @@ from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.db import get_db
+from app.core.security import generate_magic_token, hash_magic_token, utcnow
 from app.core.storage import save_voice_file
-from app.models import LyricsVersion, Order, OrderEvent, VoiceInput
+from app.models import LyricsVersion, MagicLoginToken, Order, OrderEvent, User, VoiceInput
+from app.services.email_service import EmailServiceError, send_magic_link_email
 from app.services.lyrics_generation_service import (
     DualGenerationResult,
     LyricsGenerationError,
@@ -27,6 +32,15 @@ router = APIRouter(prefix="/questionnaire", tags=["questionnaire"])
 
 ALLOWED_STORY_SOURCES = {"text", "voice"}
 ALLOWED_LYRICS_MODES = {"generate", "custom"}
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+def normalize_email(value: str) -> str:
+    return value.strip().lower()
+
+
+def is_valid_email(value: str) -> bool:
+    return bool(EMAIL_RE.match(value.strip()))
 
 
 def ensure_visitor_session(request: Request) -> str:
@@ -408,6 +422,7 @@ async def questionnaire_custom_text_submit(
         )
 
     draft.custom_lyrics_text = value
+    draft.final_lyrics_text = value
 
     db.add(
         OrderEvent(
@@ -419,7 +434,7 @@ async def questionnaire_custom_text_submit(
     db.commit()
 
     return RedirectResponse(
-        url=f"{request.url_for('questionnaire_custom_text')}?saved=1",
+        url=f"{request.url_for('questionnaire_access')}?saved=1",
         status_code=303,
     )
 
@@ -810,6 +825,7 @@ async def questionnaire_lyrics_submit(
         version.is_selected = version.public_id == selected_version.public_id
 
     selected_version.edited_lyrics_text = value
+    draft.final_lyrics_text = value
 
     db.add(
         OrderEvent(
@@ -825,6 +841,121 @@ async def questionnaire_lyrics_submit(
     db.commit()
 
     return RedirectResponse(
-        url=f"{request.url_for('questionnaire_lyrics')}?saved=1",
+        url=f"{request.url_for('questionnaire_access')}?saved=1",
+        status_code=303,
+    )
+
+
+@router.get("/access", response_class=HTMLResponse)
+async def questionnaire_access(request: Request, db: Session = Depends(get_db)):
+    draft = get_current_draft(db, request)
+    if draft is None:
+        return RedirectResponse(url=request.url_for("questionnaire_start"), status_code=303)
+
+    if not (draft.final_lyrics_text or "").strip():
+        if draft.lyrics_mode == "custom":
+            return RedirectResponse(url=request.url_for("questionnaire_custom_text"), status_code=303)
+        return RedirectResponse(url=request.url_for("questionnaire_lyrics"), status_code=303)
+
+    saved = request.query_params.get("saved") == "1"
+    sent = request.query_params.get("sent") == "1"
+
+    return templates.TemplateResponse(
+        "questionnaire/access.html",
+        {
+            "request": request,
+            "page_title": "Анкета — доступ к кабинету",
+            "draft": draft,
+            "saved": saved,
+            "sent": sent,
+            "error": None,
+        },
+    )
+
+
+@router.post("/access", response_class=HTMLResponse)
+async def questionnaire_access_submit(
+    request: Request,
+    email: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    draft = get_current_draft(db, request)
+    if draft is None:
+        return RedirectResponse(url=request.url_for("questionnaire_start"), status_code=303)
+
+    if not (draft.final_lyrics_text or "").strip():
+        return RedirectResponse(url=request.url_for("questionnaire_start"), status_code=303)
+
+    email = normalize_email(email)
+
+    if not is_valid_email(email):
+        return templates.TemplateResponse(
+            "questionnaire/access.html",
+            {
+                "request": request,
+                "page_title": "Анкета — доступ к кабинету",
+                "draft": draft,
+                "saved": False,
+                "sent": False,
+                "error": "Укажи корректный email.",
+            },
+            status_code=400,
+        )
+
+    user = db.query(User).filter(User.email == email).first()
+    if user is None:
+        user = User(email=email)
+        db.add(user)
+        db.flush()
+
+    draft.user_id = user.id
+
+    raw_token = generate_magic_token()
+    token_hash = hash_magic_token(raw_token)
+    expires_at = utcnow() + timedelta(minutes=settings.MAGIC_LINK_TTL_MINUTES)
+
+    db.add(
+        MagicLoginToken(
+            user_id=user.id,
+            token_hash=token_hash,
+            expires_at=expires_at,
+        )
+    )
+
+    db.add(
+        OrderEvent(
+            order=draft,
+            event_type="account_linked",
+            payload={
+                "email": email,
+                "user_id": user.public_id,
+            },
+        )
+    )
+    db.commit()
+
+    login_url = f"{settings.BASE_URL}/account/magic-login?token={raw_token}"
+
+    try:
+        send_magic_link_email(
+            recipient_email=email,
+            login_url=login_url,
+        )
+    except EmailServiceError as exc:
+        return templates.TemplateResponse(
+            "questionnaire/access.html",
+            {
+                "request": request,
+                "page_title": "Анкета — доступ к кабинету",
+                "draft": draft,
+                "saved": False,
+                "sent": False,
+                "error": str(exc),
+            },
+            status_code=400,
+        )
+
+    return RedirectResponse(
+        url=f"{request.url_for('questionnaire_access')}?sent=1",
         status_code=303,
     )
