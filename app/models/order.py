@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from app.models.voice_input import VoiceInput
     from app.models.lyrics_version import LyricsVersion
     from app.models.order_payment import OrderPayment
+    from app.models.song_generation import SongGeneration
 
 
 def generate_order_number() -> str:
@@ -110,6 +111,11 @@ class Order(Base):
         back_populates="order",
         cascade="all, delete-orphan",
         order_by="OrderPayment.id.desc()",
+    )
+    song_generations: Mapped[list["SongGeneration"]] = relationship(
+        back_populates="order",
+        cascade="all, delete-orphan",
+        order_by="SongGeneration.id.desc()",
     )
 
 
