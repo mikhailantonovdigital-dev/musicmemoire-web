@@ -3,32 +3,45 @@
 {% block content %}
 <section class="section">
   <div class="container narrow">
-    <p class="eyebrow">Анкета · Шаг 2</p>
-    <h1>
-      {% if draft.lyrics_mode == "custom" %}
-        Вставь готовый текст песни
-      {% elif draft.story_source == "voice" %}
-        Добавь голосовую историю
-      {% else %}
-        Напиши историю для песни
-      {% endif %}
-    </h1>
+    {% if draft.story_source == "voice" %}
+      <p class="eyebrow">Анкета · Шаг 3 из 3</p>
+      <h1>Расскажи историю голосом</h1>
+
+      <div class="consultant-box">
+        <strong>Комментарий консультанта</strong>
+        <p>
+          Просто расскажи своими словами, кому нужна песня, что между вами произошло, какие моменты важны
+          и какие эмоции хочется передать. Не нужно говорить идеально — главное, чтобы была суть.
+        </p>
+      </div>
+    {% else %}
+      <p class="eyebrow">Анкета · Шаг 3 из 3</p>
+      <h1>Напиши историю для песни</h1>
+
+      <div class="consultant-box">
+        <strong>Комментарий консультанта</strong>
+        <p>
+          Опиши, кому нужна песня, по какому поводу, какие события и детали обязательно нужно упомянуть.
+          Чем живее и конкретнее история, тем сильнее получатся варианты текста.
+        </p>
+      </div>
+    {% endif %}
 
     <div class="step-meta">
       <span>Черновик: <strong>{{ draft.order_number }}</strong></span>
       <span>Источник: <strong>{{ "Голос" if draft.story_source == "voice" else "Текст" }}</strong></span>
-      <span>Режим: <strong>{{ "Свой текст" if draft.lyrics_mode == "custom" else "Генерация 3 вариантов" }}</strong></span>
+      <span>Режим: <strong>2 версии бесплатно</strong></span>
     </div>
 
     {% if voice_uploaded %}
       <div class="notice notice-success">
-        Голосовое загружено и сохранено на сервере.
+        Голосовое сохранено на сервере.
       </div>
     {% endif %}
 
     {% if transcribed %}
       <div class="notice notice-success">
-        Голосовое автоматически расшифровано. Текст уже подставлен в поле ниже.
+        Голосовое автоматически расшифровано. Текст уже подставлен ниже.
       </div>
     {% endif %}
 
@@ -48,12 +61,11 @@
       <div class="notice notice-error">{{ error }}</div>
     {% endif %}
 
-    {% if draft.story_source == "voice" and draft.lyrics_mode != "custom" %}
+    {% if draft.story_source == "voice" %}
       <div class="form-card voice-upload-card" data-voice-recorder>
-        <h2 class="form-title">1. Записать голосом или загрузить файл</h2>
+        <h2 class="form-title">Запись голосового</h2>
         <p class="lead-small">
-          Можно надиктовать историю прямо на сайте или загрузить готовый аудиофайл.
-          После отправки сервис попробует сразу сделать авторасшифровку.
+          Нажми кнопку записи, расскажи историю, останови запись и отправь её. Это основной сценарий для голосовых.
         </p>
 
         <div class="recorder-panel">
@@ -80,19 +92,6 @@
           enctype="multipart/form-data"
           data-voice-upload-form
         >
-          <label class="upload-box">
-            <span class="upload-title">Или выбери готовый аудиофайл</span>
-            <span class="upload-text">Поддерживаются mp3, wav, m4a, ogg, webm и другие аудиоформаты</span>
-            <input
-              class="file-input"
-              type="file"
-              name="voice_file"
-              accept="audio/*"
-              capture
-              data-voice-file-input
-            />
-          </label>
-
           <div class="form-actions">
             <button type="submit" class="btn btn-primary" data-voice-upload-btn>
               Отправить голосовое
@@ -127,25 +126,16 @@
     {% endif %}
 
     <form class="form-card" method="post" action="/questionnaire/story">
-      {% if draft.lyrics_mode == "custom" %}
-        <label class="form-label" for="custom_lyrics_text">Готовый текст песни</label>
-        <textarea
-          id="custom_lyrics_text"
-          name="custom_lyrics_text"
-          class="textarea"
-          placeholder="Вставь сюда готовый текст песни..."
-        >{{ draft.custom_lyrics_text or "" }}</textarea>
-
-      {% elif draft.story_source == "voice" %}
-        <label class="form-label" for="transcript_text">Заметки / расшифровка</label>
+      {% if draft.story_source == "voice" %}
+        <label class="form-label" for="transcript_text">Расшифровка / заметки</label>
         <textarea
           id="transcript_text"
           name="transcript_text"
           class="textarea"
-          placeholder="Сюда автоматически подставится расшифровка голосового. При необходимости можно поправить текст вручную..."
+          placeholder="Сюда автоматически подставится расшифровка голосового. При необходимости можешь поправить её вручную..."
         >{{ draft.transcript_text or "" }}</textarea>
         <p class="helper-text">
-          После авторасшифровки проверь текст и при необходимости поправь его перед следующим шагом.
+          После расшифровки проверь текст и поправь важные имена, даты или формулировки, если это нужно.
         </p>
 
       {% else %}
@@ -154,12 +144,12 @@
           id="story_text"
           name="story_text"
           class="textarea"
-          placeholder="Расскажи, кому нужна песня, что между вами произошло, какие важные моменты нужно упомянуть..."
+          placeholder="Расскажи историю для песни подробно..."
         >{{ draft.story_text or "" }}</textarea>
       {% endif %}
 
       <div class="form-actions">
-        <a href="/questionnaire/" class="btn btn-secondary">Назад</a>
+        <a href="/questionnaire/story-source" class="btn btn-secondary">Назад</a>
         <button type="submit" class="btn btn-primary">Сохранить черновик</button>
       </div>
     </form>
