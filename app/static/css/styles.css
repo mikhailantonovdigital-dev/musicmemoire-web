@@ -481,3 +481,68 @@ h2 {
   color: var(--muted);
   line-height: 1.6;
 }
+.lyrics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.lyrics-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px;
+}
+
+.lyrics-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.lyrics-card h2 {
+  font-size: 24px;
+  margin: 0 0 6px;
+}
+
+.lyrics-angle {
+  margin: 0;
+  color: var(--muted);
+}
+
+.provider-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+
+.provider-chip-openai {
+  background: #eef4ff;
+  border-color: #cfe0ff;
+  color: #1d4ed8;
+}
+
+.provider-chip-gemini {
+  background: #f5f3ff;
+  border-color: #ddd6fe;
+  color: #6d28d9;
+}
+
+.textarea-readonly {
+  min-height: 340px;
+  background: #fbfcfe;
+}
+
+@media (max-width: 900px) {
+  .lyrics-grid {
+    grid-template-columns: 1fr;
+  }
+}
