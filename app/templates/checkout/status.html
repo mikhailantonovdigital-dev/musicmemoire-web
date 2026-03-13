@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="section">
+  <div class="container narrow">
+    <p class="eyebrow">Оплата</p>
+    <h1>Заказ {{ order.order_number }}</h1>
+
+    <div class="step-meta">
+      <span>Сумма: <strong>{{ price_rub }} ₽</strong></span>
+      <span>Статус оплаты: <strong>{{ payment_status_label }}</strong></span>
+    </div>
+
+    {% if is_success %}
+      <div class="notice notice-success">
+        Оплата прошла успешно. Заказ сохранён в кабинете.
+      </div>
+    {% elif is_pending %}
+      <div class="notice">
+        Мы ждём подтверждение оплаты от ЮKassa. Эта страница обновится автоматически.
+      </div>
+      <meta http-equiv="refresh" content="5">
+    {% elif is_canceled %}
+      <div class="notice notice-warning">
+        Оплата не завершена или была отменена.
+      </div>
+    {% endif %}
+
+    {% if error %}
+      <div class="notice notice-error">{{ error }}</div>
+    {% endif %}
+
+    <div class="form-card">
+      <h2 class="form-title">Финальный текст</h2>
+      <textarea class="textarea textarea-readonly" readonly>{{ order.final_lyrics_text or "Финальный текст пока не сохранён." }}</textarea>
+    </div>
+
+    <div class="form-actions">
+      {% if is_success %}
+        <a href="/account/login" class="btn btn-secondary">Войти в кабинет</a>
+        <a href="/account/orders/{{ order.public_id }}" class="btn btn-primary">Открыть заказ</a>
+      {% elif is_pending %}
+        <a href="/checkout/status?payment={{ payment.public_id }}" class="btn btn-secondary">Обновить статус</a>
+      {% else %}
+        <form method="post" action="/checkout/start/{{ order.public_id }}">
+          <button type="submit" class="btn btn-primary">Попробовать оплатить снова</button>
+        </form>
+        <a href="/account/orders/{{ order.public_id }}" class="btn btn-secondary">Вернуться к заказу</a>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+{% if is_success and metrica_counter_id %}
+<script>
+  (function(m,e,t,r,i,k,a){
+    m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();
+    k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a);
+  })(window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+  ym({{ metrica_counter_id }}, "init", {
+    clickmap:true,
+    trackLinks:true,
+    accurateTrackBounce:true,
+    webvisor:true
+  });
+
+  const goalKey = "payment_goal_sent_{{ payment.public_id }}";
+  if (!sessionStorage.getItem(goalKey)) {
+    ym({{ metrica_counter_id }}, 'reachGoal', 'payment_success', {
+      order_number: '{{ order.order_number }}',
+      amount: {{ price_rub }},
+      currency: 'RUB'
+    });
+    sessionStorage.setItem(goalKey, '1');
+  }
+</script>
+<noscript>
+  <div><img src="https://mc.yandex.ru/watch/{{ metrica_counter_id }}" style="position:absolute; left:-9999px;" alt="" /></div>
+</noscript>
+{% endif %}
+{% endblock %}
