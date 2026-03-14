@@ -10,7 +10,7 @@
   />
   <link rel="stylesheet" href="/static/css/styles.css" />
 </head>
-<body class="theme-dark-premium">
+<body class="theme-dark-premium{% if request.url.path == '/' %} page-home{% endif %}">
   <div class="page-bg page-bg-dark"></div>
   <div class="page-noise"></div>
 
