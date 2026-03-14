@@ -123,7 +123,15 @@
       </div>
     {% endif %}
 
-    <form class="form-card" method="post" action="/questionnaire/story">
+    <div class="generation-overlay" data-generation-overlay hidden>
+      <div class="generation-overlay-card">
+        <div class="generation-spinner" aria-hidden="true"></div>
+        <h2>Формируем 2 версии текста</h2>
+        <p>Это может занять до минуты. Не закрывай страницу и не обновляй её.</p>
+      </div>
+    </div>
+    
+    <form class="form-card" method="post" action="/questionnaire/story" data-generation-form>
       {% if draft.story_source == "voice" %}
         <label class="form-label" for="transcript_text">Расшифровка / заметки</label>
         <textarea
@@ -149,7 +157,15 @@
       <div class="form-actions">
         <a href="/questionnaire/story-source" class="btn btn-secondary">Назад</a>
         <button type="submit" name="action" value="save" class="btn btn-secondary">Сохранить</button>
-        <button type="submit" name="action" value="generate" class="btn btn-primary">Получить 2 версии</button>
+        <button
+          type="submit"
+          name="action"
+          value="generate"
+          class="btn btn-primary"
+          data-generate-submit
+        >
+          Получить 2 версии
+        </button>
       </div>
     </form>
   </div>
