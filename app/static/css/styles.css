@@ -5108,3 +5108,65 @@ strong,
     line-height: 1.66;
   }
 }
+/* ===== Commit 12.2.2 — text near hero image without glass card ===== */
+
+.hero-image-copy {
+  margin-top: 18px;
+  padding: 4px 6px 0 6px;
+}
+
+.hero-image-copy-title {
+  margin-bottom: 10px;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  text-shadow:
+    0 0 18px rgba(93, 129, 255, 0.22),
+    0 0 28px rgba(158, 99, 255, 0.14);
+}
+
+.hero-image-copy-list {
+  margin: 0;
+  padding-left: 20px;
+  color: rgba(224, 233, 255, 0.88);
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+.hero-image-copy-list li + li {
+  margin-top: 6px;
+}
+
+.hero-image-copy-list li::marker {
+  color: #8eb3ff;
+}
+
+@media (max-width: 860px) {
+  .hero-image-copy {
+    margin-top: 14px;
+    padding-left: 2px;
+    padding-right: 2px;
+  }
+
+  .hero-image-copy-title {
+    font-size: 14px;
+  }
+
+  .hero-image-copy-list {
+    font-size: 15px;
+    line-height: 1.62;
+  }
+}
+
+@media (max-width: 680px) {
+  .hero-image-copy {
+    margin-top: 12px;
+  }
+
+  .hero-image-copy-list {
+    padding-left: 18px;
+    font-size: 14px;
+    line-height: 1.56;
+  }
+}
