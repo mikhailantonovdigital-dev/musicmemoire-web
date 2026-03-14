@@ -2,6 +2,8 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
+from app.core.config import settings
+
 templates = Jinja2Templates(directory="app/templates")
 
 router = APIRouter()
@@ -426,16 +428,37 @@ LEGAL_PAGES = {
     },
 }
 
+def build_public_meta(path: str, page_title: str, meta_description: str) -> dict:
+    base_url = settings.BASE_URL.rstrip("/")
+    canonical_url = f"{base_url}{path}"
+    og_image = f"{base_url}/static/img/hero-gift-song.jpg"
+
+    return {
+        "page_title": page_title,
+        "meta_description": meta_description,
+        "canonical_url": canonical_url,
+        "og_title": page_title,
+        "og_description": meta_description,
+        "og_type": "website",
+        "og_url": canonical_url,
+        "og_image": og_image,
+        "twitter_card": "summary_large_image",
+    }
 
 def render_screen(request: Request, key: str):
     screen = SCREEN_PAGES[key]
+    meta = build_public_meta(
+        path=request.url.path,
+        page_title=screen["page_title"],
+        meta_description=screen["meta_description"],
+    )
+
     return templates.TemplateResponse(
         "public/home.html",
         {
             "request": request,
-            "page_title": screen["page_title"],
-            "meta_description": screen.get("meta_description"),
             "screen": screen,
+            **meta,
         },
     )
 
