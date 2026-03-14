@@ -1,100 +1,46 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="hero hero-home hero-dark">
-  <div class="container">
-    <div class="hero-grid-dark">
-      <div class="hero-copy hero-copy-dark">
-        <p class="eyebrow eyebrow-dark">Персональные песни в подарок</p>
-        <h1>Подарок, который звучит как ваша личная история</h1>
-        <p class="lead">
-          Расскажите историю текстом или голосом, получите 2 версии текста бесплатно,
-          выберите лучший вариант и потом закажите готовую песню в личном кабинете.
-        </p>
 
-        <div class="hero-points hero-points-dark">
-          <span><i>✦</i>2 версии текста бесплатно</span>
-          <span><i>◉</i>Можно голосом или текстом</span>
-          <span><i>♪</i>Кабинет и история заказов</span>
-        </div>
+<section class="hero hero-home hero-home-photo">
+  <div class="container hero-grid hero-grid-photo">
+    <div class="hero-copy">
+      <p class="eyebrow">Персональные песни в подарок</p>
+      <h1>Создайте песню по вашей истории: от идеи до готового трека</h1>
+      <p class="lead">
+        Расскажите историю текстом или голосом, получите 2 версии текста бесплатно,
+        выберите лучший вариант и потом закажите готовую песню в личном кабинете.
+      </p>
 
-        <div class="hero-actions">
-          <a class="btn btn-primary" href="/questionnaire/">Создать песню</a>
-          <a class="btn btn-secondary" href="#how-it-works">Как это работает</a>
-        </div>
-
-        <div class="hero-metrics-dark">
-          <div class="hero-metric-card">
-            <strong>01</strong>
-            <span>Анкета без сложной регистрации</span>
-          </div>
-          <div class="hero-metric-card">
-            <strong>02</strong>
-            <span>Сначала текст, потом решение об оплате</span>
-          </div>
-          <div class="hero-metric-card">
-            <strong>03</strong>
-            <span>Заказ и статусы остаются в кабинете</span>
-          </div>
-        </div>
+      <div class="hero-points">
+        <span>2 версии текста бесплатно</span>
+        <span>Голосом или текстом</span>
+        <span>Личный кабинет и история заказов</span>
       </div>
 
-      <div class="hero-visual-wrap">
-        <div class="hero-visual-stage">
-          <div class="hero-glow hero-glow-a"></div>
-          <div class="hero-glow hero-glow-b"></div>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="/questionnaire/">Хочу песню</a>
+        <a class="btn btn-secondary" href="#portfolio">Посмотреть структуру сервиса</a>
+      </div>
+    </div>
 
-          <article class="visual-card visual-card-main">
-            <div class="visual-card-head">
-              <span class="visual-chip">Music Memoire</span>
-              <span class="visual-chip visual-chip-soft">Вариант 1 / Вариант 2</span>
-            </div>
+    <div class="hero-visual">
+      <div class="hero-photo-card">
+        <div class="hero-photo-image" aria-hidden="true"></div>
 
-            <div class="visual-main-title">Персональная песня</div>
-            <p class="visual-main-text">
-              История, эмоции и детали превращаются в финальный текст, а затем — в готовую песню.
-            </p>
+        <article class="hero-overlay-card hero-overlay-card-top">
+          <div class="hero-overlay-badge">Путь пользователя</div>
+          <strong>Лендинг → анкета → текст → кабинет → оплата → песня</strong>
+        </article>
 
-            <div class="visual-track">
-              <div class="visual-track-line"></div>
-              <div class="visual-track-line short"></div>
-              <div class="visual-track-line tiny"></div>
-            </div>
-
-            <div class="visual-mini-grid">
-              <div class="visual-mini-box">
-                <span class="visual-mini-icon">🎙</span>
-                <strong>История голосом</strong>
-              </div>
-              <div class="visual-mini-box">
-                <span class="visual-mini-icon">✍</span>
-                <strong>Финальный текст</strong>
-              </div>
-              <div class="visual-mini-box">
-                <span class="visual-mini-icon">💳</span>
-                <strong>Оплата</strong>
-              </div>
-              <div class="visual-mini-box">
-                <span class="visual-mini-icon">♪</span>
-                <strong>Песня</strong>
-              </div>
-            </div>
-          </article>
-
-          <article class="visual-card visual-card-floating visual-card-top">
-            <span class="floating-badge">Путь пользователя</span>
-            <strong>Лендинг → анкета → текст → кабинет → оплата → песня</strong>
-          </article>
-
-          <article class="visual-card visual-card-floating visual-card-bottom">
-            <span class="floating-badge">Что важно</span>
-            <ul>
-              <li>Не платит вслепую до текста</li>
-              <li>Может рассказать всё голосом</li>
-              <li>Видит понятные статусы заказа</li>
-            </ul>
-          </article>
-        </div>
+        <article class="hero-overlay-card hero-overlay-card-bottom">
+          <div class="hero-overlay-badge">Что важно</div>
+          <ul class="hero-overlay-list">
+            <li>Не платит вслепую до текста</li>
+            <li>Может рассказать всё голосом</li>
+            <li>Видит понятные статусы заказа</li>
+          </ul>
+        </article>
       </div>
     </div>
   </div>
@@ -120,7 +66,7 @@
       <article class="feature-card-dark">
         <div class="feature-icon-dark">✦</div>
         <h3>Для семьи</h3>
-        <p>Песня для мамы, папы, ребёнка или близкого человека — как личный подарок, который остаётся в памяти.</p>
+        <p>Песня для мамы, папы, ребёнка или близкого человека - как личный подарок, который остаётся в памяти.</p>
       </article>
 
       <article class="feature-card-dark">
