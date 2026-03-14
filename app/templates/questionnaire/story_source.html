@@ -3,14 +3,14 @@
 {% block content %}
 <section class="section">
   <div class="container narrow">
-    <p class="eyebrow">Шаг 2 из 5</p>
+    <p class="eyebrow">Шаг 2 из 7</p>
     <h1>Как тебе удобнее рассказать историю?</h1>
 
     <div class="consultant-box">
       <strong>Комментарий консультанта</strong>
       <p>
-        Если удобнее спокойно описать всё самому в текстовом сообщении - выбирай текст.
-        Если проще рассказать своими словами голосовым, как в мессенджере - выбирай голос.
+        Если удобнее спокойно описать всё самому — выбирай текст.
+        Если проще рассказать своими словами, как сообщение в мессенджере — выбирай голос.
       </p>
     </div>
 
@@ -28,7 +28,7 @@
             {% if (form_story_source or (draft.story_source if draft else "text")) == "text" %}checked{% endif %}
           />
           <span class="radio-card-title">Текстом</span>
-          <span class="radio-card-text">Напишешь историю текстом в форме на следующем шаге.</span>
+          <span class="radio-card-text">Напишешь историю в форме на следующем шаге.</span>
         </label>
 
         <label class="radio-card">
@@ -39,7 +39,7 @@
             {% if (form_story_source or (draft.story_source if draft else "")) == "voice" %}checked{% endif %}
           />
           <span class="radio-card-title">Голосом</span>
-          <span class="radio-card-text">Надиктуешь историю прямо на сайте. Нужен будет микрофон.</span>
+          <span class="radio-card-text">Надиктуешь историю прямо на сайте, почти как в Telegram.</span>
         </label>
       </div>
 
