@@ -5010,3 +5010,286 @@ strong,
     line-height: 1.66;
   }
 }
+/* ===== Commit 12.6 — questionnaire premium pass ===== */
+
+.page-questionnaire .site-main {
+  min-height: calc(100vh - 160px);
+}
+
+.questionnaire-stage {
+  padding: 116px 0 82px;
+}
+
+.questionnaire-shell {
+  position: relative;
+  overflow: hidden;
+  padding: 34px;
+  border-radius: 34px;
+  background:
+    radial-gradient(circle at 12% 14%, rgba(84, 117, 255, 0.16), transparent 24%),
+    radial-gradient(circle at 84% 18%, rgba(157, 97, 255, 0.14), transparent 22%),
+    linear-gradient(180deg, rgba(12, 20, 34, 0.90), rgba(8, 14, 24, 0.94));
+  border: 1px solid rgba(160, 181, 220, 0.14);
+  box-shadow:
+    0 32px 84px rgba(4, 12, 28, 0.34),
+    0 0 88px rgba(74, 122, 255, 0.10);
+}
+
+.questionnaire-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 75% 76%, rgba(76, 193, 255, 0.08), transparent 18%),
+    linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0));
+  pointer-events: none;
+}
+
+.questionnaire-stage-head,
+.questionnaire-stack {
+  position: relative;
+  z-index: 1;
+}
+
+.questionnaire-stage-head {
+  margin-bottom: 24px;
+}
+
+.questionnaire-stage-head h1 {
+  margin-bottom: 14px;
+  font-size: clamp(38px, 5.4vw, 60px);
+  line-height: 0.98;
+  letter-spacing: -0.05em;
+}
+
+.questionnaire-stage-lead {
+  max-width: 840px;
+  margin: 0;
+  color: rgba(219, 228, 255, 0.82);
+}
+
+.questionnaire-route {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.questionnaire-route span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(160, 181, 220, 0.14);
+  color: #cbd7f0;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.questionnaire-route .is-active {
+  background: rgba(92, 124, 255, 0.16);
+  border-color: rgba(132, 154, 255, 0.28);
+  color: #ffffff;
+  box-shadow: 0 10px 26px rgba(92, 124, 255, 0.18);
+}
+
+.questionnaire-route .is-done {
+  background: rgba(108, 227, 255, 0.08);
+  border-color: rgba(103, 200, 255, 0.18);
+  color: #dff7ff;
+}
+
+.questionnaire-stack {
+  display: grid;
+  gap: 18px;
+}
+
+.questionnaire-shell .consultant-box {
+  margin-bottom: 0;
+  padding: 22px;
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(18, 30, 49, 0.88), rgba(12, 19, 33, 0.92));
+  border: 1px solid rgba(160, 181, 220, 0.14);
+}
+
+.questionnaire-shell .consultant-box strong {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #dbe4ff;
+}
+
+.questionnaire-shell .form-card,
+.questionnaire-shell .voice-upload-card,
+.questionnaire-shell .panel-card,
+.questionnaire-shell .lyrics-card,
+.questionnaire-shell .audio-card,
+.questionnaire-shell .recorder-panel {
+  background: rgba(10, 18, 31, 0.74);
+  border: 1px solid rgba(160, 181, 220, 0.14);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(18px);
+}
+
+.questionnaire-shell .form-card,
+.questionnaire-shell .voice-upload-card,
+.questionnaire-shell .lyrics-card {
+  padding: 24px;
+}
+
+.questionnaire-shell .step-meta {
+  margin: 0;
+}
+
+.questionnaire-shell .step-meta span {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(160, 181, 220, 0.16);
+  color: #dbe4ff;
+  box-shadow: none;
+}
+
+.questionnaire-shell .radio-grid {
+  gap: 16px;
+}
+
+.questionnaire-shell .radio-card {
+  background: rgba(12, 20, 34, 0.86);
+  border: 1px solid rgba(160, 181, 220, 0.16);
+  color: #eef4ff;
+}
+
+.questionnaire-shell .radio-card:hover {
+  border-color: rgba(132, 154, 255, 0.28);
+  box-shadow: 0 12px 30px rgba(7, 14, 28, 0.28);
+}
+
+.questionnaire-shell .radio-card input {
+  accent-color: #7b82ff;
+}
+
+@supports selector(:has(*)) {
+  .questionnaire-shell .radio-card:has(input:checked) {
+    border-color: rgba(132, 154, 255, 0.34);
+    background: linear-gradient(180deg, rgba(17, 28, 50, 0.96), rgba(10, 17, 30, 0.94));
+    box-shadow:
+      0 0 0 1px rgba(132, 154, 255, 0.14),
+      0 18px 40px rgba(7, 14, 28, 0.30);
+  }
+}
+
+.questionnaire-shell .form-title,
+.questionnaire-shell .lyrics-card h2 {
+  color: #ffffff;
+}
+
+.questionnaire-shell .helper-text,
+.questionnaire-shell .link-preview {
+  color: #93a4c2;
+}
+
+.questionnaire-shell .next-step-list {
+  gap: 0;
+}
+
+.questionnaire-shell .next-step-item {
+  padding: 14px 0;
+}
+
+.questionnaire-shell .next-step-item + .next-step-item {
+  border-top: 1px solid rgba(160, 181, 220, 0.12);
+}
+
+.questionnaire-shell .next-step-item strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #ffffff;
+}
+
+.questionnaire-shell .next-step-item span {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.questionnaire-shell .audio-meta strong,
+.questionnaire-shell .mini-label {
+  color: #dbe4ff;
+}
+
+.questionnaire-shell .variant-chip {
+  background: rgba(92, 124, 255, 0.14);
+  border: 1px solid rgba(132, 154, 255, 0.18);
+  color: #dbe4ff;
+}
+
+.questionnaire-shell .textarea {
+  min-height: 240px;
+}
+
+.questionnaire-shell .textarea-readonly {
+  min-height: 320px;
+}
+
+.questionnaire-shell .form-actions {
+  margin-top: 22px;
+}
+
+@media (max-width: 980px) {
+  .questionnaire-stage {
+    padding-top: 104px;
+    padding-bottom: 72px;
+  }
+
+  .questionnaire-shell {
+    padding: 24px;
+    border-radius: 28px;
+  }
+}
+
+@media (max-width: 640px) {
+  .questionnaire-stage {
+    padding-top: 96px;
+    padding-bottom: 56px;
+  }
+
+  .questionnaire-shell {
+    padding: 20px;
+    border-radius: 24px;
+  }
+
+  .questionnaire-stage-head h1 {
+    font-size: clamp(32px, 11vw, 48px);
+  }
+
+  .questionnaire-route {
+    gap: 8px;
+  }
+
+  .questionnaire-route span {
+    min-height: 32px;
+    padding: 0 12px;
+    font-size: 11px;
+  }
+
+  .questionnaire-shell .lyrics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .questionnaire-shell .step-meta {
+    gap: 8px;
+  }
+
+  .questionnaire-shell .step-meta span {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .questionnaire-shell .form-actions .btn {
+    width: 100%;
+  }
+}
