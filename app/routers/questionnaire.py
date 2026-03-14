@@ -44,6 +44,9 @@ def normalize_email(value: str) -> str:
 def is_valid_email(value: str) -> bool:
     return bool(EMAIL_RE.match(value.strip()))
 
+def style_requires_custom_text(song_style: str) -> bool:
+    return song_style in {"multi", "custom"}
+
 
 def ensure_visitor_session(request: Request) -> str:
     visitor_id = request.session.get("visitor_id")
@@ -436,7 +439,7 @@ async def questionnaire_custom_text_submit(
     db.commit()
 
     return RedirectResponse(
-        url=f"{request.url_for('questionnaire_access')}?saved=1",
+        url=f"{request.url_for('questionnaire_style')}?saved=1",
         status_code=303,
     )
 
@@ -843,10 +846,178 @@ async def questionnaire_lyrics_submit(
     db.commit()
 
     return RedirectResponse(
-        url=f"{request.url_for('questionnaire_access')}?saved=1",
+        url=f"{request.url_for('questionnaire_style')}?saved=1",
         status_code=303,
     )
 
+@router.get("/style", response_class=HTMLResponse)
+async def questionnaire_style(request: Request, db: Session = Depends(get_db)):
+    draft = get_current_draft(db, request)
+    if draft is None:
+        return RedirectResponse(url=request.url_for("questionnaire_start"), status_code=303)
+
+    if not (draft.final_lyrics_text or "").strip():
+        if draft.lyrics_mode == "custom":
+            return RedirectResponse(url=request.url_for("questionnaire_custom_text"), status_code=303)
+        return RedirectResponse(url=request.url_for("questionnaire_lyrics"), status_code=303)
+
+    saved = request.query_params.get("saved") == "1"
+
+    return templates.TemplateResponse(
+        "questionnaire/style.html",
+        {
+            "request": request,
+            "page_title": "Анкета — стиль песни",
+            "draft": draft,
+            "saved": saved,
+            "error": None,
+        },
+    )
+
+
+@router.post("/style", response_class=HTMLResponse)
+async def questionnaire_style_submit(
+    request: Request,
+    song_style: str = Form(...),
+    song_style_custom: str = Form(default=""),
+    db: Session = Depends(get_db),
+):
+    draft = get_current_draft(db, request)
+    if draft is None:
+        return RedirectResponse(url=request.url_for("questionnaire_start"), status_code=303)
+
+    if not (draft.final_lyrics_text or "").strip():
+        if draft.lyrics_mode == "custom":
+            return RedirectResponse(url=request.url_for("questionnaire_custom_text"), status_code=303)
+        return RedirectResponse(url=request.url_for("questionnaire_lyrics"), status_code=303)
+
+    song_style = song_style.strip().lower()
+    song_style_custom = song_style_custom.strip()
+
+    if song_style not in ALLOWED_SONG_STYLES:
+        return templates.TemplateResponse(
+            "questionnaire/style.html",
+            {
+                "request": request,
+                "page_title": "Анкета — стиль песни",
+                "draft": draft,
+                "saved": False,
+                "error": "Выбери стиль песни.",
+                "form_song_style": song_style,
+                "form_song_style_custom": song_style_custom,
+            },
+            status_code=400,
+        )
+
+    if style_requires_custom_text(song_style) and not song_style_custom:
+        return templates.TemplateResponse(
+            "questionnaire/style.html",
+            {
+                "request": request,
+                "page_title": "Анкета — стиль песни",
+                "draft": draft,
+                "saved": False,
+                "error": "Уточни стиль песни.",
+                "form_song_style": song_style,
+                "form_song_style_custom": song_style_custom,
+            },
+            status_code=400,
+        )
+
+    draft.song_style = song_style
+    draft.song_style_custom = song_style_custom if style_requires_custom_text(song_style) else None
+
+    db.add(
+        OrderEvent(
+            order=draft,
+            event_type="song_style_selected",
+            payload={
+                "song_style": draft.song_style,
+                "song_style_custom": draft.song_style_custom,
+            },
+        )
+    )
+    db.commit()
+
+    return RedirectResponse(
+        url=request.url_for("questionnaire_singer"),
+        status_code=303,
+    )
+
+
+@router.get("/singer", response_class=HTMLResponse)
+async def questionnaire_singer(request: Request, db: Session = Depends(get_db)):
+    draft = get_current_draft(db, request)
+    if draft is None:
+        return RedirectResponse(url=request.url_for("questionnaire_start"), status_code=303)
+
+    if not (draft.final_lyrics_text or "").strip():
+        if draft.lyrics_mode == "custom":
+            return RedirectResponse(url=request.url_for("questionnaire_custom_text"), status_code=303)
+        return RedirectResponse(url=request.url_for("questionnaire_lyrics"), status_code=303)
+
+    if not (draft.song_style or "").strip():
+        return RedirectResponse(url=request.url_for("questionnaire_style"), status_code=303)
+
+    return templates.TemplateResponse(
+        "questionnaire/singer.html",
+        {
+            "request": request,
+            "page_title": "Анкета — кто поёт",
+            "draft": draft,
+            "error": None,
+        },
+    )
+
+
+@router.post("/singer", response_class=HTMLResponse)
+async def questionnaire_singer_submit(
+    request: Request,
+    singer_gender: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    draft = get_current_draft(db, request)
+    if draft is None:
+        return RedirectResponse(url=request.url_for("questionnaire_start"), status_code=303)
+
+    if not (draft.final_lyrics_text or "").strip():
+        if draft.lyrics_mode == "custom":
+            return RedirectResponse(url=request.url_for("questionnaire_custom_text"), status_code=303)
+        return RedirectResponse(url=request.url_for("questionnaire_lyrics"), status_code=303)
+
+    if not (draft.song_style or "").strip():
+        return RedirectResponse(url=request.url_for("questionnaire_style"), status_code=303)
+
+    singer_gender = singer_gender.strip().lower()
+
+    if singer_gender not in ALLOWED_SINGER_GENDERS:
+        return templates.TemplateResponse(
+            "questionnaire/singer.html",
+            {
+                "request": request,
+                "page_title": "Анкета — кто поёт",
+                "draft": draft,
+                "error": "Выбери, кто должен петь песню.",
+                "form_singer_gender": singer_gender,
+            },
+            status_code=400,
+        )
+
+    draft.singer_gender = singer_gender
+
+    db.add(
+        OrderEvent(
+            order=draft,
+            event_type="singer_gender_selected",
+            payload={"singer_gender": singer_gender},
+        )
+    )
+    db.commit()
+
+    return RedirectResponse(
+        url=request.url_for("questionnaire_access"),
+        status_code=303,
+    )
 
 @router.get("/access", response_class=HTMLResponse)
 async def questionnaire_access(request: Request, db: Session = Depends(get_db)):
@@ -858,6 +1029,12 @@ async def questionnaire_access(request: Request, db: Session = Depends(get_db)):
         if draft.lyrics_mode == "custom":
             return RedirectResponse(url=request.url_for("questionnaire_custom_text"), status_code=303)
         return RedirectResponse(url=request.url_for("questionnaire_lyrics"), status_code=303)
+
+    if not (draft.song_style or "").strip():
+        return RedirectResponse(url=request.url_for("questionnaire_style"), status_code=303)
+
+    if draft.singer_gender not in ALLOWED_SINGER_GENDERS:
+        return RedirectResponse(url=request.url_for("questionnaire_singer"), status_code=303)
 
     saved = request.query_params.get("saved") == "1"
     sent = request.query_params.get("sent") == "1"
@@ -876,9 +1053,6 @@ async def questionnaire_access(request: Request, db: Session = Depends(get_db)):
             "price_rub": settings.PRICE_RUB,
             "error": None,
             "form_email": draft.user.email if draft.user else "",
-            "form_song_style": draft.song_style or "",
-            "form_song_style_custom": draft.song_style_custom or "",
-            "form_singer_gender": draft.singer_gender or "",
         },
     )
 
@@ -887,9 +1061,6 @@ async def questionnaire_access(request: Request, db: Session = Depends(get_db)):
 async def questionnaire_access_submit(
     request: Request,
     email: str = Form(...),
-    song_style: str = Form(...),
-    song_style_custom: str = Form(default=""),
-    singer_gender: str = Form(...),
     db: Session = Depends(get_db),
 ):
     draft = get_current_draft(db, request)
@@ -899,10 +1070,13 @@ async def questionnaire_access_submit(
     if not (draft.final_lyrics_text or "").strip():
         return RedirectResponse(url=request.url_for("questionnaire_start"), status_code=303)
 
+    if not (draft.song_style or "").strip():
+        return RedirectResponse(url=request.url_for("questionnaire_style"), status_code=303)
+
+    if draft.singer_gender not in ALLOWED_SINGER_GENDERS:
+        return RedirectResponse(url=request.url_for("questionnaire_singer"), status_code=303)
+
     email = normalize_email(email)
-    song_style = song_style.strip().lower()
-    song_style_custom = song_style_custom.strip()
-    singer_gender = singer_gender.strip().lower()
 
     if not is_valid_email(email):
         return templates.TemplateResponse(
@@ -918,72 +1092,6 @@ async def questionnaire_access_submit(
                 "price_rub": settings.PRICE_RUB,
                 "error": "Укажи корректный email.",
                 "form_email": email,
-                "form_song_style": song_style,
-                "form_song_style_custom": song_style_custom,
-                "form_singer_gender": singer_gender,
-            },
-            status_code=400,
-        )
-
-    if song_style not in ALLOWED_SONG_STYLES:
-        return templates.TemplateResponse(
-            "questionnaire/access.html",
-            {
-                "request": request,
-                "page_title": "Анкета — доступ к кабинету",
-                "draft": draft,
-                "saved": False,
-                "sent": False,
-                "stub_mode": settings.MAGIC_LINK_STUB_MODE,
-                "stub_login_url": None,
-                "price_rub": settings.PRICE_RUB,
-                "error": "Выбери стиль песни.",
-                "form_email": email,
-                "form_song_style": song_style,
-                "form_song_style_custom": song_style_custom,
-                "form_singer_gender": singer_gender,
-            },
-            status_code=400,
-        )
-
-    if song_style == "custom" and not song_style_custom:
-        return templates.TemplateResponse(
-            "questionnaire/access.html",
-            {
-                "request": request,
-                "page_title": "Анкета — доступ к кабинету",
-                "draft": draft,
-                "saved": False,
-                "sent": False,
-                "stub_mode": settings.MAGIC_LINK_STUB_MODE,
-                "stub_login_url": None,
-                "price_rub": settings.PRICE_RUB,
-                "error": "Напиши свой вариант стиля песни.",
-                "form_email": email,
-                "form_song_style": song_style,
-                "form_song_style_custom": song_style_custom,
-                "form_singer_gender": singer_gender,
-            },
-            status_code=400,
-        )
-
-    if singer_gender not in ALLOWED_SINGER_GENDERS:
-        return templates.TemplateResponse(
-            "questionnaire/access.html",
-            {
-                "request": request,
-                "page_title": "Анкета — доступ к кабинету",
-                "draft": draft,
-                "saved": False,
-                "sent": False,
-                "stub_mode": settings.MAGIC_LINK_STUB_MODE,
-                "stub_login_url": None,
-                "price_rub": settings.PRICE_RUB,
-                "error": "Выбери, кто должен петь песню.",
-                "form_email": email,
-                "form_song_style": song_style,
-                "form_song_style_custom": song_style_custom,
-                "form_singer_gender": singer_gender,
             },
             status_code=400,
         )
@@ -995,9 +1103,6 @@ async def questionnaire_access_submit(
         db.flush()
 
     draft.user_id = user.id
-    draft.song_style = song_style
-    draft.song_style_custom = song_style_custom if song_style == "custom" else None
-    draft.singer_gender = singer_gender
 
     raw_token = generate_magic_token()
     token_hash = hash_magic_token(raw_token)
@@ -1047,9 +1152,6 @@ async def questionnaire_access_submit(
                 "price_rub": settings.PRICE_RUB,
                 "error": str(exc),
                 "form_email": email,
-                "form_song_style": song_style,
-                "form_song_style_custom": song_style_custom,
-                "form_singer_gender": singer_gender,
             },
             status_code=400,
         )
