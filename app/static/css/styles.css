@@ -3815,12 +3815,19 @@ strong,
 /* ===== Commit 11.3 — one-screen public structure ===== */
 
 .site-header-horizontal .header-shell {
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto 1fr auto;
 }
 
 .nav-horizontal {
   justify-content: flex-end;
   gap: 10px;
+}
+
+.page-marketing-screen .header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
 }
 
 .site-footer-minimal {
@@ -3868,7 +3875,6 @@ strong,
 .page-marketing-screen .site-main {
   flex: 1 0 auto;
   min-height: 0;
-  display: flex;
 }
 
 .page-marketing-screen .header-shell {
@@ -3886,7 +3892,6 @@ strong,
 }
 
 .page-marketing-screen .hero-screen {
-  width: 100%;
   display: flex;
   align-items: center;
   padding-top: 146px;
@@ -3896,7 +3901,6 @@ strong,
 }
 
 .page-marketing-screen .hero-grid-screen {
-  width: 100%;
   align-items: center;
 }
 
@@ -4076,6 +4080,17 @@ strong,
     flex-wrap: nowrap;
     width: 100%;
     padding-bottom: 4px;
+  }
+
+  .site-header-horizontal .header-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .page-marketing-screen .header-actions {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    margin-top: 10px;
   }
 
   .page-marketing-screen .nav-horizontal a {
