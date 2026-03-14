@@ -32,6 +32,8 @@ router = APIRouter(prefix="/questionnaire", tags=["questionnaire"])
 
 ALLOWED_STORY_SOURCES = {"text", "voice"}
 ALLOWED_LYRICS_MODES = {"generate", "custom"}
+ALLOWED_SONG_STYLES = {"pop", "rap", "rock", "chanson", "indie", "multi", "custom"}
+ALLOWED_SINGER_GENDERS = {"male", "female"}
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
@@ -873,6 +875,10 @@ async def questionnaire_access(request: Request, db: Session = Depends(get_db)):
             "stub_login_url": stub_login_url,
             "price_rub": settings.PRICE_RUB,
             "error": None,
+            "form_email": draft.user.email if draft.user else "",
+            "form_song_style": draft.song_style or "",
+            "form_song_style_custom": draft.song_style_custom or "",
+            "form_singer_gender": draft.singer_gender or "",
         },
     )
 
@@ -881,6 +887,9 @@ async def questionnaire_access(request: Request, db: Session = Depends(get_db)):
 async def questionnaire_access_submit(
     request: Request,
     email: str = Form(...),
+    song_style: str = Form(...),
+    song_style_custom: str = Form(default=""),
+    singer_gender: str = Form(...),
     db: Session = Depends(get_db),
 ):
     draft = get_current_draft(db, request)
@@ -891,6 +900,9 @@ async def questionnaire_access_submit(
         return RedirectResponse(url=request.url_for("questionnaire_start"), status_code=303)
 
     email = normalize_email(email)
+    song_style = song_style.strip().lower()
+    song_style_custom = song_style_custom.strip()
+    singer_gender = singer_gender.strip().lower()
 
     if not is_valid_email(email):
         return templates.TemplateResponse(
@@ -905,6 +917,73 @@ async def questionnaire_access_submit(
                 "stub_login_url": None,
                 "price_rub": settings.PRICE_RUB,
                 "error": "Укажи корректный email.",
+                "form_email": email,
+                "form_song_style": song_style,
+                "form_song_style_custom": song_style_custom,
+                "form_singer_gender": singer_gender,
+            },
+            status_code=400,
+        )
+
+    if song_style not in ALLOWED_SONG_STYLES:
+        return templates.TemplateResponse(
+            "questionnaire/access.html",
+            {
+                "request": request,
+                "page_title": "Анкета — доступ к кабинету",
+                "draft": draft,
+                "saved": False,
+                "sent": False,
+                "stub_mode": settings.MAGIC_LINK_STUB_MODE,
+                "stub_login_url": None,
+                "price_rub": settings.PRICE_RUB,
+                "error": "Выбери стиль песни.",
+                "form_email": email,
+                "form_song_style": song_style,
+                "form_song_style_custom": song_style_custom,
+                "form_singer_gender": singer_gender,
+            },
+            status_code=400,
+        )
+
+    if song_style == "custom" and not song_style_custom:
+        return templates.TemplateResponse(
+            "questionnaire/access.html",
+            {
+                "request": request,
+                "page_title": "Анкета — доступ к кабинету",
+                "draft": draft,
+                "saved": False,
+                "sent": False,
+                "stub_mode": settings.MAGIC_LINK_STUB_MODE,
+                "stub_login_url": None,
+                "price_rub": settings.PRICE_RUB,
+                "error": "Напиши свой вариант стиля песни.",
+                "form_email": email,
+                "form_song_style": song_style,
+                "form_song_style_custom": song_style_custom,
+                "form_singer_gender": singer_gender,
+            },
+            status_code=400,
+        )
+
+    if singer_gender not in ALLOWED_SINGER_GENDERS:
+        return templates.TemplateResponse(
+            "questionnaire/access.html",
+            {
+                "request": request,
+                "page_title": "Анкета — доступ к кабинету",
+                "draft": draft,
+                "saved": False,
+                "sent": False,
+                "stub_mode": settings.MAGIC_LINK_STUB_MODE,
+                "stub_login_url": None,
+                "price_rub": settings.PRICE_RUB,
+                "error": "Выбери, кто должен петь песню.",
+                "form_email": email,
+                "form_song_style": song_style,
+                "form_song_style_custom": song_style_custom,
+                "form_singer_gender": singer_gender,
             },
             status_code=400,
         )
@@ -916,6 +995,9 @@ async def questionnaire_access_submit(
         db.flush()
 
     draft.user_id = user.id
+    draft.song_style = song_style
+    draft.song_style_custom = song_style_custom if song_style == "custom" else None
+    draft.singer_gender = singer_gender
 
     raw_token = generate_magic_token()
     token_hash = hash_magic_token(raw_token)
@@ -936,6 +1018,9 @@ async def questionnaire_access_submit(
             payload={
                 "email": email,
                 "user_id": user.public_id,
+                "song_style": draft.song_style,
+                "song_style_custom": draft.song_style_custom,
+                "singer_gender": draft.singer_gender,
             },
         )
     )
@@ -961,6 +1046,10 @@ async def questionnaire_access_submit(
                 "stub_login_url": None,
                 "price_rub": settings.PRICE_RUB,
                 "error": str(exc),
+                "form_email": email,
+                "form_song_style": song_style,
+                "form_song_style_custom": song_style_custom,
+                "form_singer_gender": singer_gender,
             },
             status_code=400,
         )
