@@ -628,7 +628,7 @@ async def questionnaire_voice_stream(
 @router.post("/story", response_class=HTMLResponse)
 async def questionnaire_story_submit(
     request: Request,
-    action: str = Form(default="save"),
+    action: str = Form(default="generate"),
     story_text: str = Form(default=""),
     transcript_text: str = Form(default=""),
     db: Session = Depends(get_db),
@@ -734,7 +734,7 @@ async def questionnaire_story_submit(
         )
 
     return RedirectResponse(
-        url=f"{request.url_for('questionnaire_story')}?saved=1",
+        url=request.url_for("questionnaire_story"),
         status_code=303,
     )
 
