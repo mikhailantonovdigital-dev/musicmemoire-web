@@ -13,22 +13,30 @@
 <body>
   <div class="page-bg"></div>
 
-  <header class="site-header">
-    <div class="container header-row">
-      <a href="/" class="logo-wrap">
+  {% set path = request.url.path %}
+
+  <header class="site-header site-header-upgraded">
+    <div class="container header-shell">
+      <a href="/" class="brand">
         <span class="logo-badge">MM</span>
-        <span class="logo-text">Music Memoire</span>
+        <span class="brand-copy">
+          <span class="logo-text">Music Memoire</span>
+          <span class="brand-subtitle">Персональные песни в подарок</span>
+        </span>
       </a>
 
-      <nav class="nav">
+      <nav class="nav nav-upgraded">
+        <a class="{% if path == '/' %}is-active{% endif %}" href="/">Главная</a>
         <a href="/#portfolio">Примеры</a>
         <a href="/#how-it-works">Как это работает</a>
         <a href="/#faq">FAQ</a>
         <a href="/#blog">Блог</a>
-        <a href="/questionnaire/">Анкета</a>
-        <a href="/account/">Кабинет</a>
-        <a href="/admin/">Админка</a>
       </nav>
+
+      <div class="header-actions">
+        <a class="header-link-btn {% if '/account' in path %}is-active{% endif %}" href="/account/">Кабинет</a>
+        <a class="header-cta {% if '/questionnaire' in path %}is-active{% endif %}" href="/questionnaire/">Создать песню</a>
+      </div>
     </div>
   </header>
 
@@ -36,31 +44,44 @@
     {% block content %}{% endblock %}
   </main>
 
-  <footer class="site-footer">
-    <div class="container footer-grid">
-      <div class="footer-col">
+  <footer class="site-footer site-footer-upgraded">
+    <div class="container footer-shell">
+      <div class="footer-brand-block">
         <div class="footer-brand">
           <span class="logo-badge">MM</span>
           <span class="logo-text">Music Memoire</span>
         </div>
         <p class="footer-text">
-          Персональные песни в подарок: от истории до готового трека в личном кабинете.
+          Сервис персональных песен в подарок: от истории и текста до готового результата в личном кабинете.
+        </p>
+        <p class="footer-note">
+          Сначала пользователь проходит анкету, получает 2 версии текста, а потом уже принимает решение об оплате.
         </p>
       </div>
 
-      <div class="footer-col">
-        <h3>Навигация</h3>
-        <a href="/">Главная</a>
-        <a href="/questionnaire/">Анкета</a>
-        <a href="/account/">Кабинет</a>
-        <a href="/#faq">FAQ</a>
-        <a href="/#blog">Блог</a>
-      </div>
+      <div class="footer-links-grid">
+        <div class="footer-link-group">
+          <h3>Сервис</h3>
+          <a href="/">Главная</a>
+          <a href="/questionnaire/">Анкета</a>
+          <a href="/account/">Кабинет</a>
+          <a href="/account/login">Вход</a>
+        </div>
 
-      <div class="footer-col">
-        <h3>Поддержка</h3>
-        <a href="https://t.me/mikhailantonov19" target="_blank" rel="noopener" data-support-link="telegram">Telegram</a>
-        <a href="https://max.ru/u/f9LHodD0cOKg36L-baFKeBJquxSx5xydupa2AYOKdl7BUFipfVYS5FVVV80" target="_blank" rel="noopener" data-support-link="max">MAX</a>
+        <div class="footer-link-group">
+          <h3>Материалы</h3>
+          <a href="/#portfolio">Примеры</a>
+          <a href="/#how-it-works">Как это работает</a>
+          <a href="/#faq">FAQ</a>
+          <a href="/#blog">Блог</a>
+        </div>
+
+        <div class="footer-link-group">
+          <h3>Поддержка</h3>
+          <a href="https://t.me/mikhailantonov19" target="_blank" rel="noopener" data-support-link="telegram">Telegram</a>
+          <a href="https://max.ru/u/f9LHodD0cOKg36L-baFKeBJquxSx5xydupa2AYOKdl7BUFipfVYS5FVVV80" target="_blank" rel="noopener" data-support-link="max">MAX</a>
+          <a href="/admin/">Админка</a>
+        </div>
       </div>
     </div>
 
