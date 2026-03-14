@@ -105,7 +105,13 @@ def create_song_job(db: Session, order: Order) -> SongGeneration:
     db.add(song)
     db.flush()
 
-    result = start_song_generation(order_number=order.order_number, lyrics_text=lyrics_text)
+    result = start_song_generation(
+        order_number=order.order_number,
+        lyrics_text=lyrics_text,
+        song_style=order.song_style,
+        song_style_custom=order.song_style_custom,
+        singer_gender=order.singer_gender,
+    )
 
     song.external_job_id = result.external_job_id
     song.status = result.status
