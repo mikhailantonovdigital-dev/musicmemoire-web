@@ -59,6 +59,39 @@ def build_song_prompt(
     return " ".join(prompt_parts).strip()
 
 
+def build_song_prompt(
+    *,
+    song_style: str | None,
+    song_style_custom: str | None,
+    singer_gender: str | None,
+) -> str:
+    style_map = {
+        "pop": "поп",
+        "rap": "рэп",
+        "rock": "рок",
+        "chanson": "шансон",
+        "indie": "инди",
+    }
+    singer_map = {
+        "male": "мужской голос",
+        "female": "женский голос",
+    }
+
+    parts: list[str] = []
+
+    if song_style == "multi" and (song_style_custom or "").strip():
+        parts.append(f"Стиль песни: смешение стилей ({song_style_custom.strip()}).")
+    elif song_style == "custom" and (song_style_custom or "").strip():
+        parts.append(f"Стиль песни: {song_style_custom.strip()}.")
+    elif song_style in style_map:
+        parts.append(f"Стиль песни: {style_map[song_style]}.")
+
+    if singer_gender in singer_map:
+        parts.append(f"Исполнение: {singer_map[singer_gender]}.")
+
+    return " ".join(parts).strip()
+
+
 def start_song_generation(
     *,
     order_number: str,
