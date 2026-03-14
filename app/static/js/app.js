@@ -363,4 +363,5 @@ document.addEventListener("DOMContentLoaded", () => {
   initVoiceRecorder();
   initLyricsPicker();
   initExclusiveAudioPlayers();
+  initQuestionnaireGenerationState();
 });
