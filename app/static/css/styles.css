@@ -4107,45 +4107,67 @@ strong,
 
   .page-marketing-screen .header-shell {
     min-height: auto;
-    row-gap: 14px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "brand actions"
+      "nav nav";
+    align-items: center;
+    row-gap: 12px;
     column-gap: 12px;
-    padding: calc(env(safe-area-inset-top, 0px) + 10px) 0 14px;
+    padding: calc(env(safe-area-inset-top, 0px) + 10px) 0 10px;
   }
 
   .site-header-horizontal .header-shell {
-    grid-template-columns: auto 1fr;
-    align-items: center;
+    grid-template-columns: minmax(0, 1fr) auto;
   }
 
   .page-marketing-screen .brand {
-    grid-column: 1;
+    grid-area: brand;
     min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .page-marketing-screen .logo-badge {
+    width: 52px;
+    height: 52px;
+    border-radius: 18px;
+    font-size: 16px;
   }
 
   .page-marketing-screen .brand-copy {
     gap: 0;
+    min-width: 0;
   }
 
   .page-marketing-screen .logo-text {
-    font-size: 16px;
+    font-size: 15px;
+    line-height: 1.15;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .page-marketing-screen .header-actions {
-    grid-column: 2;
+    grid-area: actions;
     width: auto;
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    gap: 0;
     margin-top: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    justify-self: end;
+    gap: 0;
   }
 
   .page-marketing-screen .header-link-btn {
     width: auto;
-    min-height: 44px;
-    padding: 0 16px;
+    min-height: 42px;
+    padding: 0 14px;
     border-radius: 14px;
     white-space: nowrap;
+    font-size: 15px;
   }
 
   .page-marketing-screen .header-cta {
@@ -4153,7 +4175,7 @@ strong,
   }
 
   .page-marketing-screen .site-header-upgraded .nav {
-    grid-column: 1 / -1;
+    grid-area: nav;
     display: flex;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
@@ -4180,7 +4202,7 @@ strong,
   .page-marketing-screen .hero-screen {
     min-height: auto;
     align-items: flex-start;
-    padding-top: 42px;
+    padding-top: 28px;
     padding-bottom: 72px;
   }
 
