@@ -5390,3 +5390,48 @@ strong,
     font-size: 15px;
   }
 }
+/* ===== Commit 12.6.3 — lyrics cleanup + song preferences ===== */
+
+.final-lyrics-block {
+  margin-top: 28px;
+  margin-bottom: 12px;
+}
+
+.final-lyrics-label {
+  margin-bottom: 6px;
+}
+
+.final-lyrics-help {
+  margin: 0;
+}
+
+.questionnaire-access-form .questionnaire-form-section {
+  margin-top: 28px;
+}
+
+.questionnaire-access-form .section-helper-text {
+  margin: -4px 0 14px;
+}
+
+.song-style-grid {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.singer-gender-grid {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.custom-style-wrap {
+  margin-top: 16px;
+}
+
+@media (max-width: 760px) {
+  .song-style-grid,
+  .singer-gender-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .final-lyrics-block {
+    margin-top: 24px;
+  }
+}
