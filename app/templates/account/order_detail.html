@@ -2,64 +2,103 @@
 
 {% block content %}
 <section class="section">
-  <div class="container narrow">
-    <p class="eyebrow">Личный кабинет</p>
-    <h1>{{ order.order_number }}</h1>
+  <div class="container">
+    <div class="page-shell">
+      <div class="dashboard-intro">
+        <div>
+          <p class="eyebrow">Карточка заказа</p>
+          <h1>{{ order.order_number }}</h1>
+          <p class="section-lead">
+            Здесь собран финальный текст, текущий статус и управление генерацией песни.
+          </p>
+        </div>
 
-    <div class="step-meta">
-      <span>Статус заказа: <strong>{{ order.status }}</strong></span>
-      <span>Режим: <strong>{{ "Свой текст" if order.lyrics_mode == "custom" else "2 версии бесплатно" }}</strong></span>
-      <span>Источник: <strong>{{ "Голос" if order.story_source == "voice" else "Текст" }}</strong></span>
-      <span>Оплата: <strong>{{ payment_status_label }}</strong></span>
-      <span>Генерация: <strong>{{ song_status_label }}</strong></span>
-    </div>
-
-    <div class="form-card">
-      <h2 class="form-title">Финальный текст</h2>
-      <textarea class="textarea textarea-readonly" readonly>{{ order.final_lyrics_text or "Финальный текст пока не сохранён." }}</textarea>
-    </div>
-
-    <div class="form-card" style="margin-top: 20px;">
-      <h2 class="form-title">Песня</h2>
-
-      {% if latest_song and latest_song.audio_url %}
-        <audio class="audio-player" controls preload="none" src="{{ latest_song.audio_url }}"></audio>
-      {% elif latest_song and song_is_ready and suno_stub_mode %}
-        <p class="muted">Заглушка Suno отработала успешно. Реальный аудиофайл подключим следующим этапом.</p>
-      {% elif latest_song and song_is_running %}
-        <p class="muted">Задача уже запущена. Можно открыть страницу статуса и дождаться завершения.</p>
-      {% elif latest_song and song_is_failed %}
-        <p class="muted">Прошлая попытка завершилась ошибкой. Запусти повторно.</p>
-      {% else %}
-        <p class="muted">Генерация песни ещё не запускалась.</p>
-      {% endif %}
-
-      <div class="form-actions">
-        {% if can_pay_order %}
-          <form method="post" action="/checkout/start/{{ order.public_id }}">
-            <button type="submit" class="btn btn-primary">{{ payment_cta_label }}</button>
-          </form>
-        {% elif latest_song and song_is_running %}
-          <a href="/songs/status?job={{ latest_song.public_id }}" class="btn btn-primary">Открыть статус</a>
-        {% elif latest_song and song_is_failed %}
-          <form method="post" action="/songs/retry/{{ latest_song.public_id }}">
-            <button type="submit" class="btn btn-primary">Повторить генерацию</button>
-          </form>
-        {% elif latest_song and song_is_ready %}
-          <a href="/songs/status?job={{ latest_song.public_id }}" class="btn btn-primary">Открыть результат</a>
-        {% elif can_start_song %}
-          <form method="post" action="/songs/start/{{ order.public_id }}">
-            <button type="submit" class="btn btn-primary">Сгенерировать песню</button>
-          </form>
-        {% else %}
-          <span class="btn btn-secondary">Генерация после оплаты</span>
-        {% endif %}
+        <div class="dashboard-head-actions">
+          <a href="/account/" class="btn btn-secondary">Назад в кабинет</a>
+        </div>
       </div>
-      
-    </div>
 
-    <div class="form-actions">
-      <a href="/account/" class="btn btn-secondary">Назад в кабинет</a>
+      <div class="step-meta">
+        <span>Статус заказа: <strong>{{ order.status|replace('_', ' ') }}</strong></span>
+        <span>Режим: <strong>{{ "Свой текст" if order.lyrics_mode == "custom" else "2 версии бесплатно" }}</strong></span>
+        <span>Источник: <strong>{{ "Голос" if order.story_source == "voice" else "Текст" }}</strong></span>
+        <span>Генерация: <strong>{{ song_status_label }}</strong></span>
+      </div>
+
+      <div class="detail-shell">
+        <div class="detail-main">
+          <div class="panel-card">
+            <div class="mini-label">Финальный текст</div>
+            <h2 class="form-title">Текст заказа</h2>
+            <textarea class="textarea textarea-readonly" readonly>{{ order.final_lyrics_text or "Финальный текст пока не сохранён." }}</textarea>
+          </div>
+        </div>
+
+        <aside class="aside-stack">
+          <div class="panel-card status-panel">
+            <div class="mini-label">Текущее состояние</div>
+
+            <div class="detail-list">
+              <div class="detail-list-item">
+                <span class="detail-label">Заказ</span>
+                <strong class="detail-value">{{ order.status|replace('_', ' ') }}</strong>
+              </div>
+              <div class="detail-list-item">
+                <span class="detail-label">Генерация</span>
+                <strong class="detail-value">{{ song_status_label }}</strong>
+              </div>
+              {% if latest_song %}
+                <div class="detail-list-item">
+                  <span class="detail-label">Попытка</span>
+                  <strong class="detail-value">{{ latest_song.attempt_no }}</strong>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="panel-card">
+            <div class="mini-label">Песня</div>
+
+            {% if latest_song and latest_song.audio_url %}
+              <audio class="audio-player" controls preload="none" src="{{ latest_song.audio_url }}"></audio>
+            {% elif latest_song and song_is_ready and suno_stub_mode %}
+              <p class="muted" style="margin: 0;">
+                Заглушка Suno отработала успешно. Реальный аудиофайл подключим следующим этапом.
+              </p>
+            {% elif latest_song and song_is_running %}
+              <p class="muted" style="margin: 0;">
+                Задача уже запущена. Можно открыть страницу статуса и дождаться завершения.
+              </p>
+            {% elif latest_song and song_is_failed %}
+              <p class="muted" style="margin: 0;">
+                Прошлая попытка завершилась ошибкой. Запусти повторно.
+              </p>
+            {% else %}
+              <p class="muted" style="margin: 0;">
+                Генерация песни ещё не запускалась.
+              </p>
+            {% endif %}
+
+            <div class="form-actions action-stack">
+              {% if latest_song and song_is_running %}
+                <a href="/songs/status?job={{ latest_song.public_id }}" class="btn btn-primary">Открыть статус</a>
+              {% elif latest_song and song_is_failed %}
+                <form method="post" action="/songs/retry/{{ latest_song.public_id }}">
+                  <button type="submit" class="btn btn-primary">Повторить генерацию</button>
+                </form>
+              {% elif latest_song and song_is_ready %}
+                <a href="/songs/status?job={{ latest_song.public_id }}" class="btn btn-primary">Открыть результат</a>
+              {% elif can_start_song %}
+                <form method="post" action="/songs/start/{{ order.public_id }}">
+                  <button type="submit" class="btn btn-primary">Сгенерировать песню</button>
+                </form>
+              {% else %}
+                <span class="btn btn-secondary">Генерация после оплаты</span>
+              {% endif %}
+            </div>
+          </div>
+        </aside>
+      </div>
     </div>
   </div>
 </section>
