@@ -3856,6 +3856,14 @@ strong,
   pointer-events: auto;
 }
 
+.footer-bottom-minimal p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+  text-align: center;
+}
+
 .page-marketing-screen {
   position: relative;
   min-height: 100vh;
@@ -4064,8 +4072,8 @@ strong,
 @media (max-width: 980px) {
   .page-marketing-screen .hero-screen {
     min-height: 100vh;
-    padding-top: 132px;
-    padding-bottom: 84px;
+    padding-top: 116px;
+    padding-bottom: 116px;
   }
 
   .page-marketing-screen .btn-hero-xl {
@@ -4105,8 +4113,8 @@ strong,
 
   .page-marketing-screen .hero-screen {
     min-height: 100vh;
-    padding-top: 118px;
-    padding-bottom: 78px;
+    padding-top: 108px;
+    padding-bottom: 108px;
   }
 
   .page-marketing-screen .btn-hero-xl {
