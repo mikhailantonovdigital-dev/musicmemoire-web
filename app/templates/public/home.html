@@ -51,6 +51,95 @@
     </div>
   </div>
 </section>
+
+{% elif screen.steps %}
+<section class="hero hero-home hero-home-photo hero-screen info-screen">
+  <div class="container hero-grid hero-grid-photo hero-grid-screen info-layout">
+    <div class="hero-copy hero-copy-screen info-copy">
+      <p class="eyebrow hero-eyebrow-thin">{{ screen.eyebrow }}</p>
+      <h1>{{ screen.title }}</h1>
+      <p class="lead">
+        {{ screen.lead }}
+      </p>
+
+      <div class="hero-points">
+        {% for point in screen.points %}
+          <span>{{ point }}</span>
+        {% endfor %}
+      </div>
+
+      <div class="hero-actions hero-actions-xl">
+        <a class="btn btn-primary btn-hero-xl" href="{{ screen.primary_href }}">{{ screen.primary_label }}</a>
+        {% if screen.secondary_href and screen.secondary_label %}
+          <a class="btn btn-secondary btn-hero-xl" href="{{ screen.secondary_href }}">{{ screen.secondary_label }}</a>
+        {% endif %}
+      </div>
+
+      {% if screen.note %}
+        <p class="screen-note">{{ screen.note }}</p>
+      {% endif %}
+    </div>
+
+    <div class="info-panel how-panel">
+      <div class="how-list">
+        {% for step in screen.steps %}
+          <article class="how-step-card">
+            <div class="how-step-num">{{ step.num }}</div>
+            <div class="how-step-body">
+              <h3>{{ step.title }}</h3>
+              <p>{{ step.text }}</p>
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+
+{% elif screen.reviews_list %}
+<section class="hero hero-home hero-home-photo hero-screen info-screen">
+  <div class="container hero-grid hero-grid-photo hero-grid-screen info-layout">
+    <div class="hero-copy hero-copy-screen info-copy">
+      <p class="eyebrow hero-eyebrow-thin">{{ screen.eyebrow }}</p>
+      <h1>{{ screen.title }}</h1>
+      <p class="lead">
+        {{ screen.lead }}
+      </p>
+
+      <div class="hero-points">
+        {% for point in screen.points %}
+          <span>{{ point }}</span>
+        {% endfor %}
+      </div>
+
+      <div class="hero-actions hero-actions-xl">
+        <a class="btn btn-primary btn-hero-xl" href="{{ screen.primary_href }}">{{ screen.primary_label }}</a>
+        {% if screen.secondary_href and screen.secondary_label %}
+          <a class="btn btn-secondary btn-hero-xl" href="{{ screen.secondary_href }}">{{ screen.secondary_label }}</a>
+        {% endif %}
+      </div>
+
+      {% if screen.note %}
+        <p class="screen-note">{{ screen.note }}</p>
+      {% endif %}
+    </div>
+
+    <div class="info-panel reviews-panel">
+      <div class="reviews-list">
+        {% for review in screen.reviews_list %}
+          <article class="review-card">
+            <div class="review-card-top">
+              <div class="review-author">{{ review.name }}</div>
+              <div class="review-badge">{{ review.badge }}</div>
+            </div>
+            <p class="review-text">{{ review.text }}</p>
+          </article>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+
 {% else %}
 <section class="hero hero-home hero-home-photo hero-screen">
   <div class="container hero-grid hero-grid-photo hero-grid-screen">
