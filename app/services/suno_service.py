@@ -27,7 +27,52 @@ class SongSyncResult:
     raw: dict
 
 
-def start_song_generation(*, order_number: str, lyrics_text: str) -> SongStartResult:
+def build_song_prompt(
+    *,
+    song_style: str | None,
+    song_style_custom: str | None,
+    singer_gender: str | None,
+) -> str:
+    style_map = {
+        "pop": "поп",
+        "rap": "рэп",
+        "rock": "рок",
+        "chanson": "шансон",
+        "indie": "инди",
+        "multi": "несколько стилей",
+    }
+    singer_map = {
+        "male": "мужской голос",
+        "female": "женский голос",
+    }
+
+    prompt_parts: list[str] = []
+
+    if song_style == "custom" and (song_style_custom or "").strip():
+        prompt_parts.append(f"Стиль песни: {song_style_custom.strip()}.")
+    elif song_style in style_map:
+        prompt_parts.append(f"Стиль песни: {style_map[song_style]}.")
+
+    if singer_gender in singer_map:
+        prompt_parts.append(f"Исполнение: {singer_map[singer_gender]}.")
+
+    return " ".join(prompt_parts).strip()
+
+
+def start_song_generation(
+    *,
+    order_number: str,
+    lyrics_text: str,
+    song_style: str | None = None,
+    song_style_custom: str | None = None,
+    singer_gender: str | None = None,
+) -> SongStartResult:
+    prompt_text = build_song_prompt(
+        song_style=song_style,
+        song_style_custom=song_style_custom,
+        singer_gender=singer_gender,
+    )
+
     if settings.SUNO_STUB_MODE:
         stub_job_id = f"stub-{uuid4().hex[:12]}"
         return SongStartResult(
@@ -38,6 +83,10 @@ def start_song_generation(*, order_number: str, lyrics_text: str) -> SongStartRe
                 "order_number": order_number,
                 "lyrics_chars": len(lyrics_text),
                 "job_id": stub_job_id,
+                "song_style": song_style,
+                "song_style_custom": song_style_custom,
+                "singer_gender": singer_gender,
+                "prompt_text": prompt_text,
             },
         )
 
