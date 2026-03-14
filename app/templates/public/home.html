@@ -1,6 +1,65 @@
 {% extends "base.html" %}
 
 {% block content %}
+{% if screen.tracks %}
+<section class="hero hero-home hero-home-photo hero-screen portfolio-screen">
+  <div class="container portfolio-layout">
+    <div class="hero-copy hero-copy-screen portfolio-copy">
+      <p class="eyebrow hero-eyebrow-thin">{{ screen.eyebrow }}</p>
+      <h1>{{ screen.title }}</h1>
+      <p class="lead">
+        {{ screen.lead }}
+      </p>
+
+      <div class="hero-points">
+        {% for point in screen.points %}
+          <span>{{ point }}</span>
+        {% endfor %}
+      </div>
+
+      <div class="hero-actions hero-actions-xl">
+        <a class="btn btn-primary btn-hero-xl" href="{{ screen.primary_href }}">{{ screen.primary_label }}</a>
+        {% if screen.secondary_href and screen.secondary_label %}
+          <a class="btn btn-secondary btn-hero-xl" href="{{ screen.secondary_href }}">{{ screen.secondary_label }}</a>
+        {% endif %}
+      </div>
+
+      {% if screen.note %}
+        <p class="screen-note">{{ screen.note }}</p>
+      {% endif %}
+    </div>
+
+    <div class="portfolio-panel">
+      <div class="portfolio-panel-head">
+        <div>
+          <div class="portfolio-panel-kicker">{{ screen.overlay_title }}</div>
+          <h2>{{ screen.tracks|length }} треков</h2>
+        </div>
+        <div class="portfolio-panel-count">{{ screen.tracks|length }}</div>
+      </div>
+
+      <div class="portfolio-list">
+        {% for track in screen.tracks %}
+          <article class="portfolio-track-card">
+            <div class="portfolio-track-top">
+              <div class="portfolio-track-copy">
+                <div class="portfolio-track-tag">{{ track.tag }}</div>
+                <h3>{{ track.title }}</h3>
+              </div>
+              <span class="portfolio-track-format">{{ track.format }}</span>
+            </div>
+
+            <audio class="portfolio-audio" controls preload="none">
+              <source src="{{ track.url }}" type="{{ track.mime }}">
+              Ваш браузер не поддерживает встроенное аудио.
+            </audio>
+          </article>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+{% else %}
 <section class="hero hero-home hero-home-photo hero-screen">
   <div class="container hero-grid hero-grid-photo hero-grid-screen">
     <div class="hero-copy hero-copy-screen">
@@ -44,4 +103,5 @@
     </div>
   </div>
 </section>
+{% endif %}
 {% endblock %}
