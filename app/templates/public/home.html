@@ -3,7 +3,7 @@
 {% block content %}
 {% if screen.tracks %}
 <section class="hero hero-home hero-home-photo hero-screen portfolio-screen">
-  <div class="container portfolio-layout">
+  <div class="container hero-grid hero-grid-photo hero-grid-screen portfolio-layout">
     <div class="hero-copy hero-copy-screen portfolio-copy">
       <p class="eyebrow hero-eyebrow-thin">{{ screen.eyebrow }}</p>
       <h1>{{ screen.title }}</h1>
@@ -30,14 +30,6 @@
     </div>
 
     <div class="portfolio-panel">
-      <div class="portfolio-panel-head">
-        <div>
-          <div class="portfolio-panel-kicker">{{ screen.overlay_title }}</div>
-          <h2>{{ screen.tracks|length }} треков</h2>
-        </div>
-        <div class="portfolio-panel-count">{{ screen.tracks|length }}</div>
-      </div>
-
       <div class="portfolio-list">
         {% for track in screen.tracks %}
           <article class="portfolio-track-card">
