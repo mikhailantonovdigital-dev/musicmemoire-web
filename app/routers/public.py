@@ -46,8 +46,8 @@ SCREEN_PAGES = {
         ],
         "primary_label": "Создать свою песню",
         "primary_href": "/questionnaire/",
-        "secondary_label": "На главную",
-        "secondary_href": "/",
+        "secondary_label": None,
+        "secondary_href": None,
         "overlay_title": "Аудио-примеры",
         "overlay_items": [
             "реальные примеры под разные поводы",
