@@ -21,8 +21,8 @@ SCREEN_PAGES = {
         ],
         "primary_label": "Хочу песню",
         "primary_href": "/questionnaire/",
-        "secondary_label": "Подробнее",
-        "secondary_href": "/portfolio",
+        "secondary_label": None,
+        "secondary_href": None,
         "overlay_title": "Что важно",
         "overlay_items": [
             "Сначала получаете текст песни, и только потом оплата",
