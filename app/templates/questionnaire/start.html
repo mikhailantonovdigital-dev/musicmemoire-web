@@ -1,58 +1,74 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="section">
+<section class="section questionnaire-stage">
   <div class="container narrow">
-    <p class="eyebrow">Анкета · Шаг 1 из 3</p>
-    <h1>У тебя уже есть готовый текст песни?</h1>
+    <div class="page-shell page-shell-dark questionnaire-shell">
+      <div class="questionnaire-stage-head">
+        <p class="eyebrow">Анкета заказа · Старт</p>
+        <h1>У тебя уже есть готовый текст песни?</h1>
+        <p class="section-lead questionnaire-stage-lead">
+          Сначала определим маршрут заказа: либо сразу работаем с готовым текстом,
+          либо помогаем собрать историю и подготовить 2 варианта текста.
+        </p>
 
-    <div class="consultant-box">
-      <strong>Комментарий консультанта</strong>
-      <p>
-        Если текст уже написан, просто вставь его на следующем шаге — не будем задавать лишние вопросы.
-        Если текста пока нет, мы позже подготовим для тебя 2 версии бесплатно.
-      </p>
+        <div class="questionnaire-route">
+          <span class="is-active">Маршрут</span>
+          <span>Материал</span>
+          <span>Кабинет</span>
+        </div>
+      </div>
+
+      <div class="questionnaire-stack">
+        <div class="consultant-box">
+          <strong>Комментарий консультанта</strong>
+          <p>
+            Если текст уже написан, просто вставь его на следующем шаге — не будем задавать лишние вопросы.
+            Если текста пока нет, позже подготовим для тебя 2 версии, и ты выберешь лучший вариант.
+          </p>
+        </div>
+
+        {% if draft %}
+          <div class="notice">
+            <strong>Черновик:</strong> {{ draft.order_number }}
+          </div>
+        {% endif %}
+
+        {% if error %}
+          <div class="notice notice-error">{{ error }}</div>
+        {% endif %}
+
+        <form class="form-card" method="post" action="/questionnaire/start">
+          <div class="radio-grid">
+            <label class="radio-card">
+              <input
+                type="radio"
+                name="lyrics_mode"
+                value="custom"
+                {% if (form_lyrics_mode or (draft.lyrics_mode if draft else "")) == "custom" %}checked{% endif %}
+              />
+              <span class="radio-card-title">Да, у меня уже есть свой текст</span>
+              <span class="radio-card-text">Сразу перейдём к вставке готового текста песни и закрепим заказ за кабинетом.</span>
+            </label>
+
+            <label class="radio-card">
+              <input
+                type="radio"
+                name="lyrics_mode"
+                value="generate"
+                {% if (form_lyrics_mode or (draft.lyrics_mode if draft else "generate")) == "generate" %}checked{% endif %}
+              />
+              <span class="radio-card-title">Нет, хочу 2 версии текста</span>
+              <span class="radio-card-text">Дальше уточним, как тебе удобнее рассказать историю: текстом или голосом.</span>
+            </label>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Продолжить</button>
+          </div>
+        </form>
+      </div>
     </div>
-
-    {% if draft %}
-      <div class="notice">
-        <strong>Черновик:</strong> {{ draft.order_number }}
-      </div>
-    {% endif %}
-
-    {% if error %}
-      <div class="notice notice-error">{{ error }}</div>
-    {% endif %}
-
-    <form class="form-card" method="post" action="/questionnaire/start">
-      <div class="radio-grid">
-        <label class="radio-card">
-          <input
-            type="radio"
-            name="lyrics_mode"
-            value="custom"
-            {% if (form_lyrics_mode or (draft.lyrics_mode if draft else "")) == "custom" %}checked{% endif %}
-          />
-          <span class="radio-card-title">Да, у меня уже есть свой текст</span>
-          <span class="radio-card-text">Сразу перейдём к вставке готового текста песни.</span>
-        </label>
-
-        <label class="radio-card">
-          <input
-            type="radio"
-            name="lyrics_mode"
-            value="generate"
-            {% if (form_lyrics_mode or (draft.lyrics_mode if draft else "generate")) == "generate" %}checked{% endif %}
-          />
-          <span class="radio-card-title">Нет, хочу 2 версии бесплатно</span>
-          <span class="radio-card-text">Дальше уточним, как тебе удобнее рассказать историю для песни.</span>
-        </label>
-      </div>
-
-      <div class="form-actions">
-        <button type="submit" class="btn btn-primary">Продолжить</button>
-      </div>
-    </form>
   </div>
 </section>
 {% endblock %}
