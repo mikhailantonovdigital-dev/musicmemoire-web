@@ -32,6 +32,11 @@
         <a class="{% if path == '/how-it-works' %}is-active{% endif %}" href="/how-it-works">Как это работает</a>
         <a class="{% if path == '/reviews' %}is-active{% endif %}" href="/reviews">Отзывы клиентов</a>
       </nav>
+      
+      <div class="header-actions">
+        <a class="header-link-btn {% if '/account' in path %}is-active{% endif %}" href="/account/">Кабинет</a>
+        <a class="header-cta {% if '/questionnaire' in path %}is-active{% endif %}" href="/questionnaire/">Создать песню</a>
+      </div>
     </div>
   </header>
 
