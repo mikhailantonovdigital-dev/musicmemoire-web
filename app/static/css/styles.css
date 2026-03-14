@@ -3819,7 +3819,7 @@ strong,
 }
 
 .nav-horizontal {
-  justify-content: flex-end;
+  justify-content: center;
   gap: 10px;
 }
 
@@ -3847,7 +3847,7 @@ strong,
   min-height: 28px;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   border-top: 0;
   color: rgba(233, 239, 255, 0.72);
 }
@@ -3861,7 +3861,7 @@ strong,
   font-size: 13px;
   line-height: 1.5;
   letter-spacing: 0.01em;
-  text-align: center;
+  text-align: left;
 }
 
 .page-marketing-screen {
@@ -3930,10 +3930,10 @@ strong,
 }
 
 .page-marketing-screen .hero-points span {
-  color: #ffffff;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  box-shadow: 0 10px 26px rgba(4, 12, 28, 0.16);
+  color: rgba(236, 242, 255, 0.92);
+  background: transparent;
+  border: 1px solid rgba(184, 194, 214, 0.38);
+  box-shadow: none;
 }
 
 .page-marketing-screen .hero-actions-xl {
@@ -3994,14 +3994,15 @@ strong,
 .page-marketing-screen .hero-visual::before {
   content: "";
   position: absolute;
-  inset: -8% -6%;
+  inset: -14% -12%;
   z-index: 0;
   background:
-    radial-gradient(circle at 20% 28%, rgba(83, 120, 255, 0.18), transparent 24%),
-    radial-gradient(circle at 82% 18%, rgba(143, 96, 255, 0.16), transparent 22%),
-    radial-gradient(circle at 26% 84%, rgba(47, 210, 255, 0.12), transparent 22%);
-  filter: blur(28px);
-  opacity: 0.78;
+    radial-gradient(circle at 22% 30%, rgba(86, 132, 255, 0.30), transparent 28%),
+    radial-gradient(circle at 76% 20%, rgba(120, 106, 255, 0.20), transparent 24%),
+    radial-gradient(circle at 28% 82%, rgba(64, 206, 255, 0.22), transparent 26%),
+    radial-gradient(circle at 72% 72%, rgba(70, 145, 255, 0.18), transparent 24%);
+  filter: blur(42px);
+  opacity: 1;
   pointer-events: none;
 }
 
@@ -4013,7 +4014,10 @@ strong,
   background:
     linear-gradient(135deg, rgba(18, 28, 50, 0.52), rgba(28, 40, 74, 0.36) 44%, rgba(31, 48, 86, 0.32) 100%);
   border: 0;
-  box-shadow: 0 28px 72px rgba(4, 12, 28, 0.30);
+  box-shadow:
+    0 32px 84px rgba(4, 12, 28, 0.34),
+    0 0 88px rgba(74, 122, 255, 0.24),
+    0 0 140px rgba(46, 179, 255, 0.16);
 }
 
 .page-marketing-screen .hero-photo-image {
@@ -4029,9 +4033,9 @@ strong,
 
 .page-marketing-screen .hero-photo-card::after {
   background:
-    radial-gradient(circle at 14% 84%, rgba(56, 170, 255, 0.16), transparent 20%),
-    radial-gradient(circle at 84% 16%, rgba(111, 94, 255, 0.14), transparent 22%),
-    radial-gradient(circle at 54% 52%, rgba(255, 255, 255, 0.03), transparent 28%);
+    radial-gradient(circle at 12% 82%, rgba(63, 182, 255, 0.24), transparent 22%),
+    radial-gradient(circle at 84% 16%, rgba(111, 94, 255, 0.16), transparent 24%),
+    radial-gradient(circle at 50% 52%, rgba(255, 255, 255, 0.04), transparent 30%);
 }
 
 .page-marketing-screen .hero-overlay-card {
