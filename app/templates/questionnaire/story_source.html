@@ -28,7 +28,7 @@
             {% if (form_story_source or (draft.story_source if draft else "text")) == "text" %}checked{% endif %}
           />
           <span class="radio-card-title">Текстом</span>
-          <span class="radio-card-text">Напишешь историю в форме на следующем шаге.</span>
+          <span class="radio-card-text">Напишешь историю текстом в форме на следующем шаге.</span>
         </label>
 
         <label class="radio-card">
@@ -39,7 +39,7 @@
             {% if (form_story_source or (draft.story_source if draft else "")) == "voice" %}checked{% endif %}
           />
           <span class="radio-card-title">Голосом</span>
-          <span class="radio-card-text">Надиктуешь историю прямо на сайте.</span>
+          <span class="radio-card-text">Надиктуешь историю прямо на сайте. Нужен будет микрофон.</span>
         </label>
       </div>
 
