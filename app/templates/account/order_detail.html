@@ -3,13 +3,13 @@
 {% block content %}
 <section class="section">
   <div class="container">
-    <div class="page-shell">
-      <div class="dashboard-intro">
-        <div>
-          <p class="eyebrow">Карточка заказа</p>
+    <div class="page-shell page-shell-dark">
+      <div class="dashboard-hero-dark">
+        <div class="dashboard-hero-copy">
+          <p class="eyebrow eyebrow-dark">Карточка заказа</p>
           <h1>{{ order.order_number }}</h1>
           <p class="section-lead">
-            Здесь собран финальный текст, текущий статус и управление генерацией песни.
+            Здесь собран финальный текст, статус заказа и управление генерацией песни.
           </p>
         </div>
 
@@ -18,7 +18,7 @@
         </div>
       </div>
 
-      <div class="step-meta">
+      <div class="step-meta step-meta-dark">
         <span>Статус заказа: <strong>{{ order.status|replace('_', ' ') }}</strong></span>
         <span>Режим: <strong>{{ "Свой текст" if order.lyrics_mode == "custom" else "2 версии бесплатно" }}</strong></span>
         <span>Источник: <strong>{{ "Голос" if order.story_source == "voice" else "Текст" }}</strong></span>
@@ -27,7 +27,7 @@
 
       <div class="detail-shell">
         <div class="detail-main">
-          <div class="panel-card">
+          <div class="panel-card panel-card-dark">
             <div class="mini-label">Финальный текст</div>
             <h2 class="form-title">Текст заказа</h2>
             <textarea class="textarea textarea-readonly" readonly>{{ order.final_lyrics_text or "Финальный текст пока не сохранён." }}</textarea>
@@ -35,7 +35,7 @@
         </div>
 
         <aside class="aside-stack">
-          <div class="panel-card status-panel">
+          <div class="panel-card status-panel panel-card-dark">
             <div class="mini-label">Текущее состояние</div>
 
             <div class="detail-list">
@@ -56,7 +56,7 @@
             </div>
           </div>
 
-          <div class="panel-card">
+          <div class="panel-card panel-card-dark">
             <div class="mini-label">Песня</div>
 
             {% if latest_song and latest_song.audio_url %}
