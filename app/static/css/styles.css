@@ -4092,33 +4092,80 @@ strong,
 }
 
 @media (max-width: 640px) {
-  .page-marketing-screen .site-header-upgraded .nav {
-    display: flex;
-    overflow-x: auto;
-    flex-wrap: nowrap;
-    width: 100%;
-    padding-bottom: 4px;
+  .page-marketing-screen {
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .page-marketing-screen .site-header,
+  .page-marketing-screen .site-header-upgraded,
+  .page-marketing-screen .site-header-dark {
+    position: relative;
+    background: linear-gradient(180deg, rgba(8, 14, 28, 0.96), rgba(8, 14, 28, 0.72)) !important;
+    backdrop-filter: blur(18px) saturate(110%) !important;
+  }
+
+  .page-marketing-screen .header-shell {
+    min-height: auto;
+    gap: 14px;
+    padding: calc(env(safe-area-inset-top, 0px) + 10px) 0 8px;
   }
 
   .site-header-horizontal .header-shell {
     grid-template-columns: 1fr;
   }
 
-  .page-marketing-screen .header-actions {
+  .page-marketing-screen .site-header-upgraded .nav {
+    display: flex;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
     width: 100%;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+
+  .page-marketing-screen .site-header-upgraded .nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .page-marketing-screen .nav-horizontal {
     justify-content: flex-start;
-    flex-wrap: wrap;
-    margin-top: 10px;
+    gap: 8px;
   }
 
   .page-marketing-screen .nav-horizontal a {
     white-space: nowrap;
+    flex: 0 0 auto;
+  }
+
+  .page-marketing-screen .header-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 4px;
+  }
+
+  .page-marketing-screen .header-link-btn,
+  .page-marketing-screen .header-cta {
+    width: 100%;
+    min-height: 54px;
   }
 
   .page-marketing-screen .hero-screen {
-    min-height: 100vh;
-    padding-top: 108px;
-    padding-bottom: 108px;
+    min-height: auto;
+    align-items: flex-start;
+    padding-top: 24px;
+    padding-bottom: 72px;
+  }
+
+  .page-marketing-screen .hero-grid-screen {
+    gap: 28px;
+  }
+
+  .page-marketing-screen .hero-copy-screen {
+    max-width: none;
   }
 
   .page-marketing-screen .btn-hero-xl {
@@ -4128,10 +4175,15 @@ strong,
     padding: 0 22px;
   }
 
+  .page-marketing-screen .hero-photo-card {
+    min-height: 420px;
+  }
+
   .page-marketing-screen .hero-overlay-card-bottom {
+    left: 14px;
     right: 14px;
     bottom: 14px;
-    max-width: calc(100% - 28px);
+    max-width: none;
     padding: 12px 14px;
     border-radius: 18px;
   }
@@ -4139,6 +4191,18 @@ strong,
   .page-marketing-screen .hero-overlay-list {
     font-size: 14px;
     line-height: 1.42;
+  }
+
+  .site-footer-minimal {
+    position: relative;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    padding: 0 0 18px;
+  }
+
+  .footer-bottom-minimal {
+    min-height: auto;
   }
 }
 /* ===== Commit 11.4 — portfolio screen ===== */
