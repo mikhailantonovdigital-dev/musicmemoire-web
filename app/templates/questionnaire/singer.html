@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="section">
+  <div class="container narrow">
+    <p class="eyebrow">
+      {% if draft.lyrics_mode == "custom" %}
+        Шаг 4 из 5
+      {% else %}
+        Шаг 6 из 7
+      {% endif %}
+    </p>
+    <h1>Кто должен петь песню?</h1>
+
+    <div class="consultant-box">
+      <strong>Комментарий консультанта</strong>
+      <p>
+        Этот выбор тоже уйдёт в генерацию песни и поможет точнее задать итоговое исполнение.
+      </p>
+    </div>
+
+    {% if error %}
+      <div class="notice notice-error">{{ error }}</div>
+    {% endif %}
+
+    <form class="form-card" method="post" action="/questionnaire/singer">
+      <div class="radio-grid">
+        <label class="radio-card">
+          <input type="radio" name="singer_gender" value="male" {% if (form_singer_gender or draft.singer_gender or '') == 'male' %}checked{% endif %} />
+          <span class="radio-card-title">Мужчина</span>
+        </label>
+
+        <label class="radio-card">
+          <input type="radio" name="singer_gender" value="female" {% if (form_singer_gender or draft.singer_gender or '') == 'female' %}checked{% endif %} />
+          <span class="radio-card-title">Женщина</span>
+        </label>
+      </div>
+
+      <div class="form-actions">
+        <a href="/questionnaire/style" class="btn btn-secondary">Назад</a>
+        <button type="submit" class="btn btn-primary">Продолжить</button>
+      </div>
+    </form>
+  </div>
+</section>
+{% endblock %}
