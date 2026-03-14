@@ -336,26 +336,20 @@ function initExclusiveAudioPlayers() {
 function initQuestionnaireGenerationState() {
   const form = document.querySelector("[data-generation-form]");
   const overlay = document.querySelector("[data-generation-overlay]");
+  const submitBtn = document.querySelector("[data-generate-submit]");
 
-  if (!form || !overlay) return;
+  if (!form || !overlay || !submitBtn) return;
 
-  form.addEventListener("submit", (event) => {
-    const submitter = event.submitter;
-    if (!submitter) return;
-
-    if (submitter.value !== "generate") {
-      return;
-    }
-
+  form.addEventListener("submit", () => {
     overlay.hidden = false;
     form.classList.add("is-generating");
 
-    const buttons = form.querySelectorAll("button");
-    buttons.forEach((button) => {
+    const secondaryButtons = form.querySelectorAll('button:not([data-generate-submit])');
+    secondaryButtons.forEach((button) => {
       button.disabled = true;
     });
 
-    submitter.textContent = "Формируем текст...";
+    submitBtn.textContent = "Формируем текст...";
   });
 }
 
