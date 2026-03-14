@@ -32,9 +32,9 @@
               <p>{{ paragraph }}</p>
             {% endfor %}
 
-            {% if section.items %}
+            {% if section.bullet_items %}
               <ul class="legal-list">
-                {% for item in section.items %}
+                {% for item in section.bullet_items %}
                   <li>{{ item }}</li>
                 {% endfor %}
               </ul>
