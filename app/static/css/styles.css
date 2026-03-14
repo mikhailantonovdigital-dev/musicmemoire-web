@@ -3261,3 +3261,19 @@ strong,
     line-height: 1.42 !important;
   }
 }
+/* ===== Commit 11.1.6 — remove dark stripe between hero and first section ===== */
+
+.hero-home-photo + .section-dark-surface {
+  position: relative;
+  margin-top: -36px;
+  padding-top: 104px;
+}
+
+.hero-home-photo + .section-dark-surface::before {
+  display: none !important;
+}
+
+.hero-home-photo + .section-dark-surface .container {
+  position: relative;
+  z-index: 1;
+}
