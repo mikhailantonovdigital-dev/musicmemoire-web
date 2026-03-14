@@ -181,6 +181,15 @@
       <div class="hero-photo-card">
         <div class="hero-photo-image" aria-hidden="true"></div>
       </div>
+    
+      <div class="hero-image-copy" aria-label="{{ screen.overlay_title }}">
+        <div class="hero-image-copy-title">{{ screen.overlay_title }}</div>
+        <ul class="hero-image-copy-list">
+          {% for item in screen.overlay_items %}
+            <li>{{ item }}</li>
+          {% endfor %}
+        </ul>
+      </div>
     </div>
   </div>
 </section>
