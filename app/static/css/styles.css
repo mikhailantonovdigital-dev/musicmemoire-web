@@ -3083,3 +3083,181 @@ strong,
     line-height: 1.48 !important;
   }
 }
+/* ===== Commit 11.1.5 — remove stripe, reduce brightness, integrate header ===== */
+
+.page-home .site-header,
+.page-home .site-header-upgraded,
+.page-home .site-header-dark {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  background: transparent !important;
+  border-bottom: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+.page-home .header-shell {
+  min-height: 92px;
+}
+
+.page-home .hero-home-photo {
+  padding-top: 146px;
+  padding-bottom: 92px;
+  margin-bottom: -28px;
+}
+
+.page-home .hero-home-photo + .section-dark-surface {
+  padding-top: 96px;
+}
+
+.page-home .hero-home-photo + .section-dark-surface::before {
+  inset: 0 0 40px !important;
+  border-top: 0 !important;
+}
+
+.page-home .btn-hero-xl {
+  font-weight: 700 !important;
+  letter-spacing: -0.015em !important;
+}
+
+.page-home .btn-hero-xl.btn-primary {
+  border: 0 !important;
+  outline: none !important;
+  box-shadow: 0 18px 40px rgba(58, 86, 190, 0.24) !important;
+  background: linear-gradient(135deg, #5f7dff 0%, #7678ff 48%, #58c2f3 100%) !important;
+}
+
+.page-home .btn-hero-xl.btn-secondary {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+  box-shadow: 0 16px 34px rgba(7, 14, 27, 0.16) !important;
+}
+
+.page-home .hero-home-photo::before {
+  background:
+    radial-gradient(circle at 8% 16%, rgba(84, 117, 255, 0.24), transparent 24%),
+    radial-gradient(circle at 24% 72%, rgba(40, 208, 255, 0.16), transparent 22%),
+    radial-gradient(circle at 82% 14%, rgba(157, 97, 255, 0.20), transparent 20%),
+    radial-gradient(circle at 76% 82%, rgba(76, 193, 255, 0.14), transparent 18%),
+    radial-gradient(circle at 52% 34%, rgba(76, 110, 255, 0.10), transparent 28%),
+    linear-gradient(180deg, rgba(7, 14, 27, 0.04), rgba(7, 14, 27, 0.00)) !important;
+}
+
+.page-home .hero-home-photo::after {
+  inset: -70px -50px auto -50px !important;
+  height: 420px !important;
+  background:
+    radial-gradient(circle at 14% 28%, rgba(91, 121, 255, 0.22), transparent 30%),
+    radial-gradient(circle at 70% 24%, rgba(123, 96, 255, 0.20), transparent 26%),
+    radial-gradient(circle at 52% 68%, rgba(45, 200, 255, 0.16), transparent 24%) !important;
+  filter: blur(24px) !important;
+  opacity: 0.9 !important;
+}
+
+.page-home .hero-visual::before {
+  background:
+    radial-gradient(circle at 20% 28%, rgba(83, 120, 255, 0.18), transparent 24%),
+    radial-gradient(circle at 82% 18%, rgba(143, 96, 255, 0.16), transparent 22%),
+    radial-gradient(circle at 26% 84%, rgba(47, 210, 255, 0.12), transparent 22%) !important;
+  filter: blur(28px) !important;
+  opacity: 0.78 !important;
+}
+
+.page-home .hero-photo-card {
+  background:
+    linear-gradient(135deg, rgba(18, 28, 50, 0.52), rgba(28, 40, 74, 0.36) 44%, rgba(31, 48, 86, 0.32) 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.07) !important;
+  box-shadow:
+    0 28px 72px rgba(4, 12, 28, 0.30),
+    0 0 0 1px rgba(111, 140, 255, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+}
+
+.page-home .hero-photo-image {
+  background:
+    linear-gradient(180deg, rgba(8, 16, 30, 0.02), rgba(8, 16, 30, 0.12)),
+    linear-gradient(135deg, rgba(104, 129, 255, 0.10), rgba(98, 222, 255, 0.05) 48%, rgba(162, 106, 255, 0.08) 100%),
+    url("/static/img/hero-gift-song.jpg") !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  filter: brightness(1.10) saturate(1.04) contrast(0.99) !important;
+}
+
+.page-home .hero-photo-card::after {
+  background:
+    radial-gradient(circle at 14% 84%, rgba(56, 170, 255, 0.16), transparent 20%),
+    radial-gradient(circle at 84% 16%, rgba(111, 94, 255, 0.14), transparent 22%),
+    radial-gradient(circle at 54% 52%, rgba(255, 255, 255, 0.03), transparent 28%) !important;
+}
+
+.page-home .hero-overlay-card {
+  background: rgba(26, 37, 56, 0.30) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow:
+    0 14px 32px rgba(4, 12, 28, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+  backdrop-filter: blur(12px) saturate(108%) !important;
+}
+
+.page-home .hero-overlay-card-bottom {
+  max-width: 320px !important;
+  padding: 14px 16px !important;
+  border-radius: 20px !important;
+}
+
+.page-home .hero-overlay-badge {
+  min-height: 30px !important;
+  padding: 0 10px !important;
+  margin-bottom: 10px !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+}
+
+.page-home .hero-overlay-list {
+  font-size: 15px !important;
+  line-height: 1.48 !important;
+  padding-left: 18px !important;
+}
+
+@media (max-width: 980px) {
+  .page-home .hero-home-photo {
+    padding-top: 132px;
+    margin-bottom: -20px;
+  }
+
+  .page-home .btn-hero-xl {
+    min-height: 72px !important;
+    padding: 0 30px !important;
+    font-size: 20px !important;
+  }
+}
+
+@media (max-width: 680px) {
+  .page-home .hero-home-photo {
+    padding-top: 118px;
+    margin-bottom: -14px;
+  }
+
+  .page-home .btn-hero-xl {
+    width: 100%;
+    min-height: 62px !important;
+    font-size: 18px !important;
+    padding: 0 22px !important;
+  }
+
+  .page-home .hero-overlay-card-bottom {
+    max-width: calc(100% - 28px) !important;
+    padding: 12px 14px !important;
+    border-radius: 18px !important;
+  }
+
+  .page-home .hero-overlay-list {
+    font-size: 14px !important;
+    line-height: 1.42 !important;
+  }
+}
