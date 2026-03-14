@@ -10,6 +10,7 @@
       <span>Статус заказа: <strong>{{ order.status }}</strong></span>
       <span>Режим: <strong>{{ "Свой текст" if order.lyrics_mode == "custom" else "2 версии бесплатно" }}</strong></span>
       <span>Источник: <strong>{{ "Голос" if order.story_source == "voice" else "Текст" }}</strong></span>
+      <span>Оплата: <strong>{{ payment_status_label }}</strong></span>
       <span>Генерация: <strong>{{ song_status_label }}</strong></span>
     </div>
 
@@ -34,7 +35,11 @@
       {% endif %}
 
       <div class="form-actions">
-        {% if latest_song and song_is_running %}
+        {% if can_pay_order %}
+          <form method="post" action="/checkout/start/{{ order.public_id }}">
+            <button type="submit" class="btn btn-primary">{{ payment_cta_label }}</button>
+          </form>
+        {% elif latest_song and song_is_running %}
           <a href="/songs/status?job={{ latest_song.public_id }}" class="btn btn-primary">Открыть статус</a>
         {% elif latest_song and song_is_failed %}
           <form method="post" action="/songs/retry/{{ latest_song.public_id }}">
@@ -50,6 +55,7 @@
           <span class="btn btn-secondary">Генерация после оплаты</span>
         {% endif %}
       </div>
+      
     </div>
 
     <div class="form-actions">
