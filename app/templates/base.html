@@ -22,15 +22,14 @@
         <span class="logo-badge">MM</span>
         <span class="brand-copy">
           <span class="logo-text">Music Memoire</span>
-          <span class="brand-subtitle">Персональные песни в подарок</span>
         </span>
       </a>
 
       <nav class="nav nav-upgraded nav-dark nav-horizontal">
         <a class="{% if path == '/' %}is-active{% endif %}" href="/">Главная</a>
         <a class="{% if path == '/portfolio' %}is-active{% endif %}" href="/portfolio">Портфолио</a>
-        <a class="{% if path == '/how-it-works' %}is-active{% endif %}" href="/how-it-works">Как это работает</a>
-        <a class="{% if path == '/reviews' %}is-active{% endif %}" href="/reviews">Отзывы клиентов</a>
+        <a class="{% if path == '/how-it-works' %}is-active{% endif %}" href="/how-it-works">Как работает</a>
+        <a class="{% if path == '/reviews' %}is-active{% endif %}" href="/reviews">Отзывы</a>
       </nav>
       
       <div class="header-actions">
@@ -44,11 +43,11 @@
     {% block content %}{% endblock %}
   </main>
 
-  <footer class="site-footer site-footer-minimal site-footer-dark">
-    <div class="container footer-bottom footer-bottom-minimal">
-      <p>© Music Memoire</p>
-    </div>
-  </footer>
+<footer class="site-footer site-footer-minimal site-footer-dark">
+  <div class="container footer-bottom footer-bottom-minimal">
+    <p>© Music Memoire. Копирование и распространение материалов разрешены только при указании активной ссылки на источник.</p>
+  </div>
+</footer>
 
   <script src="/static/js/app.js"></script>
 </body>
