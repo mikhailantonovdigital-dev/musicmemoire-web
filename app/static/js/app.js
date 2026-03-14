@@ -310,6 +310,35 @@ function initLyricsPicker() {
   });
 }
 
+function initSongStylePicker() {
+  const root = document.querySelector("[data-song-style-form]");
+  if (!root) return;
+
+  const radios = root.querySelectorAll('input[name="song_style"]');
+  const detailWrap = root.querySelector("[data-style-detail-wrap]");
+  const detailInput = root.querySelector("[data-style-detail-input]");
+
+  if (!radios.length || !detailWrap || !detailInput) return;
+
+  function syncDetailField() {
+    const selected = root.querySelector('input[name="song_style"]:checked');
+    const needsDetails = selected && (selected.value === "multi" || selected.value === "custom");
+
+    detailWrap.hidden = !needsDetails;
+    detailInput.required = !!needsDetails;
+
+    if (!needsDetails) {
+      detailInput.value = "";
+    }
+  }
+
+  radios.forEach((radio) => {
+    radio.addEventListener("change", syncDetailField);
+  });
+
+  syncDetailField();
+}
+
 function initExclusiveAudioPlayers() {
   const players = Array.from(document.querySelectorAll('[data-exclusive-audio-group]'));
   if (!players.length) return;
@@ -385,7 +414,5 @@ function initSongStylePicker() {
 document.addEventListener("DOMContentLoaded", () => {
   initVoiceRecorder();
   initLyricsPicker();
-  initExclusiveAudioPlayers();
-  initQuestionnaireGenerationState();
   initSongStylePicker();
 });
