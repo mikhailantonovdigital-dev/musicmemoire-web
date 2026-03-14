@@ -44,7 +44,6 @@
               <h2>Вариант {{ loop.index }}</h2>
               <p class="lyrics-angle">Персональный текст песни</p>
             </div>
-            <span class="variant-chip">Вариант {{ loop.index }}</span>
           </div>
 
           <textarea class="textarea textarea-readonly" readonly>{{ version.lyrics_text }}</textarea>
@@ -76,7 +75,11 @@
         {% endfor %}
       </div>
 
-      <label class="form-label" for="final_lyrics_text">Финальный текст</label>
+      <div class="final-lyrics-block">
+        <label class="form-label final-lyrics-label" for="final_lyrics_text">Финальный текст</label>
+        <p class="helper-text final-lyrics-help">Можно отредактировать перед созданием песни.</p>
+      </div>
+
       <textarea
         id="final_lyrics_text"
         name="final_lyrics_text"
