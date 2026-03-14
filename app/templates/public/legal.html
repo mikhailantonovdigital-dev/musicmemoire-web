@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="legal-screen">
+  <div class="container legal-shell">
+    <div class="legal-hero-card">
+      <p class="eyebrow hero-eyebrow-thin">{{ legal_page.eyebrow }}</p>
+      <h1>{{ legal_page.title }}</h1>
+      <p class="lead">{{ legal_page.lead }}</p>
+      <div class="legal-hero-meta">
+        <span>Music Memoire</span>
+        <span>{{ legal_page.updated_at }}</span>
+      </div>
+    </div>
+
+    <div class="legal-layout">
+      <aside class="legal-side-card">
+        <div class="legal-side-kicker">Содержание</div>
+        <nav class="legal-nav">
+          {% for section in legal_page.sections %}
+            <a href="#section-{{ loop.index }}">{{ loop.index }}. {{ section.title }}</a>
+          {% endfor %}
+        </nav>
+      </aside>
+
+      <div class="legal-main-card">
+        {% for section in legal_page.sections %}
+          <section class="legal-section" id="section-{{ loop.index }}">
+            <h2>{{ section.title }}</h2>
+
+            {% for paragraph in section.paragraphs %}
+              <p>{{ paragraph }}</p>
+            {% endfor %}
+
+            {% if section.items %}
+              <ul class="legal-list">
+                {% for item in section.items %}
+                  <li>{{ item }}</li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+          </section>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
