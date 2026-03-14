@@ -41,7 +41,7 @@
               <span class="portfolio-track-format">{{ track.format }}</span>
             </div>
 
-            <audio class="portfolio-audio" controls preload="none">
+            <audio class="portfolio-audio" controls preload="none" data-exclusive-audio-group="portfolio">
               <source src="{{ track.url }}" type="{{ track.mime }}">
               Ваш браузер не поддерживает встроенное аудио.
             </audio>
@@ -156,8 +156,9 @@
         {% endfor %}
       </div>
 
-      <div class="hero-actions hero-actions-xl">
+      <div class="hero-actions hero-actions-xl hero-actions-home">
         <a class="btn btn-primary btn-hero-xl" href="{{ screen.primary_href }}">{{ screen.primary_label }}</a>
+        <span class="hero-cta-note">2 варианта песни бесплатно</span>
         {% if screen.secondary_href and screen.secondary_label %}
           <a class="btn btn-secondary btn-hero-xl" href="{{ screen.secondary_href }}">{{ screen.secondary_label }}</a>
         {% endif %}
@@ -171,15 +172,6 @@
     <div class="hero-visual">
       <div class="hero-photo-card">
         <div class="hero-photo-image" aria-hidden="true"></div>
-
-        <article class="hero-overlay-card hero-overlay-card-bottom">
-          <div class="hero-overlay-badge">{{ screen.overlay_title }}</div>
-          <ul class="hero-overlay-list">
-            {% for item in screen.overlay_items %}
-              <li>{{ item }}</li>
-            {% endfor %}
-          </ul>
-        </article>
       </div>
     </div>
   </div>
