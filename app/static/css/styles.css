@@ -5435,3 +5435,21 @@ strong,
     margin-top: 24px;
   }
 }
+/* ===== Commit 12.6.5 — separate style + singer steps ===== */
+
+.questionnaire-extra-field {
+  margin-top: 16px;
+}
+
+.final-lyrics-block {
+  margin-top: 28px;
+  margin-bottom: 12px;
+}
+
+.final-lyrics-label {
+  margin-bottom: 6px;
+}
+
+.final-lyrics-help {
+  margin: 0;
+}
