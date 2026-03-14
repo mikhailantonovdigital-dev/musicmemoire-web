@@ -99,6 +99,10 @@
           </div>
         </form>
 
+{% set support_title = "Нужна помощь с анкетой?" %}
+{% set support_text = "Если не понимаешь, что лучше написать или как записать историю голосом, напиши нам. Мы подскажем." %}
+{% include "partials/support_card.html" with context %}
+
         {% if latest_voice %}
           <div class="audio-card">
             <div class="audio-meta">
