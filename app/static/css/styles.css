@@ -4565,3 +4565,212 @@ strong,
     max-height: 474px;
   }
 }
+/* ===== Commit 11.5 — how + reviews screens ===== */
+
+.page-marketing-screen .info-screen {
+  padding-top: 124px;
+  padding-bottom: 124px;
+  min-height: 100vh;
+}
+
+.page-marketing-screen .info-layout {
+  gap: 34px;
+  align-items: center;
+}
+
+.page-marketing-screen .info-copy {
+  max-width: 620px;
+}
+
+.page-marketing-screen .info-panel {
+  position: relative;
+  overflow: hidden;
+  padding: 24px;
+  border-radius: 34px;
+  background:
+    linear-gradient(135deg, rgba(18, 28, 50, 0.52), rgba(28, 40, 74, 0.36) 44%, rgba(31, 48, 86, 0.32) 100%);
+  box-shadow:
+    0 32px 84px rgba(4, 12, 28, 0.34),
+    0 0 88px rgba(74, 122, 255, 0.20),
+    0 0 140px rgba(46, 179, 255, 0.12);
+  min-height: 620px;
+  max-height: 620px;
+}
+
+.page-marketing-screen .info-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 10% 16%, rgba(84, 117, 255, 0.18), transparent 24%),
+    radial-gradient(circle at 82% 18%, rgba(157, 97, 255, 0.16), transparent 20%),
+    radial-gradient(circle at 78% 78%, rgba(76, 193, 255, 0.12), transparent 18%);
+  pointer-events: none;
+}
+
+.page-marketing-screen .how-list,
+.page-marketing-screen .reviews-list {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 14px;
+  max-height: 572px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.page-marketing-screen .how-list::-webkit-scrollbar,
+.page-marketing-screen .reviews-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.page-marketing-screen .how-list::-webkit-scrollbar-thumb,
+.page-marketing-screen .reviews-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+}
+
+.page-marketing-screen .how-step-card,
+.page-marketing-screen .review-card {
+  border-radius: 22px;
+  background: rgba(26, 37, 56, 0.34);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 14px 32px rgba(4, 12, 28, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(12px) saturate(108%);
+}
+
+.page-marketing-screen .how-step-card {
+  display: grid;
+  grid-template-columns: 74px 1fr;
+  gap: 18px;
+  align-items: flex-start;
+  padding: 18px;
+}
+
+.page-marketing-screen .how-step-num {
+  min-width: 74px;
+  min-height: 74px;
+  border-radius: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(95, 125, 255, 0.28), rgba(88, 194, 243, 0.18));
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  color: #ffffff;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.page-marketing-screen .how-step-body h3 {
+  margin: 0 0 10px;
+  color: #ffffff;
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.page-marketing-screen .how-step-body p {
+  margin: 0;
+  color: rgba(221, 230, 247, 0.84);
+  line-height: 1.65;
+  font-size: 15px;
+}
+
+.page-marketing-screen .review-card {
+  padding: 18px;
+}
+
+.page-marketing-screen .review-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.page-marketing-screen .review-author {
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.page-marketing-screen .review-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  color: #dbe4ff;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid rgba(184, 194, 214, 0.38);
+  white-space: nowrap;
+}
+
+.page-marketing-screen .review-text {
+  margin: 0;
+  color: rgba(221, 230, 247, 0.88);
+  line-height: 1.7;
+  font-size: 15px;
+}
+
+@media (max-width: 1080px) {
+  .page-marketing-screen .info-layout {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .page-marketing-screen .info-panel {
+    min-height: 560px;
+    max-height: 560px;
+  }
+
+  .page-marketing-screen .how-list,
+  .page-marketing-screen .reviews-list {
+    max-height: 512px;
+  }
+}
+
+@media (max-width: 640px) {
+  .page-marketing-screen .info-screen {
+    padding-top: 108px;
+    padding-bottom: 108px;
+  }
+
+  .page-marketing-screen .info-panel {
+    padding: 18px;
+    border-radius: 24px;
+    min-height: 520px;
+    max-height: 520px;
+  }
+
+  .page-marketing-screen .how-step-card {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .page-marketing-screen .how-step-num {
+    min-width: 58px;
+    min-height: 58px;
+    border-radius: 18px;
+    font-size: 20px;
+  }
+
+  .page-marketing-screen .how-step-body h3,
+  .page-marketing-screen .review-author {
+    font-size: 18px;
+  }
+
+  .page-marketing-screen .review-card-top {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .page-marketing-screen .how-list,
+  .page-marketing-screen .reviews-list {
+    max-height: 474px;
+  }
+}
