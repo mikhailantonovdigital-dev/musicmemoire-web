@@ -6,6 +6,108 @@ templates = Jinja2Templates(directory="app/templates")
 
 router = APIRouter()
 
+SCREEN_PAGES = {
+    "home": {
+        "page_title": "Music Memoire — персональные песни в подарок",
+        "eyebrow": "Ваша индивидуальная история с Вами навсегда!",
+        "title": "Создайте песню по вашей истории: от идеи до готового трека",
+        "lead": (
+            "Расскажите историю текстом или голосом, получите 2 версии текста бесплатно, "
+            "выберите лучший вариант и получите песню."
+        ),
+        "points": [
+            "2 версии текста бесплатно",
+            "История голосом или текстом",
+        ],
+        "primary_label": "Хочу песню",
+        "primary_href": "/questionnaire/",
+        "secondary_label": "Подробнее",
+        "secondary_href": "/portfolio",
+        "overlay_title": "Что важно",
+        "overlay_items": [
+            "Сначала получаете текст песни, и только потом оплата",
+            "Можете рассказать свою историю голосовым",
+            "50% скидка на второй и следующие заказы в течение дня",
+        ],
+        "note": "",
+    },
+    "portfolio": {
+        "page_title": "Портфолио — Music Memoire",
+        "eyebrow": "Портфолио",
+        "title": "Отдельный экран с примерами и сценариями персональной песни",
+        "lead": (
+            "Здесь будут собираться примеры под разные поводы: романтика, семья, свадьба, "
+            "день рождения и другие жизненные события."
+        ),
+        "points": [
+            "Романтика",
+            "Семья",
+            "Свадьба и юбилей",
+        ],
+        "primary_label": "Хочу свою песню",
+        "primary_href": "/questionnaire/",
+        "secondary_label": "Как это работает",
+        "secondary_href": "/how-it-works",
+        "overlay_title": "Что покажем здесь",
+        "overlay_items": [
+            "примеры под разные поводы и сценарии",
+            "отдельные категории подарочных песен",
+            "переход из примера сразу в анкету",
+        ],
+        "note": "",
+    },
+    "how": {
+        "page_title": "Как это работает — Music Memoire",
+        "eyebrow": "Как это работает",
+        "title": "Путь пользователя понятен: история → тексты → кабинет → оплата → результат",
+        "lead": (
+            "Оставляем отдельный экран, где в одном месте будет показан весь сценарий сервиса "
+            "без длинного вертикального полотна."
+        ),
+        "points": [
+            "Пошаговая анкета",
+            "2 версии текста",
+            "Кабинет со статусами",
+        ],
+        "primary_label": "Начать анкету",
+        "primary_href": "/questionnaire/",
+        "secondary_label": "Отзывы клиентов",
+        "secondary_href": "/reviews",
+        "overlay_title": "Основной сценарий",
+        "overlay_items": [
+            "история текстом или голосом",
+            "пользователь сначала видит тексты",
+            "оплата и результат идут дальше по цепочке",
+        ],
+        "note": "",
+    },
+    "reviews": {
+        "page_title": "Отзывы клиентов — Music Memoire",
+        "eyebrow": "Отзывы клиентов",
+        "title": "Отдельный экран под реальные отзывы без перегруза главной страницы",
+        "lead": (
+            "Пока фиксируем структуру страницы. Позже сюда добавим только реальные отзывы и кейсы, "
+            "без выдуманных цитат и лишнего шума."
+        ),
+        "points": [
+            "Только реальные отзывы",
+            "Отдельный экран под кейсы",
+            "В том же стиле, что и главная",
+        ],
+        "primary_label": "Хочу песню",
+        "primary_href": "/questionnaire/",
+        "secondary_label": "Главная",
+        "secondary_href": "/",
+        "overlay_title": "Что будет здесь",
+        "overlay_items": [
+            "живые отзывы после получения песни",
+            "кейсы под разные поводы и сценарии",
+            "быстрый переход из отзыва в анкету",
+        ],
+        "note": "Сейчас это честная заготовка под будущие реальные отзывы клиентов.",
+    },
+}
+
 BLOG_POSTS = [
     {
         "slug": "podarok-muzhchine-u-kotorogo-vse-est",
@@ -76,17 +178,36 @@ BLOG_POSTS = [
 ]
 
 
-@router.get("/", response_class=HTMLResponse)
-async def home(request: Request):
-    featured_posts = BLOG_POSTS[:3]
+def render_screen(request: Request, key: str):
+    screen = SCREEN_PAGES[key]
     return templates.TemplateResponse(
         "public/home.html",
         {
             "request": request,
-            "page_title": "Music Memoire — персональные песни в подарок",
-            "featured_posts": featured_posts,
+            "page_title": screen["page_title"],
+            "screen": screen,
         },
     )
+
+
+@router.get("/", response_class=HTMLResponse)
+async def home(request: Request):
+    return render_screen(request, "home")
+
+
+@router.get("/portfolio", response_class=HTMLResponse)
+async def portfolio_page(request: Request):
+    return render_screen(request, "portfolio")
+
+
+@router.get("/how-it-works", response_class=HTMLResponse)
+async def how_it_works_page(request: Request):
+    return render_screen(request, "how")
+
+
+@router.get("/reviews", response_class=HTMLResponse)
+async def reviews_page(request: Request):
+    return render_screen(request, "reviews")
 
 
 @router.get("/blog", response_class=HTMLResponse)
