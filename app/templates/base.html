@@ -10,14 +10,15 @@
   />
   <link rel="stylesheet" href="/static/css/styles.css" />
 </head>
-<body>
-  <div class="page-bg"></div>
+<body class="theme-dark-premium">
+  <div class="page-bg page-bg-dark"></div>
+  <div class="page-noise"></div>
 
   {% set path = request.url.path %}
 
-  <header class="site-header site-header-upgraded">
+  <header class="site-header site-header-upgraded site-header-dark">
     <div class="container header-shell">
-      <a href="/" class="brand">
+      <a href="/" class="brand brand-dark">
         <span class="logo-badge">MM</span>
         <span class="brand-copy">
           <span class="logo-text">Music Memoire</span>
@@ -25,7 +26,7 @@
         </span>
       </a>
 
-      <nav class="nav nav-upgraded">
+      <nav class="nav nav-upgraded nav-dark">
         <a class="{% if path == '/' %}is-active{% endif %}" href="/">Главная</a>
         <a href="/#portfolio">Примеры</a>
         <a href="/#how-it-works">Как это работает</a>
@@ -44,7 +45,7 @@
     {% block content %}{% endblock %}
   </main>
 
-  <footer class="site-footer site-footer-upgraded">
+  <footer class="site-footer site-footer-upgraded site-footer-dark">
     <div class="container footer-shell">
       <div class="footer-brand-block">
         <div class="footer-brand">
@@ -52,10 +53,10 @@
           <span class="logo-text">Music Memoire</span>
         </div>
         <p class="footer-text">
-          Сервис персональных песен в подарок: от истории и текста до готового результата в личном кабинете.
+          Персональные песни в подарок: от истории и текста до оплаты, статусов и результата в личном кабинете.
         </p>
         <p class="footer-note">
-          Сначала пользователь проходит анкету, получает 2 версии текста, а потом уже принимает решение об оплате.
+          Пользователь сначала получает 2 версии текста, а затем уже принимает решение об оплате и генерации.
         </p>
       </div>
 
@@ -90,7 +91,7 @@
     </div>
   </footer>
 
-  <div class="support-fab">
+  <div class="support-fab support-fab-dark">
     <div class="support-fab-label">Нужна помощь?</div>
     <a
       href="https://t.me/mikhailantonov19"
