@@ -4,17 +4,23 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{{ page_title or "Music Memoire" }}</title>
+  <meta name="description" content="Персональные песни в подарок: история текстом или голосом, бесплатные версии текста, оплата и готовый трек в личном кабинете." />
   <link rel="stylesheet" href="/static/css/styles.css" />
 </head>
 <body>
   <header class="site-header">
     <div class="container header-row">
-      <a href="/" class="logo">Music Memoire</a>
+      <a href="/" class="logo">
+        <span class="logo-badge">MM</span>
+        <span>Music Memoire</span>
+      </a>
+
       <nav class="nav">
-        <a href="/">Главная</a>
-        <a href="/questionnaire/">Анкета</a>
-        <a href="/account/">Кабинет</a>
-        <a href="/admin/">Админка</a>
+        <a href="/#portfolio">Портфолио</a>
+        <a href="/#how-it-works">Как это работает</a>
+        <a href="/#faq">FAQ</a>
+        <a href="/blog">Блог</a>
+        <a href="/questionnaire/" class="nav-cta">Хочу песню</a>
       </nav>
     </div>
   </header>
@@ -23,9 +29,36 @@
     {% block content %}{% endblock %}
   </main>
 
+  <a class="support-float" href="https://t.me/mikhailantonov19" target="_blank" rel="noopener noreferrer">
+    Нужна помощь?
+  </a>
+
   <footer class="site-footer">
-    <div class="container">
-      <p>© Music Memoire</p>
+    <div class="container footer-grid">
+      <div>
+        <div class="footer-brand">Music Memoire</div>
+        <p class="footer-text">
+          Персональные песни в подарок: от истории до готового трека в личном кабинете.
+        </p>
+      </div>
+
+      <div>
+        <div class="footer-title">Навигация</div>
+        <div class="footer-links">
+          <a href="/">Главная</a>
+          <a href="/questionnaire/">Анкета</a>
+          <a href="/account/">Кабинет</a>
+          <a href="/blog">Блог</a>
+        </div>
+      </div>
+
+      <div>
+        <div class="footer-title">Поддержка</div>
+        <div class="footer-links">
+          <a href="https://t.me/mikhailantonov19" target="_blank" rel="noopener noreferrer">Telegram</a>
+          <a href="https://max.ru/u/f9LHodD0cOKg36L-baFKeBJquxSx5xydupa2AYOKdl7BUFipfVYS5FVVV80" target="_blank" rel="noopener noreferrer">MAX</a>
+        </div>
+      </div>
     </div>
   </footer>
 
