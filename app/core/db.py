@@ -53,9 +53,18 @@ def run_bootstrap_migrations() -> None:
     if "orders" in inspector.get_table_names():
         order_columns = {col["name"] for col in inspector.get_columns("orders")}
 
-        if "final_lyrics_text" not in order_columns:
-            with engine.begin() as conn:
+        with engine.begin() as conn:
+            if "final_lyrics_text" not in order_columns:
                 conn.execute(text("ALTER TABLE orders ADD COLUMN final_lyrics_text TEXT"))
+
+            if "song_style" not in order_columns:
+                conn.execute(text("ALTER TABLE orders ADD COLUMN song_style VARCHAR(32)"))
+
+            if "song_style_custom" not in order_columns:
+                conn.execute(text("ALTER TABLE orders ADD COLUMN song_style_custom TEXT"))
+
+            if "singer_gender" not in order_columns:
+                conn.execute(text("ALTER TABLE orders ADD COLUMN singer_gender VARCHAR(16)"))
 
     if "magic_login_tokens" not in inspector.get_table_names():
         # table creation will be handled by create_all below, this branch is only for clarity
