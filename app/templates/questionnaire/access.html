@@ -16,7 +16,8 @@
       <div class="consultant-box">
         <strong>Комментарий консультанта</strong>
         <p>
-          Укажи email, и мы создадим личный кабинет с этим заказом.
+          Укажи email, выбери стиль песни и кто должен её исполнять.
+          Эти параметры потом тоже уйдут в генерацию песни.
           {% if stub_mode %}
             Пока письмо не отправляем: после сохранения покажем временную кнопку входа прямо на сайте.
           {% else %}
@@ -37,14 +38,111 @@
         </div>
       {% endif %}
 
+      {% if error %}
+        <div class="notice notice-error">{{ error }}</div>
+      {% endif %}
+
+      <form class="form-card questionnaire-access-form" method="post" action="/questionnaire/access" data-song-style-root>
+        <label class="form-label" for="email">Email</label>
+        <input
+          id="email"
+          name="email"
+          type="email"
+          class="text-input"
+          placeholder="name@example.com"
+          value="{{ form_email or '' }}"
+          required
+        />
+
+        <div class="questionnaire-form-section">
+          <h2 class="form-title">Стиль песни</h2>
+          <p class="helper-text section-helper-text">Этот выбор уйдёт в промт для генерации песни.</p>
+
+          <div class="radio-grid song-style-grid">
+            <label class="radio-card">
+              <input type="radio" name="song_style" value="pop" {% if (form_song_style or draft.song_style or '') == 'pop' %}checked{% endif %} />
+              <span class="radio-card-title">Поп</span>
+            </label>
+
+            <label class="radio-card">
+              <input type="radio" name="song_style" value="rap" {% if (form_song_style or draft.song_style or '') == 'rap' %}checked{% endif %} />
+              <span class="radio-card-title">Рэп</span>
+            </label>
+
+            <label class="radio-card">
+              <input type="radio" name="song_style" value="rock" {% if (form_song_style or draft.song_style or '') == 'rock' %}checked{% endif %} />
+              <span class="radio-card-title">Рок</span>
+            </label>
+
+            <label class="radio-card">
+              <input type="radio" name="song_style" value="chanson" {% if (form_song_style or draft.song_style or '') == 'chanson' %}checked{% endif %} />
+              <span class="radio-card-title">Шансон</span>
+            </label>
+
+            <label class="radio-card">
+              <input type="radio" name="song_style" value="indie" {% if (form_song_style or draft.song_style or '') == 'indie' %}checked{% endif %} />
+              <span class="radio-card-title">Инди</span>
+            </label>
+
+            <label class="radio-card">
+              <input type="radio" name="song_style" value="multi" {% if (form_song_style or draft.song_style or '') == 'multi' %}checked{% endif %} />
+              <span class="radio-card-title">Несколько стилей</span>
+            </label>
+
+            <label class="radio-card">
+              <input type="radio" name="song_style" value="custom" {% if (form_song_style or draft.song_style or '') == 'custom' %}checked{% endif %} />
+              <span class="radio-card-title">Свой вариант</span>
+              <span class="radio-card-text">Можно написать свой стиль ниже.</span>
+            </label>
+          </div>
+
+          <div class="custom-style-wrap" data-custom-style-wrap {% if (form_song_style or draft.song_style or '') != 'custom' %}hidden{% endif %}>
+            <label class="form-label" for="song_style_custom">Свой вариант стиля</label>
+            <input
+              id="song_style_custom"
+              name="song_style_custom"
+              type="text"
+              class="text-input"
+              data-custom-style-input
+              placeholder="Например: поп-рок с лиричным припевом"
+              value="{{ form_song_style_custom or draft.song_style_custom or '' }}"
+            />
+          </div>
+        </div>
+
+        <div class="questionnaire-form-section">
+          <h2 class="form-title">Кто должен петь песню?</h2>
+          <p class="helper-text section-helper-text">Этот выбор тоже уйдёт в генерацию песни.</p>
+
+          <div class="radio-grid singer-gender-grid">
+            <label class="radio-card">
+              <input type="radio" name="singer_gender" value="male" {% if (form_singer_gender or draft.singer_gender or '') == 'male' %}checked{% endif %} />
+              <span class="radio-card-title">Мужчина</span>
+            </label>
+
+            <label class="radio-card">
+              <input type="radio" name="singer_gender" value="female" {% if (form_singer_gender or draft.singer_gender or '') == 'female' %}checked{% endif %} />
+              <span class="radio-card-title">Женщина</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <a href="{% if draft.lyrics_mode == 'custom' %}/questionnaire/custom-text{% else %}/questionnaire/lyrics{% endif %}" class="btn btn-secondary">
+            Назад
+          </a>
+          <button type="submit" class="btn btn-primary">Создать кабинет</button>
+        </div>
+      </form>
+
       {% if sent and stub_mode and stub_login_url %}
         <div class="notice notice-success">
           Кабинет создан. Пока почта не подключена, используй временную ссылку для входа ниже.
         </div>
 
         <div class="panel-card email-result-card">
-          <div class="mini-label">Тестовый режим</div>
-          <h2 class="form-title">Временный вход в кабинет</h2>
+          <div class="mini-label">Временный вход</div>
+          <h2 class="form-title">Открыть кабинет</h2>
           <p class="muted" style="margin-top: 0;">
             Эта ссылка нужна только для текущего режима без SMTP.
           </p>
@@ -59,49 +157,6 @@
           <p class="muted link-preview">{{ stub_login_url }}</p>
         </div>
       {% endif %}
-
-      {% if error %}
-        <div class="notice notice-error">{{ error }}</div>
-      {% endif %}
-
-      <div class="email-layout">
-        <form class="form-card" method="post" action="/questionnaire/access">
-          <label class="form-label" for="email">Email</label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            class="text-input"
-            placeholder="name@example.com"
-            required
-          />
-
-          <div class="form-actions">
-            <a href="{% if draft.lyrics_mode == 'custom' %}/questionnaire/custom-text{% else %}/questionnaire/lyrics{% endif %}" class="btn btn-secondary">
-              Назад
-            </a>
-            <button type="submit" class="btn btn-primary">Создать кабинет</button>
-          </div>
-        </form>
-
-        <aside class="panel-card">
-          <div class="mini-label">Что будет дальше</div>
-          <div class="next-step-list">
-            <div class="next-step-item">
-              <strong>1. Заказ закрепится за email</strong>
-              <span>Он уже не потеряется между шагами.</span>
-            </div>
-            <div class="next-step-item">
-              <strong>2. Откроется кабинет</strong>
-              <span>Там будет финальный текст и карточка заказа.</span>
-            </div>
-            <div class="next-step-item">
-              <strong>3. Далее идёт оплата</strong>
-              <span>После неё можно запускать генерацию песни.</span>
-            </div>
-          </div>
-        </aside>
-      </div>
     </div>
   </div>
 </section>
