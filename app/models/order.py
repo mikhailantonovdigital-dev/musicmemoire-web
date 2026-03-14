@@ -81,6 +81,18 @@ class Order(Base):
         Text,
         nullable=True,
     )
+    song_style: Mapped[str | None] = mapped_column(
+        String(32),
+        nullable=True,
+    )
+    song_style_custom: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+    singer_gender: Mapped[str | None] = mapped_column(
+        String(16),
+        nullable=True,
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
