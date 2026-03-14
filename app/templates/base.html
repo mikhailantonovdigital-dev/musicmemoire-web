@@ -4,63 +4,76 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{{ page_title or "Music Memoire" }}</title>
-  <meta name="description" content="Персональные песни в подарок: история текстом или голосом, бесплатные версии текста, оплата и готовый трек в личном кабинете." />
+  <meta
+    name="description"
+    content="Music Memoire — персональные песни в подарок. Расскажите историю текстом или голосом, получите 2 версии текста бесплатно и закажите готовую песню."
+  />
   <link rel="stylesheet" href="/static/css/styles.css" />
 </head>
 <body>
+  <div class="page-bg"></div>
+
   <header class="site-header">
     <div class="container header-row">
-      <a href="/" class="logo">
+      <a href="/" class="logo-wrap">
         <span class="logo-badge">MM</span>
-        <span>Music Memoire</span>
+        <span class="logo-text">Music Memoire</span>
       </a>
 
       <nav class="nav">
-        <a href="/#portfolio">Портфолио</a>
+        <a href="/#portfolio">Примеры</a>
         <a href="/#how-it-works">Как это работает</a>
         <a href="/#faq">FAQ</a>
-        <a href="/blog">Блог</a>
-        <a href="/questionnaire/" class="nav-cta">Хочу песню</a>
+        <a href="/#blog">Блог</a>
+        <a href="/questionnaire/">Анкета</a>
+        <a href="/account/">Кабинет</a>
+        <a href="/admin/">Админка</a>
       </nav>
     </div>
   </header>
 
-  <main>
+  <main class="site-main">
     {% block content %}{% endblock %}
   </main>
 
-  <a class="support-float" href="https://t.me/mikhailantonov19" target="_blank" rel="noopener noreferrer">
-    Нужна помощь?
-  </a>
-
   <footer class="site-footer">
     <div class="container footer-grid">
-      <div>
-        <div class="footer-brand">Music Memoire</div>
+      <div class="footer-col">
+        <div class="footer-brand">
+          <span class="logo-badge">MM</span>
+          <span class="logo-text">Music Memoire</span>
+        </div>
         <p class="footer-text">
           Персональные песни в подарок: от истории до готового трека в личном кабинете.
         </p>
       </div>
 
-      <div>
-        <div class="footer-title">Навигация</div>
-        <div class="footer-links">
-          <a href="/">Главная</a>
-          <a href="/questionnaire/">Анкета</a>
-          <a href="/account/">Кабинет</a>
-          <a href="/blog">Блог</a>
-        </div>
+      <div class="footer-col">
+        <h3>Навигация</h3>
+        <a href="/">Главная</a>
+        <a href="/questionnaire/">Анкета</a>
+        <a href="/account/">Кабинет</a>
+        <a href="/#faq">FAQ</a>
+        <a href="/#blog">Блог</a>
       </div>
 
-      <div>
-        <div class="footer-title">Поддержка</div>
-        <div class="footer-links">
-          <a href="https://t.me/mikhailantonov19" target="_blank" rel="noopener noreferrer">Telegram</a>
-          <a href="https://max.ru/u/f9LHodD0cOKg36L-baFKeBJquxSx5xydupa2AYOKdl7BUFipfVYS5FVVV80" target="_blank" rel="noopener noreferrer">MAX</a>
-        </div>
+      <div class="footer-col">
+        <h3>Поддержка</h3>
+        <a href="https://t.me/mikhailantonov19" target="_blank" rel="noopener">Telegram</a>
+        <a href="https://max.ru/u/f9LHodD0cOKg36L-baFKeBJquxSx5xydupa2AYOKdl7BUFipfVYS5FVVV80" target="_blank" rel="noopener">MAX</a>
       </div>
     </div>
+
+    <div class="container footer-bottom">
+      <p>© Music Memoire</p>
+    </div>
   </footer>
+
+  <div class="support-fab">
+    <div class="support-fab-label">Нужна помощь?</div>
+    <a href="https://t.me/mikhailantonov19" target="_blank" rel="noopener" class="support-fab-btn">Telegram</a>
+    <a href="https://max.ru/u/f9LHodD0cOKg36L-baFKeBJquxSx5xydupa2AYOKdl7BUFipfVYS5FVVV80" target="_blank" rel="noopener" class="support-fab-btn support-fab-btn-secondary">MAX</a>
+  </div>
 
   <script src="/static/js/app.js"></script>
 </body>
