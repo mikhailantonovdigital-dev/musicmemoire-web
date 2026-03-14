@@ -132,6 +132,7 @@
     </div>
     
     <form class="form-card" method="post" action="/questionnaire/story" data-generation-form>
+      <input type="hidden" name="action" value="generate" />
       {% if draft.story_source == "voice" %}
         <label class="form-label" for="transcript_text">Расшифровка / заметки</label>
         <textarea
@@ -154,18 +155,16 @@
         >{{ draft.story_text or "" }}</textarea>
       {% endif %}
 
-      <div class="form-actions">
-        <a href="/questionnaire/story-source" class="btn btn-secondary">Назад</a>
-        <button type="submit" name="action" value="save" class="btn btn-secondary">Сохранить</button>
-        <button
-          type="submit"
-          name="action"
-          value="generate"
-          class="btn btn-primary"
-          data-generate-submit
-        >
-          Получить 2 версии
-        </button>
+<div class="form-actions">
+  <a href="/questionnaire/story-source" class="btn btn-secondary">Назад</a>
+  <button
+    type="submit"
+    class="btn btn-primary"
+    data-generate-submit
+  >
+    Получить 2 версии
+  </button>
+</div>
       </div>
     </form>
   </div>
