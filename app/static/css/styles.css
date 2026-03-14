@@ -3900,8 +3900,8 @@ strong,
 .page-marketing-screen .hero-screen {
   display: flex;
   align-items: center;
-  padding-top: 146px;
-  padding-bottom: 96px;
+  padding-top: 124px;
+  padding-bottom: 124px;
   margin-bottom: 0;
   min-height: 100vh;
 }
