@@ -3831,10 +3831,16 @@ strong,
 }
 
 .site-footer-minimal {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 18px;
+  z-index: 30;
   margin-top: 0;
-  padding: 0 0 18px;
+  padding: 0;
   background: transparent;
   border-top: 0;
+  pointer-events: none;
 }
 
 .footer-bottom-minimal {
@@ -3846,16 +3852,16 @@ strong,
   color: rgba(233, 239, 255, 0.72);
 }
 
-.footer-bottom-minimal p {
-  margin: 0;
-  font-size: 13px;
-  letter-spacing: 0.01em;
+.site-footer-minimal .footer-bottom-minimal {
+  pointer-events: auto;
 }
 
 .page-marketing-screen {
+  position: relative;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .page-marketing-screen .site-header,
@@ -3895,9 +3901,9 @@ strong,
   display: flex;
   align-items: center;
   padding-top: 146px;
-  padding-bottom: 40px;
+  padding-bottom: 96px;
   margin-bottom: 0;
-  min-height: calc(100vh - 120px);
+  min-height: 100vh;
 }
 
 .page-marketing-screen .hero-grid-screen {
@@ -4057,9 +4063,9 @@ strong,
 
 @media (max-width: 980px) {
   .page-marketing-screen .hero-screen {
-    min-height: auto;
+    min-height: 100vh;
     padding-top: 132px;
-    padding-bottom: 32px;
+    padding-bottom: 84px;
   }
 
   .page-marketing-screen .btn-hero-xl {
@@ -4098,8 +4104,9 @@ strong,
   }
 
   .page-marketing-screen .hero-screen {
+    min-height: 100vh;
     padding-top: 118px;
-    padding-bottom: 24px;
+    padding-bottom: 78px;
   }
 
   .page-marketing-screen .btn-hero-xl {
