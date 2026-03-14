@@ -393,4 +393,5 @@ document.addEventListener("DOMContentLoaded", () => {
   initLyricsPicker();
   initExclusiveAudioPlayers();
   initQuestionnaireGenerationState();
+  initSongStylePicker();
 });
