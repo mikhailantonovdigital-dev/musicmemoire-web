@@ -3,14 +3,13 @@
 {% block content %}
 <section class="section">
   <div class="container">
-    <div class="page-shell">
-      <div class="dashboard-intro">
-        <div>
-          <p class="eyebrow">Личный кабинет</p>
+    <div class="page-shell page-shell-dark">
+      <div class="dashboard-hero-dark">
+        <div class="dashboard-hero-copy">
+          <p class="eyebrow eyebrow-dark">Личный кабинет</p>
           <h1>Ваши заказы и тексты в одном месте</h1>
           <p class="section-lead">
-            Здесь видны финальные тексты, текущие статусы и доступ к генерации песни.
-            После подключения всех боевых интеграций кабинет станет центральной точкой сервиса.
+            Здесь хранятся финальные тексты, статусы генерации и переходы к следующему действию.
           </p>
         </div>
 
@@ -21,18 +20,18 @@
       </div>
 
       <div class="summary-grid">
-        <article class="summary-card">
+        <article class="summary-card summary-card-dark">
           <span>Пользователь</span>
           <strong>{{ user.email }}</strong>
         </article>
 
-        <article class="summary-card">
+        <article class="summary-card summary-card-dark">
           <span>Всего заказов</span>
           <strong>{{ orders|length }}</strong>
         </article>
 
-        <article class="summary-card">
-          <span>Формат работы</span>
+        <article class="summary-card summary-card-dark">
+          <span>Путь</span>
           <strong>Текст → кабинет → оплата → песня</strong>
         </article>
       </div>
@@ -43,7 +42,7 @@
             {% set order = card.order %}
             {% set latest_song = card.latest_song %}
 
-            <article class="order-card-premium">
+            <article class="order-card-premium order-card-dark">
               <div class="order-card-top">
                 <div>
                   <div class="order-card-meta">
@@ -52,12 +51,11 @@
                   </div>
                   <h2>{{ order.title or "Персональная песня" }}</h2>
                   <p class="order-card-text">
-                    Финальный текст уже сохранён в заказе. Ниже можно открыть карточку заказа,
-                    посмотреть статус генерации и перейти к следующему действию.
+                    Финальный текст уже сохранён в заказе. Можно открыть карточку, посмотреть статус и перейти к следующему этапу.
                   </p>
                 </div>
 
-                <span class="variant-chip">Заказ</span>
+                <span class="variant-chip variant-chip-dark">Заказ</span>
               </div>
 
               <div class="order-card-body">
@@ -67,7 +65,7 @@
                 </div>
 
                 <aside class="order-card-side">
-                  <div class="panel-card status-panel">
+                  <div class="panel-card status-panel panel-card-dark">
                     <div class="mini-label">Статусы</div>
 
                     <div class="detail-list">
@@ -87,12 +85,12 @@
                   </div>
 
                   {% if latest_song and latest_song.audio_url %}
-                    <div class="panel-card">
+                    <div class="panel-card panel-card-dark">
                       <div class="mini-label">Аудио</div>
                       <audio class="audio-player" controls preload="none" src="{{ latest_song.audio_url }}"></audio>
                     </div>
                   {% elif latest_song and card.song_is_ready and suno_stub_mode %}
-                    <div class="panel-card">
+                    <div class="panel-card panel-card-dark">
                       <div class="mini-label">Аудио</div>
                       <p class="muted" style="margin: 0;">
                         В режиме заглушки задача уже считается готовой, но реальный аудиофайл появится после подключения боевой генерации.
@@ -121,8 +119,8 @@
           {% endfor %}
         </div>
       {% else %}
-        <div class="panel-card empty-state">
-          <p class="eyebrow">Пока пусто</p>
+        <div class="panel-card empty-state panel-card-dark">
+          <p class="eyebrow eyebrow-dark">Пока пусто</p>
           <h2>Заказов ещё нет</h2>
           <p class="section-lead">
             Когда пользователь закончит анкету и сохранит финальный текст, заказ появится здесь.
