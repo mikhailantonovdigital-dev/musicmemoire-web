@@ -66,6 +66,15 @@ def run_bootstrap_migrations() -> None:
             if "singer_gender" not in order_columns:
                 conn.execute(text("ALTER TABLE orders ADD COLUMN singer_gender VARCHAR(16)"))
 
+            if "song_style" not in order_columns:
+                conn.execute(text("ALTER TABLE orders ADD COLUMN song_style VARCHAR(32)"))
+
+            if "song_style_custom" not in order_columns:
+                conn.execute(text("ALTER TABLE orders ADD COLUMN song_style_custom TEXT"))
+
+            if "singer_gender" not in order_columns:
+                conn.execute(text("ALTER TABLE orders ADD COLUMN singer_gender VARCHAR(16)"))
+
     if "magic_login_tokens" not in inspector.get_table_names():
         # table creation will be handled by create_all below, this branch is only for clarity
         pass
