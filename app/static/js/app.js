@@ -310,7 +310,31 @@ function initLyricsPicker() {
   });
 }
 
+function initExclusiveAudioPlayers() {
+  const players = Array.from(document.querySelectorAll('[data-exclusive-audio-group]'));
+  if (!players.length) return;
+
+  players.forEach((player) => {
+    player.addEventListener('play', () => {
+      const group = player.dataset.exclusiveAudioGroup;
+
+      players.forEach((otherPlayer) => {
+        if (otherPlayer === player) return;
+        if (otherPlayer.dataset.exclusiveAudioGroup !== group) return;
+
+        otherPlayer.pause();
+        try {
+          otherPlayer.currentTime = 0;
+        } catch (error) {
+          // noop
+        }
+      });
+    });
+  });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   initVoiceRecorder();
   initLyricsPicker();
+  initExclusiveAudioPlayers();
 });
