@@ -6,8 +6,23 @@
   <title>{{ page_title or "Music Memoire" }}</title>
   <meta
     name="description"
-    content="{{ meta_description or 'Music Memoire: персональные песни в подарок. Расскажите историю текстом или голосом, получите 2 версии текста бесплатно и закажите готовую песню.' }}"
+    content="{{ meta_description or 'Music Memoire: персональные песни в подарок. Расскажите историю текстом или голосом, получите 2 версии текста и выберите лучший вариант.' }}"
   />
+  <meta name="robots" content="index,follow" />
+  <link rel="canonical" href="{{ canonical_url or request.url }}" />
+  
+  <meta property="og:site_name" content="Music Memoire" />
+  <meta property="og:locale" content="ru_RU" />
+  <meta property="og:type" content="{{ og_type or 'website' }}" />
+  <meta property="og:title" content="{{ og_title or page_title or 'Music Memoire' }}" />
+  <meta property="og:description" content="{{ og_description or meta_description or 'Music Memoire: персональные песни в подарок.' }}" />
+  <meta property="og:url" content="{{ og_url or request.url }}" />
+  <meta property="og:image" content="{{ og_image or '/static/img/hero-gift-song.jpg' }}" />
+  
+  <meta name="twitter:card" content="{{ twitter_card or 'summary_large_image' }}" />
+  <meta name="twitter:title" content="{{ og_title or page_title or 'Music Memoire' }}" />
+  <meta name="twitter:description" content="{{ og_description or meta_description or 'Music Memoire: персональные песни в подарок.' }}" />
+  <meta name="twitter:image" content="{{ og_image or '/static/img/hero-gift-song.jpg' }}" />
   <link rel="icon" href="/static/img/favicon.svg?v=2" type="image/svg+xml" sizes="any" />
   <link rel="shortcut icon" href="/static/img/favicon.svg?v=2" type="image/svg+xml" />
   <link rel="icon" type="image/png" href="/static/img/favicon.png?v=4" />
