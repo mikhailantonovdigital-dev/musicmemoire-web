@@ -10,13 +10,13 @@
   />
   <link rel="stylesheet" href="/static/css/styles.css" />
 </head>
-<body class="theme-dark-premium{% if request.url.path == '/' %} page-home{% endif %}">
+<body class="theme-dark-premium{% if request.url.path == '/' %} page-home{% endif %}{% if request.url.path in ['/', '/portfolio', '/how-it-works', '/reviews'] %} page-marketing-screen{% endif %}">
   <div class="page-bg page-bg-dark"></div>
   <div class="page-noise"></div>
 
   {% set path = request.url.path %}
 
-  <header class="site-header site-header-upgraded site-header-dark">
+  <header class="site-header site-header-upgraded site-header-dark site-header-horizontal">
     <div class="container header-shell">
       <a href="/" class="brand brand-dark">
         <span class="logo-badge">MM</span>
@@ -26,18 +26,12 @@
         </span>
       </a>
 
-      <nav class="nav nav-upgraded nav-dark">
+      <nav class="nav nav-upgraded nav-dark nav-horizontal">
         <a class="{% if path == '/' %}is-active{% endif %}" href="/">Главная</a>
-        <a href="/#portfolio">Примеры</a>
-        <a href="/#how-it-works">Как это работает</a>
-        <a href="/#faq">FAQ</a>
-        <a href="/#blog">Блог</a>
+        <a class="{% if path == '/portfolio' %}is-active{% endif %}" href="/portfolio">Портфолио</a>
+        <a class="{% if path == '/how-it-works' %}is-active{% endif %}" href="/how-it-works">Как это работает</a>
+        <a class="{% if path == '/reviews' %}is-active{% endif %}" href="/reviews">Отзывы клиентов</a>
       </nav>
-
-      <div class="header-actions">
-        <a class="header-link-btn {% if '/account' in path %}is-active{% endif %}" href="/account/">Кабинет</a>
-        <a class="header-cta {% if '/questionnaire' in path %}is-active{% endif %}" href="/questionnaire/">Создать песню</a>
-      </div>
     </div>
   </header>
 
@@ -45,48 +39,8 @@
     {% block content %}{% endblock %}
   </main>
 
-  <footer class="site-footer site-footer-upgraded site-footer-dark">
-    <div class="container footer-shell">
-      <div class="footer-brand-block">
-        <div class="footer-brand">
-          <span class="logo-badge">MM</span>
-          <span class="logo-text">Music Memoire</span>
-        </div>
-        <p class="footer-text">
-          Персональные песни в подарок: от истории и текста до оплаты, статусов и результата в личном кабинете.
-        </p>
-        <p class="footer-note">
-          Пользователь сначала получает 2 версии текста, а затем уже принимает решение об оплате и генерации.
-        </p>
-      </div>
-
-      <div class="footer-links-grid">
-        <div class="footer-link-group">
-          <h3>Сервис</h3>
-          <a href="/">Главная</a>
-          <a href="/questionnaire/">Анкета</a>
-          <a href="/account/">Кабинет</a>
-          <a href="/account/login">Вход</a>
-        </div>
-
-        <div class="footer-link-group">
-          <h3>Материалы</h3>
-          <a href="/#portfolio">Примеры</a>
-          <a href="/#how-it-works">Как это работает</a>
-          <a href="/#faq">FAQ</a>
-          <a href="/#blog">Блог</a>
-        </div>
-
-        <div class="footer-link-group">
-          <h3>Поддержка</h3>
-          <a href="https://t.me/mikhailantonov19" target="_blank" rel="noopener" data-support-link="telegram">Telegram</a>
-          <a href="https://max.ru/u/f9LHodD0cOKg36L-baFKeBJquxSx5xydupa2AYOKdl7BUFipfVYS5FVVV80" target="_blank" rel="noopener" data-support-link="max">MAX</a>
-          <a href="/admin/">Админка</a>
-        </div>
-      </div>
-    </div>
-
-    <div class="container footer-bottom">
+  <footer class="site-footer site-footer-minimal site-footer-dark">
+    <div class="container footer-bottom footer-bottom-minimal">
       <p>© Music Memoire</p>
     </div>
   </footer>
