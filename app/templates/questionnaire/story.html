@@ -4,18 +4,18 @@
 <section class="section">
   <div class="container narrow">
     {% if draft.story_source == "voice" %}
-      <p class="eyebrow">Шаг 3 из 5</p>
+      <p class="eyebrow">Шаг 3 из 7</p>
       <h1>Расскажи историю голосом</h1>
 
       <div class="consultant-box">
         <strong>Комментарий консультанта</strong>
         <p>
           Просто расскажи своими словами, кому нужна песня, что между вами произошло, какие моменты важны
-          и какие эмоции хочется передать. Не нужно говорить идеально - главное, чтобы была суть. Не забудь назвать имена, и кем вы приходитесь друг другу.
+          и какие эмоции хочется передать. Не нужно говорить идеально — главное, чтобы была суть.
         </p>
       </div>
     {% else %}
-      <p class="eyebrow">Шаг 3 из 5</p>
+      <p class="eyebrow">Шаг 3 из 7</p>
       <h1>Напиши историю для песни</h1>
 
       <div class="consultant-box">
@@ -123,16 +123,7 @@
       </div>
     {% endif %}
 
-    <div class="generation-overlay" data-generation-overlay hidden>
-      <div class="generation-overlay-card">
-        <div class="generation-spinner" aria-hidden="true"></div>
-        <h2>Формируем 2 версии текста</h2>
-        <p>Это может занять до минуты. Не закрывай страницу и не обновляй её.</p>
-      </div>
-    </div>
-    
-    <form class="form-card" method="post" action="/questionnaire/story" data-generation-form>
-      <input type="hidden" name="action" value="generate" />
+    <form class="form-card" method="post" action="/questionnaire/story">
       {% if draft.story_source == "voice" %}
         <label class="form-label" for="transcript_text">Расшифровка / заметки</label>
         <textarea
@@ -144,7 +135,6 @@
         <p class="helper-text">
           После расшифровки проверь текст и поправь важные имена, даты или формулировки, если это нужно.
         </p>
-
       {% else %}
         <label class="form-label" for="story_text">История для песни</label>
         <textarea
@@ -155,16 +145,10 @@
         >{{ draft.story_text or "" }}</textarea>
       {% endif %}
 
-<div class="form-actions">
-  <a href="/questionnaire/story-source" class="btn btn-secondary">Назад</a>
-  <button
-    type="submit"
-    class="btn btn-primary"
-    data-generate-submit
-  >
-    Получить 2 версии
-  </button>
-</div>
+      <div class="form-actions">
+        <a href="/questionnaire/story-source" class="btn btn-secondary">Назад</a>
+        <button type="submit" name="action" value="save" class="btn btn-secondary">Сохранить черновик</button>
+        <button type="submit" name="action" value="generate" class="btn btn-primary">Получить 2 версии</button>
       </div>
     </form>
   </div>
