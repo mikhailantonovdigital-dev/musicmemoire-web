@@ -69,8 +69,12 @@ def get_latest_song(order: Order) -> SongGeneration | None:
     return sorted(order.song_generations, key=lambda item: item.id or 0, reverse=True)[0]
 
 
+def has_successful_payment(order: Order) -> bool:
+    return any(payment.status == "succeeded" for payment in order.payments)
+
+
 def can_start_song(order: Order) -> bool:
-    return settings.SUNO_STUB_MODE or order.status == "paid"
+    return has_successful_payment(order)
 
 
 def create_song_job(db: Session, order: Order) -> SongGeneration:
