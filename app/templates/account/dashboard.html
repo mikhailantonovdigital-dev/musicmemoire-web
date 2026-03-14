@@ -21,6 +21,7 @@
               <div>
                 <h2>{{ order.order_number }}</h2>
                 <p class="lyrics-angle">Статус заказа: {{ order.status }}</p>
+                <p class="lyrics-angle">Оплата: {{ card.payment_status_label }}</p>
                 <p class="lyrics-angle">Генерация песни: {{ card.song_status_label }}</p>
               </div>
               <span class="variant-chip">Заказ</span>
@@ -34,20 +35,25 @@
               <p class="muted">В заглушке Suno задача считается готовой, но аудиоссылка появится позже, когда подключим реальную генерацию.</p>
             {% endif %}
 
-            <div class="form-actions">
-              <a class="btn btn-secondary" href="/account/orders/{{ order.public_id }}">Открыть заказ</a>
-
-              {% if card.song_is_running %}
-                <a class="btn btn-primary" href="/songs/status?job={{ latest_song.public_id }}">Открыть статус</a>
-              {% elif card.song_is_ready %}
-                <a class="btn btn-primary" href="/songs/status?job={{ latest_song.public_id }}">Открыть результат</a>
-              {% elif card.can_start_song %}
-                <form method="post" action="/songs/start/{{ order.public_id }}">
-                  <button type="submit" class="btn btn-primary">Сгенерировать песню</button>
-                </form>
-              {% else %}
-                <span class="btn btn-secondary">Генерация после оплаты</span>
-              {% endif %}
+              <div class="form-actions">
+                <a class="btn btn-secondary" href="/account/orders/{{ order.public_id }}">Открыть заказ</a>
+              
+                {% if card.can_pay_order %}
+                  <form method="post" action="/checkout/start/{{ order.public_id }}">
+                    <button type="submit" class="btn btn-primary">{{ card.payment_cta_label }}</button>
+                  </form>
+                {% elif card.song_is_running %}
+                  <a class="btn btn-primary" href="/songs/status?job={{ latest_song.public_id }}">Открыть статус</a>
+                {% elif card.song_is_ready %}
+                  <a class="btn btn-primary" href="/songs/status?job={{ latest_song.public_id }}">Открыть результат</a>
+                {% elif card.can_start_song %}
+                  <form method="post" action="/songs/start/{{ order.public_id }}">
+                    <button type="submit" class="btn btn-primary">Сгенерировать песню</button>
+                  </form>
+                {% else %}
+                  <span class="btn btn-secondary">Генерация после оплаты</span>
+                {% endif %}
+              </div>
             </div>
           </article>
         {% endfor %}
