@@ -37,6 +37,16 @@ def get_session_user(request: Request, db: Session) -> User | None:
     return db.query(User).filter(User.id == int(user_id)).first()
 
 
+def humanize_payment_status(status: str | None) -> str:
+    mapping = {
+        "pending": "Ожидает оплаты",
+        "waiting_for_capture": "Ожидает подтверждения",
+        "succeeded": "Оплачено",
+        "canceled": "Не оплачено",
+    }
+    return mapping.get(status or "", "Не начата")
+
+
 def humanize_song_status(status: str | None) -> str:
     mapping = {
         "queued": "В очереди",
@@ -48,10 +58,35 @@ def humanize_song_status(status: str | None) -> str:
     return mapping.get(status or "", "Не запускалась")
 
 
+def get_latest_payment(order: Order):
+    if not order.payments:
+        return None
+    return sorted(order.payments, key=lambda item: item.id or 0, reverse=True)[0]
+
+
 def get_latest_song(order: Order) -> SongGeneration | None:
     if not order.song_generations:
         return None
     return sorted(order.song_generations, key=lambda item: item.id or 0, reverse=True)[0]
+
+
+def has_successful_payment(order: Order) -> bool:
+    return any(payment.status == "succeeded" for payment in order.payments)
+
+
+def can_pay_order(order: Order) -> bool:
+    return bool((order.final_lyrics_text or "").strip()) and not has_successful_payment(order)
+
+
+def get_payment_cta_label(order: Order) -> str:
+    latest_payment = get_latest_payment(order)
+    if latest_payment and latest_payment.status in {"pending", "waiting_for_capture"}:
+        return "Продолжить оплату"
+    return f"Оплатить {settings.PRICE_RUB} ₽"
+
+
+def can_start_song(order: Order) -> bool:
+    return has_successful_payment(order)
 
 
 def can_start_song(order: Order) -> bool:
@@ -202,12 +237,17 @@ async def account_dashboard(request: Request, db: Session = Depends(get_db)):
 
     order_cards = []
     for order in orders:
+        latest_payment = get_latest_payment(order)
         latest_song = get_latest_song(order)
         order_cards.append(
             {
                 "order": order,
+                "latest_payment": latest_payment,
                 "latest_song": latest_song,
+                "payment_status_label": humanize_payment_status(latest_payment.status if latest_payment else None),
                 "song_status_label": humanize_song_status(latest_song.status if latest_song else None),
+                "can_pay_order": can_pay_order(order),
+                "payment_cta_label": get_payment_cta_label(order),
                 "can_start_song": can_start_song(order),
                 "song_is_running": latest_song is not None and latest_song.status in RUNNING_SONG_STATUSES,
                 "song_is_ready": latest_song is not None and latest_song.status == "succeeded",
@@ -250,6 +290,7 @@ async def account_order_detail(
     if order is None:
         return RedirectResponse(url=request.url_for("account_dashboard"), status_code=303)
 
+    latest_payment = get_latest_payment(order)
     latest_song = get_latest_song(order)
 
     return templates.TemplateResponse(
@@ -259,8 +300,12 @@ async def account_order_detail(
             "page_title": f"Заказ {order.order_number}",
             "user": user,
             "order": order,
+            "latest_payment": latest_payment,
             "latest_song": latest_song,
+            "payment_status_label": humanize_payment_status(latest_payment.status if latest_payment else None),
             "song_status_label": humanize_song_status(latest_song.status if latest_song else None),
+            "can_pay_order": can_pay_order(order),
+            "payment_cta_label": get_payment_cta_label(order),
             "can_start_song": can_start_song(order),
             "song_is_running": latest_song is not None and latest_song.status in RUNNING_SONG_STATUSES,
             "song_is_ready": latest_song is not None and latest_song.status == "succeeded",
