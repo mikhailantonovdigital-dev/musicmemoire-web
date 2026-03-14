@@ -5110,9 +5110,21 @@ strong,
 }
 /* ===== Commit 12.2.2 — text near hero image without glass card ===== */
 
+.hero-photo-card {
+  position: relative;
+}
+
 .hero-image-copy {
-  margin-top: 18px;
-  padding: 4px 6px 0 6px;
+  z-index: 2;
+}
+
+.hero-image-copy-inside {
+  position: absolute;
+  left: 22px;
+  right: 22px;
+  bottom: 20px;
+  margin: 0;
+  padding: 0;
 }
 
 .hero-image-copy-title {
@@ -5123,15 +5135,19 @@ strong,
   letter-spacing: -0.01em;
   text-shadow:
     0 0 18px rgba(93, 129, 255, 0.22),
-    0 0 28px rgba(158, 99, 255, 0.14);
+    0 0 28px rgba(158, 99, 255, 0.14),
+    0 2px 12px rgba(0, 0, 0, 0.34);
 }
 
 .hero-image-copy-list {
   margin: 0;
   padding-left: 20px;
-  color: rgba(224, 233, 255, 0.88);
+  color: rgba(244, 247, 255, 0.94);
   font-size: 16px;
-  line-height: 1.7;
+  line-height: 1.68;
+  text-shadow:
+    0 2px 12px rgba(0, 0, 0, 0.36),
+    0 0 20px rgba(80, 120, 255, 0.16);
 }
 
 .hero-image-copy-list li + li {
@@ -5139,14 +5155,14 @@ strong,
 }
 
 .hero-image-copy-list li::marker {
-  color: #8eb3ff;
+  color: #9ab8ff;
 }
 
 @media (max-width: 860px) {
-  .hero-image-copy {
-    margin-top: 14px;
-    padding-left: 2px;
-    padding-right: 2px;
+  .hero-image-copy-inside {
+    left: 18px;
+    right: 18px;
+    bottom: 18px;
   }
 
   .hero-image-copy-title {
@@ -5155,18 +5171,20 @@ strong,
 
   .hero-image-copy-list {
     font-size: 15px;
-    line-height: 1.62;
+    line-height: 1.58;
   }
 }
 
 @media (max-width: 680px) {
-  .hero-image-copy {
-    margin-top: 12px;
+  .hero-image-copy-inside {
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
   }
 
   .hero-image-copy-list {
     padding-left: 18px;
     font-size: 14px;
-    line-height: 1.56;
+    line-height: 1.5;
   }
 }
