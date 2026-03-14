@@ -1,61 +1,42 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="hero hero-gradient">
+<section class="hero hero-home">
   <div class="container hero-grid">
-    <div>
+    <div class="hero-copy">
       <p class="eyebrow">Персональные песни в подарок</p>
-      <h1>Подарок, который звучит как ваша история</h1>
+      <h1>Создайте песню по вашей истории — от идеи до готового трека</h1>
       <p class="lead">
-        Расскажите историю текстом или голосом, получите 2 полноценные версии текста бесплатно,
-        выберите лучший вариант и превратите его в готовую песню.
+        Расскажите историю текстом или голосом, получите 2 версии текста бесплатно,
+        выберите лучший вариант и потом закажите готовую песню в личном кабинете.
       </p>
-
-      <div class="hero-actions">
-        <a class="btn btn-primary" href="/questionnaire/">Хочу песню</a>
-        <a class="btn btn-secondary" href="#portfolio">Послушать примеры</a>
-      </div>
 
       <div class="hero-points">
         <span>2 версии текста бесплатно</span>
-        <span>История голосом или текстом</span>
-        <span>Личный кабинет после оплаты</span>
+        <span>Голосом или текстом</span>
+        <span>Личный кабинет и история заказов</span>
+      </div>
+
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="/questionnaire/">Хочу песню</a>
+        <a class="btn btn-secondary" href="#portfolio">Посмотреть структуру сервиса</a>
       </div>
     </div>
 
     <div class="hero-panel">
-      <div class="hero-card">
-        <div class="hero-card-top">
-          <span class="variant-chip">Пример сценария</span>
-          <span class="muted">От заявки до результата</span>
+      <div class="glass-card">
+        <div class="glass-card-top">
+          <span class="status-dot"></span>
+          <span>Путь пользователя</span>
         </div>
-
-        <div class="hero-stage-list">
-          <div class="hero-stage-item">
-            <strong>1. История</strong>
-            <span>Текстом или голосом</span>
-          </div>
-          <div class="hero-stage-item">
-            <strong>2. Тексты</strong>
-            <span>2 бесплатные версии</span>
-          </div>
-          <div class="hero-stage-item">
-            <strong>3. Оплата</strong>
-            <span>После выбора лучшего варианта</span>
-          </div>
-          <div class="hero-stage-item">
-            <strong>4. Готовая песня</strong>
-            <span>В личном кабинете</span>
-          </div>
-        </div>
-
-        <div class="demo-player">
-          <div class="demo-player-head">
-            <strong>Пример аудио</strong>
-            <span>Сюда позже подставим реальные кейсы</span>
-          </div>
-          <audio controls preload="none"></audio>
-        </div>
+        <ul class="hero-flow">
+          <li>Лендинг</li>
+          <li>Анкета</li>
+          <li>2 версии текста</li>
+          <li>Email и кабинет</li>
+          <li>Оплата</li>
+          <li>Готовая песня</li>
+        </ul>
       </div>
     </div>
   </div>
@@ -64,52 +45,55 @@
 <section id="portfolio" class="section">
   <div class="container">
     <div class="section-head">
-      <div>
-        <p class="eyebrow">Портфолио</p>
-        <h2>Как может звучать результат</h2>
-      </div>
-      <p class="section-text">
-        Структуру портфолио делаем уже сейчас. Реальные аудио-примеры можно постепенно добавлять без переделки страницы.
+      <p class="eyebrow">Портфолио</p>
+      <h2>Примеры и форматы подарка</h2>
+      <p class="section-lead">
+        Здесь будет витрина реальных песен и сценариев. В этом коммите делаем визуальную структуру,
+        а потом подставим твои настоящие примеры.
       </p>
     </div>
 
     <div class="portfolio-grid">
-      <article class="sample-card">
-        <div class="sample-tag">Романтика</div>
-        <h3>Песня для жены на годовщину</h3>
-        <p>Тёплая личная история, семейные детали, мягкий поп-звук.</p>
-        <audio controls preload="none"></audio>
+      <article class="showcase-card">
+        <div class="showcase-type">Романтика</div>
+        <h3>Песня любимому человеку</h3>
+        <p>История отношений, тёплые воспоминания, личные детали и эмоциональный припев.</p>
+        <div class="demo-audio">Здесь будет аудиопример</div>
       </article>
 
-      <article class="sample-card">
-        <div class="sample-tag">Свадьба</div>
-        <h3>Подарок молодожёнам</h3>
-        <p>Трогательный сценарий для поздравления на празднике.</p>
-        <audio controls preload="none"></audio>
+      <article class="showcase-card">
+        <div class="showcase-type">Семья</div>
+        <h3>Песня для мамы или папы</h3>
+        <p>Подходит для юбилея, семейного праздника и личного трогательного подарка.</p>
+        <div class="demo-audio">Здесь будет аудиопример</div>
       </article>
 
-      <article class="sample-card">
-        <div class="sample-tag">Юбилей</div>
-        <h3>Песня для мамы</h3>
-        <p>Личный текст с воспоминаниями и благодарностью.</p>
-        <audio controls preload="none"></audio>
+      <article class="showcase-card">
+        <div class="showcase-type">Праздник</div>
+        <h3>Песня на свадьбу или день рождения</h3>
+        <p>Личная история, поздравление и ощущение, что подарок сделан только для одного человека.</p>
+        <div class="demo-audio">Здесь будет аудиопример</div>
       </article>
     </div>
   </div>
 </section>
 
-<section class="section section-tint">
-  <div class="container narrow">
-    <div class="lead-magnet-card">
+<section class="section section-soft">
+  <div class="container">
+    <div class="section-head">
       <p class="eyebrow">Лид-магнит</p>
-      <h2>Сгенерируем 2 полноценных текста песни бесплатно</h2>
-      <p class="lead-small">
-        Вы рассказываете историю, а мы показываем два разных варианта текста.
-        Только после выбора лучшего варианта идёт оплата и создание песни.
-      </p>
-      <div class="form-actions">
-        <a class="btn btn-primary" href="/questionnaire/">Получить 2 текста</a>
+      <h2>Сначала бесплатно — потом решение</h2>
+    </div>
+
+    <div class="offer-card">
+      <div>
+        <h3>Сгенерируем 2 полноценных текста песни бесплатно</h3>
+        <p>
+          Ты сможешь сравнить варианты, выбрать лучший и отредактировать финальный текст
+          до оплаты. Это снижает риск и делает продукт понятнее.
+        </p>
       </div>
+      <a class="btn btn-primary" href="/questionnaire/">Начать анкету</a>
     </div>
   </div>
 </section>
@@ -117,169 +101,179 @@
 <section class="section">
   <div class="container">
     <div class="section-head">
-      <div>
-        <p class="eyebrow">Кому подходит</p>
-        <h2>Поводы, где это работает особенно сильно</h2>
-      </div>
+      <p class="eyebrow">Кому подходит</p>
+      <h2>Когда нужен подарок, который действительно запомнится</h2>
     </div>
 
-    <div class="chips-grid">
-      <span>День рождения</span>
-      <span>Свадьба</span>
-      <span>Годовщина</span>
-      <span>Юбилей</span>
-      <span>Любимому человеку</span>
-      <span>Маме</span>
-      <span>Папе</span>
-      <span>Ребёнку</span>
-      <span>Другу</span>
-      <span>Коллеге</span>
+    <div class="audience-grid">
+      <div class="audience-card">День рождения</div>
+      <div class="audience-card">Свадьба</div>
+      <div class="audience-card">Годовщина</div>
+      <div class="audience-card">Юбилей</div>
+      <div class="audience-card">Любимому человеку</div>
+      <div class="audience-card">Маме и папе</div>
+      <div class="audience-card">Ребёнку</div>
+      <div class="audience-card">Другу или коллеге</div>
     </div>
   </div>
 </section>
 
-<section id="how-it-works" class="section">
+<section id="how-it-works" class="section section-soft">
   <div class="container">
     <div class="section-head">
-      <div>
-        <p class="eyebrow">Как это работает</p>
-        <h2>Понятный путь без лишней сложности</h2>
-      </div>
+      <p class="eyebrow">Как это работает</p>
+      <h2>Простой путь в несколько шагов</h2>
     </div>
 
     <div class="steps-grid">
       <article class="step-card">
-        <div class="step-number">01</div>
+        <span class="step-no">01</span>
         <h3>Рассказываете историю</h3>
-        <p>Можно написать текстом или записать голосом прямо на сайте.</p>
+        <p>Можно ввести текст руками или записать голосовое прямо на сайте.</p>
       </article>
 
       <article class="step-card">
-        <div class="step-number">02</div>
+        <span class="step-no">02</span>
         <h3>Получаете 2 версии текста</h3>
-        <p>Сервис показывает два полноценных варианта, чтобы было из чего выбрать.</p>
+        <p>Сравниваете варианты, выбираете лучший и редактируете финальный текст.</p>
       </article>
 
       <article class="step-card">
-        <div class="step-number">03</div>
-        <h3>Редактируете лучший вариант</h3>
-        <p>Можно оставить как есть или доработать текст под себя перед оплатой.</p>
+        <span class="step-no">03</span>
+        <h3>Создаётся кабинет</h3>
+        <p>Перед оплатой вводите email и получаете заказ в личном кабинете.</p>
       </article>
 
       <article class="step-card">
-        <div class="step-number">04</div>
-        <h3>Оплачиваете и ждёте результат</h3>
-        <p>После оплаты заказ попадает в работу, а статус и результат доступны в кабинете.</p>
+        <span class="step-no">04</span>
+        <h3>Оплата и генерация песни</h3>
+        <p>После оплаты заказ уходит в работу, а статус и результат видны в кабинете.</p>
       </article>
     </div>
   </div>
 </section>
 
-<section class="section section-tint">
+<section class="section">
   <div class="container">
     <div class="section-head">
-      <div>
-        <p class="eyebrow">Отзывы</p>
-        <h2>Как это воспринимается людьми</h2>
-      </div>
+      <p class="eyebrow">Отзывы</p>
+      <h2>Блок отзывов уже заложен в структуру</h2>
+      <p class="section-lead">
+        Здесь позже подставим реальные отзывы, скриншоты и примеры отклика клиентов.
+      </p>
     </div>
 
-    <div class="reviews-grid">
+    <div class="review-grid">
       <article class="review-card">
-        <p>«Очень сильное ощущение персонального подарка. Не просто красиво, а прямо про нас.»</p>
-        <strong>Для годовщины</strong>
+        <p>“Сюда добавим реальный отзыв клиента с эмоцией и контекстом подарка.”</p>
       </article>
-
       <article class="review-card">
-        <p>«Наконец подарок, который реально вызывает эмоции, а не просто вежливую благодарность.»</p>
-        <strong>На день рождения</strong>
+        <p>“Здесь будет второй отзыв — например, про свадьбу, юбилей или романтический подарок.”</p>
       </article>
-
       <article class="review-card">
-        <p>«Отдельно понравилось, что можно сначала увидеть тексты, выбрать лучший и только потом оплачивать.»</p>
-        <strong>Свадебный кейс</strong>
+        <p>“Третий отзыв можно сделать про то, как человек сначала получил текст, а потом заказал песню.”</p>
       </article>
     </div>
   </div>
 </section>
 
-<section id="faq" class="section">
-  <div class="container narrow">
-    <div class="section-head section-head-center">
-      <div>
-        <p class="eyebrow">FAQ</p>
-        <h2>Частые вопросы</h2>
-      </div>
-    </div>
-
-    <div class="faq-list">
-      <details class="faq-item" open>
-        <summary>Как создаётся песня?</summary>
-        <p>Сначала вы проходите анкету, рассказываете историю, получаете 2 варианта текста, выбираете лучший, а после оплаты запускается создание песни.</p>
-      </details>
-
-      <details class="faq-item">
-        <summary>Можно ли вставить свой текст?</summary>
-        <p>Да. Можно пропустить генерацию и сразу вставить свой готовый текст песни.</p>
-      </details>
-
-      <details class="faq-item">
-        <summary>Можно ли отправить историю голосом?</summary>
-        <p>Да. Вы можете записать голосовое прямо на сайте, затем увидеть расшифровку и при необходимости отредактировать её.</p>
-      </details>
-
-      <details class="faq-item">
-        <summary>Сколько вариантов текста я получу?</summary>
-        <p>На текущем этапе MVP сервис показывает 2 полноценных варианта текста бесплатно.</p>
-      </details>
-
-      <details class="faq-item">
-        <summary>Где я получу готовую песню?</summary>
-        <p>Готовый результат отображается в личном кабинете, привязанном к вашему email.</p>
-      </details>
-
-      <details class="faq-item">
-        <summary>Что делать, если нужна помощь?</summary>
-        <p>На сайте доступны быстрые ссылки в Telegram и MAX. Они видны внизу страницы и через плавающую кнопку поддержки.</p>
-      </details>
-    </div>
-  </div>
-</section>
-
-<section class="section section-tint">
+<section id="faq" class="section section-soft">
   <div class="container">
     <div class="section-head">
-      <div>
-        <p class="eyebrow">Блог</p>
-        <h2>Статьи для органики и доверия</h2>
-      </div>
-      <a class="btn btn-secondary" href="/blog">Смотреть все статьи</a>
+      <p class="eyebrow">FAQ</p>
+      <h2>Частые вопросы</h2>
+    </div>
+
+    <div class="faq-grid">
+      <article class="faq-card">
+        <h3>Можно ли рассказать историю голосом?</h3>
+        <p>Да. Можно записать голосовое прямо на сайте, потом увидеть расшифровку и отредактировать её.</p>
+      </article>
+
+      <article class="faq-card">
+        <h3>Можно ли вставить свой текст?</h3>
+        <p>Да. Если текст уже готов, можно не проходить генерацию и сразу использовать свой вариант.</p>
+      </article>
+
+      <article class="faq-card">
+        <h3>Сколько вариантов текста я получу?</h3>
+        <p>На текущем MVP пользователь получает 2 версии текста бесплатно.</p>
+      </article>
+
+      <article class="faq-card">
+        <h3>Можно ли отредактировать текст до оплаты?</h3>
+        <p>Да. Финальный текст можно править вручную перед переходом к оплате.</p>
+      </article>
+
+      <article class="faq-card">
+        <h3>Нужна ли регистрация заранее?</h3>
+        <p>Нет. Сначала пользователь идёт как гость, а кабинет создаётся после ввода email.</p>
+      </article>
+
+      <article class="faq-card">
+        <h3>Где я получу готовую песню?</h3>
+        <p>После оплаты и готовности результат будет доступен в личном кабинете.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section id="blog" class="section">
+  <div class="container">
+    <div class="section-head">
+      <p class="eyebrow">Блог</p>
+      <h2>Темы для стартового контента</h2>
     </div>
 
     <div class="blog-grid">
-      {% for post in featured_posts %}
-        <article class="blog-card">
-          <h3><a href="/blog/{{ post.slug }}">{{ post.title }}</a></h3>
-          <p>{{ post.excerpt }}</p>
-          <a class="blog-link" href="/blog/{{ post.slug }}">Читать статью</a>
-        </article>
-      {% endfor %}
+      <article class="blog-card">
+        <h3>Что подарить мужчине, у которого всё есть</h3>
+        <span>Статическая статья MVP</span>
+      </article>
+
+      <article class="blog-card">
+        <h3>Что подарить девушке или жене, чтобы это запомнилось</h3>
+        <span>Статическая статья MVP</span>
+      </article>
+
+      <article class="blog-card">
+        <h3>Песня на свадьбу в подарок</h3>
+        <span>Статическая статья MVP</span>
+      </article>
+
+      <article class="blog-card">
+        <h3>Что подарить маме на юбилей</h3>
+        <span>Статическая статья MVP</span>
+      </article>
+
+      <article class="blog-card">
+        <h3>Песня на годовщину отношений</h3>
+        <span>Статическая статья MVP</span>
+      </article>
+
+      <article class="blog-card">
+        <h3>Оригинальный подарок на день рождения</h3>
+        <span>Статическая статья MVP</span>
+      </article>
     </div>
   </div>
 </section>
 
-<section class="section final-cta">
-  <div class="container narrow">
+<section class="section section-cta">
+  <div class="container">
     <div class="cta-card">
-      <p class="eyebrow">Финальный CTA</p>
-      <h2>Начните с истории — всё остальное сервис проведёт пошагово</h2>
-      <p class="lead-small">
-        Без отдельной регистрации на старте, без сложной формы и без оплаты до выбора текста.
-      </p>
+      <div>
+        <p class="eyebrow">Финальный CTA</p>
+        <h2>Начни с истории — и посмотри, как она превратится в песню</h2>
+        <p>
+          Весь путь уже собран: анкета, 2 версии текста, кабинет, оплата и статус заказа.
+          Дальше доводим боевые интеграции и полируем UX.
+        </p>
+      </div>
 
-      <div class="form-actions form-actions-center">
+      <div class="hero-actions">
         <a class="btn btn-primary" href="/questionnaire/">Хочу песню</a>
-        <a class="btn btn-secondary" href="https://t.me/mikhailantonov19" target="_blank" rel="noopener noreferrer">Написать в Telegram</a>
+        <a class="btn btn-secondary" href="/account/">Открыть кабинет</a>
       </div>
     </div>
   </div>
