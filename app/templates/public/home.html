@@ -177,17 +177,18 @@
       {% endif %}
     </div>
 
-    <div class="hero-visual">
-      <div class="hero-photo-card">
-        <div class="hero-photo-image" aria-hidden="true"></div>
-    
-        <div class="hero-image-copy hero-image-copy-inside" aria-label="{{ screen.overlay_title }}">
-          <div class="hero-image-copy-title">{{ screen.overlay_title }}</div>
-          <ul class="hero-image-copy-list">
-            {% for item in screen.overlay_items %}
-              <li>{{ item }}</li>
-            {% endfor %}
-          </ul>
+      <div class="hero-visual">
+        <div class="hero-photo-card">
+          <div class="hero-photo-image" aria-hidden="true"></div>
+      
+          <div class="hero-image-copy hero-image-copy-inside" aria-label="{{ screen.overlay_title }}">
+            <div class="hero-image-copy-title">{{ screen.overlay_title }}</div>
+            <ul class="hero-image-copy-list">
+              {% for item in screen.overlay_items %}
+                <li>{{ item }}</li>
+              {% endfor %}
+            </ul>
+          </div>
         </div>
       </div>
     </div>
