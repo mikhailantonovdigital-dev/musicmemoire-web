@@ -121,6 +121,7 @@ SCREEN_PAGES = {
             },
         ],
     },
+
     "how": {
         "page_title": "Как это работает — Music Memoire",
         "eyebrow": "Как работает",
@@ -178,7 +179,8 @@ SCREEN_PAGES = {
             },
         ],
     },
-    "reviews": {
+    
+     "reviews": {
         "page_title": "Отзывы клиентов — Music Memoire",
         "eyebrow": "Отзывы клиентов",
         "title": "Реальные отзывы людей, которые уже заказывали у нас песню в подарок",
