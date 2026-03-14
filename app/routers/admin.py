@@ -78,11 +78,12 @@ def humanize_song_status(status: str | None) -> str:
     return mapping.get(status or "", "Не запускалась")
 
 
+def has_successful_payment(order: Order) -> bool:
+    return any(payment.status == "succeeded" for payment in order.payments)
+
+
 def can_run_song(order: Order) -> bool:
-    if settings.SUNO_STUB_MODE:
-        return True
-    latest_payment = get_latest_payment(order)
-    return latest_payment is not None and latest_payment.status == "succeeded"
+    return has_successful_payment(order)
 
 
 def build_order_card(order: Order) -> dict:
@@ -249,8 +250,8 @@ async def admin_dashboard(
         or 0
     )
     total_paid_orders = (
-        db.query(func.count(Order.id))
-        .filter(Order.status == "paid")
+        db.query(func.count(func.distinct(OrderPayment.order_id)))
+        .filter(OrderPayment.status == "succeeded")
         .scalar()
         or 0
     )
