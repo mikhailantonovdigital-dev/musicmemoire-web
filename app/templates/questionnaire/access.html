@@ -1,120 +1,106 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="section questionnaire-stage">
+<section class="section">
   <div class="container narrow">
-    <div class="page-shell page-shell-dark questionnaire-shell">
-      <div class="questionnaire-stage-head">
-        <p class="eyebrow">Анкета заказа · Кабинет</p>
-        <h1>Сохраним заказ в личный кабинет</h1>
-        <p class="section-lead questionnaire-stage-lead">
-          На этом шаге привязываем заказ к email. Дальше пользователь переходит в кабинет,
-          где будут храниться текст, оплата и готовая песня.
-        </p>
+    <div class="page-shell">
+      <p class="eyebrow">
+        {% if draft.lyrics_mode == "custom" %}
+          Шаг 3 из 3
+        {% else %}
+          Шаг 5 из 5
+        {% endif %}
+      </p>
+      <h1>Сохраним заказ в личный кабинет</h1>
 
-        <div class="questionnaire-route">
-          <span class="is-done">Маршрут</span>
-          <span class="is-done">Материал</span>
-          <span class="is-active">Кабинет</span>
-        </div>
+      <div class="consultant-box">
+        <strong>Комментарий консультанта</strong>
+        <p>
+          Укажи email, и мы создадим личный кабинет с этим заказом.
+          {% if stub_mode %}
+            Пока письмо не отправляем: после сохранения покажем временную кнопку входа прямо на сайте.
+          {% else %}
+            На почту придёт ссылка для входа.
+          {% endif %}
+        </p>
       </div>
 
-      <div class="questionnaire-stack">
-        <div class="consultant-box">
-          <strong>Комментарий консультанта</strong>
-          <p>
-            Укажи email, и мы создадим личный кабинет с этим заказом.
-            {% if stub_mode %}
-              Пока письмо не отправляем: после сохранения покажем временную кнопку входа прямо на сайте.
-            {% else %}
-              На почту придёт ссылка для входа.
-            {% endif %}
+      {% if saved %}
+        <div class="notice notice-success">
+          Финальный текст сохранён.
+        </div>
+      {% endif %}
+
+      {% if sent and not stub_mode %}
+        <div class="notice notice-success">
+          Ссылка для входа в кабинет отправлена на email.
+        </div>
+      {% endif %}
+
+      {% if sent and stub_mode and stub_login_url %}
+        <div class="notice notice-success">
+          Кабинет создан. Пока почта не подключена, используй временную ссылку для входа ниже.
+        </div>
+
+        <div class="panel-card email-result-card">
+          <div class="mini-label">Тестовый режим</div>
+          <h2 class="form-title">Временный вход в кабинет</h2>
+          <p class="muted" style="margin-top: 0;">
+            Эта ссылка нужна только для текущего режима без SMTP.
           </p>
+
+          <div class="form-actions">
+            <a href="{{ stub_login_url }}" class="btn btn-secondary">Войти в кабинет</a>
+            <form method="post" action="/checkout/start/{{ draft.public_id }}">
+              <button type="submit" class="btn btn-primary">Оплатить {{ price_rub }} ₽</button>
+            </form>
+          </div>
+
+          <p class="muted link-preview">{{ stub_login_url }}</p>
         </div>
+      {% endif %}
 
-        <div class="step-meta">
-          <span>Черновик: <strong>{{ draft.order_number }}</strong></span>
-          <span>Финальный текст готов</span>
-          <span>Следующий шаг: кабинет и оплата</span>
-        </div>
+      {% if error %}
+        <div class="notice notice-error">{{ error }}</div>
+      {% endif %}
 
-        {% if saved %}
-          <div class="notice notice-success">
-            Финальный текст сохранён.
+      <div class="email-layout">
+        <form class="form-card" method="post" action="/questionnaire/access">
+          <label class="form-label" for="email">Email</label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            class="text-input"
+            placeholder="name@example.com"
+            required
+          />
+
+          <div class="form-actions">
+            <a href="{% if draft.lyrics_mode == 'custom' %}/questionnaire/custom-text{% else %}/questionnaire/lyrics{% endif %}" class="btn btn-secondary">
+              Назад
+            </a>
+            <button type="submit" class="btn btn-primary">Создать кабинет</button>
           </div>
-        {% endif %}
+        </form>
 
-        {% if sent and not stub_mode %}
-          <div class="notice notice-success">
-            Ссылка для входа в кабинет отправлена на email.
-          </div>
-        {% endif %}
-
-        {% if sent and stub_mode and stub_login_url %}
-          <div class="notice notice-success">
-            Кабинет создан. Пока почта не подключена, используй временную ссылку для входа ниже.
-          </div>
-
-          <div class="panel-card email-result-card">
-            <div class="mini-label">Тестовый режим</div>
-            <h2 class="form-title">Временный вход в кабинет</h2>
-            <p class="muted" style="margin-top: 0;">
-              Эта ссылка нужна только для текущего режима без SMTP.
-            </p>
-
-            <div class="form-actions">
-              <a href="{{ stub_login_url }}" class="btn btn-secondary">Войти в кабинет</a>
-              <form method="post" action="/checkout/start/{{ draft.public_id }}">
-                <button type="submit" class="btn btn-primary">Оплатить {{ price_rub }} ₽</button>
-              </form>
+        <aside class="panel-card">
+          <div class="mini-label">Что будет дальше</div>
+          <div class="next-step-list">
+            <div class="next-step-item">
+              <strong>1. Заказ закрепится за email</strong>
+              <span>Он уже не потеряется между шагами.</span>
             </div>
-
-            <p class="muted link-preview">{{ stub_login_url }}</p>
+            <div class="next-step-item">
+              <strong>2. Откроется кабинет</strong>
+              <span>Там будет финальный текст и карточка заказа.</span>
+            </div>
+            <div class="next-step-item">
+              <strong>3. Далее идёт оплата</strong>
+              <span>После неё можно запускать генерацию песни.</span>
+            </div>
           </div>
-        {% endif %}
-
-        {% if error %}
-          <div class="notice notice-error">{{ error }}</div>
-        {% endif %}
-
-        <div class="email-layout">
-          <form class="form-card" method="post" action="/questionnaire/access">
-            <label class="form-label" for="email">Email</label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              class="text-input"
-              placeholder="name@example.com"
-              required
-            />
-
-            <div class="form-actions">
-              <a href="{% if draft.lyrics_mode == 'custom' %}/questionnaire/custom-text{% else %}/questionnaire/lyrics{% endif %}" class="btn btn-secondary">
-                Назад
-              </a>
-              <button type="submit" class="btn btn-primary">Создать кабинет</button>
-            </div>
-          </form>
-
-          <aside class="panel-card">
-            <div class="mini-label">Что будет дальше</div>
-            <div class="next-step-list">
-              <div class="next-step-item">
-                <strong>1. Заказ закрепится за email</strong>
-                <span>Он уже не потеряется между шагами.</span>
-              </div>
-              <div class="next-step-item">
-                <strong>2. Откроется кабинет</strong>
-                <span>Там будет финальный текст и карточка заказа.</span>
-              </div>
-              <div class="next-step-item">
-                <strong>3. Далее идёт оплата</strong>
-                <span>После неё можно запускать генерацию песни.</span>
-              </div>
-            </div>
-          </aside>
-        </div>
+        </aside>
       </div>
     </div>
   </div>
