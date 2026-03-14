@@ -3,50 +3,77 @@
 {% block content %}
 <section class="section">
   <div class="container narrow">
-    <p class="eyebrow">Оплата</p>
-    <h1>Заказ {{ order.order_number }}</h1>
+    <div class="page-shell">
+      <p class="eyebrow">Оплата</p>
+      <h1>Заказ {{ order.order_number }}</h1>
+      <p class="section-lead">
+        Здесь пользователь видит итог оплаты и сразу понимает, что делать дальше.
+      </p>
 
-    <div class="step-meta">
-      <span>Сумма: <strong>{{ price_rub }} ₽</strong></span>
-      <span>Статус оплаты: <strong>{{ payment_status_label }}</strong></span>
-    </div>
-
-    {% if is_success %}
-      <div class="notice notice-success">
-        Оплата прошла успешно. Заказ сохранён в кабинете.
+      <div class="step-meta">
+        <span>Сумма: <strong>{{ price_rub }} ₽</strong></span>
+        <span>Статус оплаты: <strong>{{ payment_status_label }}</strong></span>
       </div>
-    {% elif is_pending %}
-      <div class="notice">
-        Мы ждём подтверждение оплаты от ЮKassa. Эта страница обновится автоматически.
-      </div>
-      <meta http-equiv="refresh" content="5">
-    {% elif is_canceled %}
-      <div class="notice notice-warning">
-        Оплата не завершена или была отменена.
-      </div>
-    {% endif %}
 
-    {% if error %}
-      <div class="notice notice-error">{{ error }}</div>
-    {% endif %}
-
-    <div class="form-card">
-      <h2 class="form-title">Финальный текст</h2>
-      <textarea class="textarea textarea-readonly" readonly>{{ order.final_lyrics_text or "Финальный текст пока не сохранён." }}</textarea>
-    </div>
-
-    <div class="form-actions">
       {% if is_success %}
-        <a href="/account/login" class="btn btn-secondary">Войти в кабинет</a>
-        <a href="/account/orders/{{ order.public_id }}" class="btn btn-primary">Открыть заказ</a>
+        <div class="notice notice-success">
+          Оплата прошла успешно. Заказ сохранён в кабинете.
+        </div>
       {% elif is_pending %}
-        <a href="/checkout/status?payment={{ payment.public_id }}" class="btn btn-secondary">Обновить статус</a>
-      {% else %}
-        <form method="post" action="/checkout/start/{{ order.public_id }}">
-          <button type="submit" class="btn btn-primary">Попробовать оплатить снова</button>
-        </form>
-        <a href="/account/orders/{{ order.public_id }}" class="btn btn-secondary">Вернуться к заказу</a>
+        <div class="notice">
+          Мы ждём подтверждение оплаты от ЮKassa. Эта страница обновится автоматически.
+        </div>
+        <meta http-equiv="refresh" content="5">
+      {% elif is_canceled %}
+        <div class="notice notice-warning">
+          Оплата не завершена или была отменена.
+        </div>
       {% endif %}
+
+      {% if error %}
+        <div class="notice notice-error">{{ error }}</div>
+      {% endif %}
+
+      <div class="payment-layout">
+        <div class="form-card">
+          <div class="mini-label">Финальный текст</div>
+          <h2 class="form-title">Текст заказа</h2>
+          <textarea class="textarea textarea-readonly" readonly>{{ order.final_lyrics_text or "Финальный текст пока не сохранён." }}</textarea>
+        </div>
+
+        <aside class="panel-card payment-summary-card">
+          <div class="mini-label">Итог по оплате</div>
+
+          <div class="detail-list">
+            <div class="detail-list-item">
+              <span class="detail-label">Номер заказа</span>
+              <strong class="detail-value">{{ order.order_number }}</strong>
+            </div>
+            <div class="detail-list-item">
+              <span class="detail-label">Сумма</span>
+              <strong class="detail-value">{{ price_rub }} ₽</strong>
+            </div>
+            <div class="detail-list-item">
+              <span class="detail-label">Статус</span>
+              <strong class="detail-value">{{ payment_status_label }}</strong>
+            </div>
+          </div>
+
+          <div class="form-actions action-stack">
+            {% if is_success %}
+              <a href="/account/login" class="btn btn-secondary">Войти в кабинет</a>
+              <a href="/account/orders/{{ order.public_id }}" class="btn btn-primary">Открыть заказ</a>
+            {% elif is_pending %}
+              <a href="/checkout/status?payment={{ payment.public_id }}" class="btn btn-secondary">Обновить статус</a>
+            {% else %}
+              <form method="post" action="/checkout/start/{{ order.public_id }}">
+                <button type="submit" class="btn btn-primary">Попробовать оплатить снова</button>
+              </form>
+              <a href="/account/orders/{{ order.public_id }}" class="btn btn-secondary">Вернуться к заказу</a>
+            {% endif %}
+          </div>
+        </aside>
+      </div>
     </div>
   </div>
 </section>
