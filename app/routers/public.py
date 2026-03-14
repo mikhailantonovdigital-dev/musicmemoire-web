@@ -247,6 +247,10 @@ SCREEN_PAGES = {
             },
         ],
     },
+}
+
+
+def render_screen(request: Request, key: str):
 
 
 def render_screen(request: Request, key: str):
