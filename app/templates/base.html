@@ -6,15 +6,18 @@
   <title>{{ page_title or "Music Memoire" }}</title>
   <meta
     name="description"
-    content="Music Memoire: персональные песни в подарок. Расскажите историю текстом или голосом, получите 2 версии текста бесплатно и закажите готовую песню."
+    content="{{ meta_description or 'Music Memoire: персональные песни в подарок. Расскажите историю текстом или голосом, получите 2 версии текста бесплатно и закажите готовую песню.' }}"
   />
+  <link rel="icon" type="image/svg+xml" href="/static/img/favicon.svg" />
+  <link rel="shortcut icon" href="/static/img/favicon.svg" />
   <link rel="stylesheet" href="/static/css/styles.css" />
 </head>
-<body class="theme-dark-premium{% if request.url.path == '/' %} page-home{% endif %}{% if request.url.path in ['/', '/portfolio', '/how-it-works', '/reviews'] %} page-marketing-screen{% endif %}">
+{% set path = request.url.path %}
+{% set is_marketing_screen = path in ['/', '/portfolio', '/how-it-works', '/reviews'] %}
+{% set is_legal_screen = path in ['/offer', '/policy'] %}
+<body class="theme-dark-premium{% if path == '/' %} page-home{% endif %}{% if is_marketing_screen %} page-marketing-screen{% endif %}{% if is_legal_screen %} page-legal-screen{% endif %}">
   <div class="page-bg page-bg-dark"></div>
   <div class="page-noise"></div>
-
-  {% set path = request.url.path %}
 
   <header class="site-header site-header-upgraded site-header-dark site-header-horizontal">
     <div class="container header-shell">
@@ -43,11 +46,15 @@
     {% block content %}{% endblock %}
   </main>
 
-<footer class="site-footer site-footer-minimal site-footer-dark">
-  <div class="container footer-bottom footer-bottom-minimal">
-    <p>© Music Memoire. Копирование и распространение материалов разрешены только при указании активной ссылки на источник.</p>
-  </div>
-</footer>
+  <footer class="site-footer site-footer-dark{% if is_marketing_screen %} site-footer-minimal{% endif %}{% if is_legal_screen %} site-footer-legal{% endif %}">
+    <div class="container footer-bottom {% if is_marketing_screen %}footer-bottom-minimal{% else %}footer-bottom-default{% endif %}">
+      <p>© Music Memoire. Копирование и распространение материалов разрешены только при указании активной ссылки на источник.</p>
+      <div class="footer-legal-links">
+        <a class="footer-legal-btn {% if path == '/offer' %}is-active{% endif %}" href="/offer">Оферта</a>
+        <a class="footer-legal-btn {% if path == '/policy' %}is-active{% endif %}" href="/policy">Политика</a>
+      </div>
+    </div>
+  </footer>
 
   <script src="/static/js/app.js"></script>
 </body>
