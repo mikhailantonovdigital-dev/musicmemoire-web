@@ -4144,16 +4144,13 @@ strong,
 /* ===== Commit 11.4 — portfolio screen ===== */
 
 .page-marketing-screen .portfolio-screen {
-  padding-top: 138px;
-  padding-bottom: 92px;
+  padding-top: 124px;
+  padding-bottom: 124px;
   min-height: 100vh;
 }
 
 .page-marketing-screen .portfolio-layout {
-  width: 100%;
-  display: grid;
-  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
-  gap: 28px;
+  gap: 34px;
   align-items: center;
 }
 
@@ -4187,7 +4184,6 @@ strong,
   pointer-events: none;
 }
 
-.page-marketing-screen .portfolio-panel-head,
 .page-marketing-screen .portfolio-list {
   position: relative;
   z-index: 1;
@@ -4238,7 +4234,7 @@ strong,
 .page-marketing-screen .portfolio-list {
   display: grid;
   gap: 14px;
-  max-height: 524px;
+  max-height: 586px;
   overflow-y: auto;
   padding-right: 4px;
 }
@@ -4326,14 +4322,14 @@ strong,
   }
 
   .page-marketing-screen .portfolio-list {
-    max-height: 460px;
+    max-height: 500px;
   }
 }
 
 @media (max-width: 640px) {
   .page-marketing-screen .portfolio-screen {
-    padding-top: 118px;
-    padding-bottom: 78px;
+    padding-top: 108px;
+    padding-bottom: 108px;
   }
 
   .page-marketing-screen .portfolio-panel {
@@ -4357,6 +4353,6 @@ strong,
   }
 
   .page-marketing-screen .portfolio-list {
-    max-height: 420px;
+    max-height: 460px;
   }
 }
