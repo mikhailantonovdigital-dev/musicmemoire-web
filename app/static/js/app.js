@@ -334,6 +334,7 @@ function initSongStylePicker() {
 
   radios.forEach((radio) => {
     radio.addEventListener("change", syncDetailField);
+    radio.addEventListener("click", syncDetailField);
   });
 
   syncDetailField();
@@ -380,35 +381,6 @@ function initQuestionnaireGenerationState() {
 
     submitBtn.textContent = "Формируем текст...";
   });
-}
-
-function initSongStylePicker() {
-  const root = document.querySelector("[data-song-style-root]");
-  if (!root) return;
-
-  const radios = root.querySelectorAll('input[name="song_style"]');
-  const customWrap = root.querySelector("[data-custom-style-wrap]");
-  const customInput = root.querySelector("[data-custom-style-input]");
-
-  if (!radios.length || !customWrap || !customInput) return;
-
-  function syncCustomField() {
-    const selected = root.querySelector('input[name="song_style"]:checked');
-    const isCustom = selected && selected.value === "custom";
-
-    customWrap.hidden = !isCustom;
-    customInput.required = !!isCustom;
-
-    if (!isCustom) {
-      customInput.value = "";
-    }
-  }
-
-  radios.forEach((radio) => {
-    radio.addEventListener("change", syncCustomField);
-  });
-
-  syncCustomField();
 }
 
 document.addEventListener("DOMContentLoaded", () => {
