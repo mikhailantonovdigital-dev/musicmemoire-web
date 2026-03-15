@@ -9,7 +9,7 @@
           <p class="eyebrow eyebrow-dark">Карточка заказа</p>
           <h1>{{ order.order_number }}</h1>
           <p class="section-lead">
-            Здесь собран финальный текст, статус заказа и управление генерацией песни.
+            Здесь собраны финальный текст, параметры песни, статус заказа и управление генерацией.
           </p>
         </div>
 
@@ -53,6 +53,29 @@
                   <strong class="detail-value">{{ latest_song.attempt_no }}</strong>
                 </div>
               {% endif %}
+            </div>
+          </div>
+
+          <div class="panel-card panel-card-dark">
+            <div class="mini-label">Параметры песни</div>
+          
+            <div class="detail-list">
+              <div class="detail-list-item">
+                <span class="detail-label">Стиль</span>
+                <strong class="detail-value">{{ song_style_label }}</strong>
+              </div>
+          
+              {% if song_style_details %}
+                <div class="detail-list-item">
+                  <span class="detail-label">Уточнение по стилю</span>
+                  <strong class="detail-value">{{ song_style_details }}</strong>
+                </div>
+              {% endif %}
+          
+              <div class="detail-list-item">
+                <span class="detail-label">Исполнение</span>
+                <strong class="detail-value">{{ singer_label }}</strong>
+              </div>
             </div>
           </div>
 
