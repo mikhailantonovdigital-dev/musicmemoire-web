@@ -58,6 +58,42 @@ def humanize_song_status(status: str | None) -> str:
     return mapping.get(status or "", "Не запускалась")
 
 
+def humanize_song_style(style: str | None) -> str:
+    mapping = {
+        "pop": "Поп",
+        "rap": "Рэп",
+        "rock": "Рок",
+        "chanson": "Шансон",
+        "indie": "Инди",
+        "multi": "Несколько стилей",
+        "custom": "Свой вариант",
+    }
+    return mapping.get((style or "").strip().lower(), "Не выбран")
+
+
+def humanize_singer_gender(gender: str | None) -> str:
+    mapping = {
+        "male": "Мужской голос",
+        "female": "Женский голос",
+    }
+    return mapping.get((gender or "").strip().lower(), "Не выбран")
+
+
+def build_song_profile(order: Order) -> dict[str, str | None]:
+    style_code = (order.song_style or "").strip().lower()
+    style_custom = (order.song_style_custom or "").strip()
+
+    style_details = None
+    if style_code in {"multi", "custom"}:
+        style_details = style_custom or "Не указано"
+
+    return {
+        "style_label": humanize_song_style(style_code),
+        "style_details": style_details,
+        "singer_label": humanize_singer_gender(order.singer_gender),
+    }
+
+
 def get_latest_payment(order: Order):
     if not order.payments:
         return None
@@ -83,10 +119,6 @@ def get_payment_cta_label(order: Order) -> str:
     if latest_payment and latest_payment.status in {"pending", "waiting_for_capture"}:
         return "Продолжить оплату"
     return f"Оплатить {settings.PRICE_RUB} ₽"
-
-
-def can_start_song(order: Order) -> bool:
-    return has_successful_payment(order)
 
 
 def can_start_song(order: Order) -> bool:
@@ -239,6 +271,8 @@ async def account_dashboard(request: Request, db: Session = Depends(get_db)):
     for order in orders:
         latest_payment = get_latest_payment(order)
         latest_song = get_latest_song(order)
+        song_profile = build_song_profile(order)
+
         order_cards.append(
             {
                 "order": order,
@@ -246,6 +280,9 @@ async def account_dashboard(request: Request, db: Session = Depends(get_db)):
                 "latest_song": latest_song,
                 "payment_status_label": humanize_payment_status(latest_payment.status if latest_payment else None),
                 "song_status_label": humanize_song_status(latest_song.status if latest_song else None),
+                "song_style_label": song_profile["style_label"],
+                "song_style_details": song_profile["style_details"],
+                "singer_label": song_profile["singer_label"],
                 "can_pay_order": can_pay_order(order),
                 "payment_cta_label": get_payment_cta_label(order),
                 "can_start_song": can_start_song(order),
@@ -292,6 +329,7 @@ async def account_order_detail(
 
     latest_payment = get_latest_payment(order)
     latest_song = get_latest_song(order)
+    song_profile = build_song_profile(order)
 
     return templates.TemplateResponse(
         "account/order_detail.html",
@@ -304,6 +342,9 @@ async def account_order_detail(
             "latest_song": latest_song,
             "payment_status_label": humanize_payment_status(latest_payment.status if latest_payment else None),
             "song_status_label": humanize_song_status(latest_song.status if latest_song else None),
+            "song_style_label": song_profile["style_label"],
+            "song_style_details": song_profile["style_details"],
+            "singer_label": song_profile["singer_label"],
             "can_pay_order": can_pay_order(order),
             "payment_cta_label": get_payment_cta_label(order),
             "can_start_song": can_start_song(order),
