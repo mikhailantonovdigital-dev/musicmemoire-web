@@ -1,97 +1,101 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="section">
+<section class="section questionnaire-stage">
   <div class="container narrow">
-    <p class="eyebrow">
-      {% if draft.lyrics_mode == "custom" %}
-        Шаг 3 из 5
-      {% else %}
-        Шаг 5 из 7
-      {% endif %}
-    </p>
-    <h1>Выбери стиль песни</h1>
+    <div class="questionnaire-shell">
+      <div class="questionnaire-stack">
+        <p class="eyebrow">
+          {% if draft.lyrics_mode == "custom" %}
+            Шаг 3 из 5
+          {% else %}
+            Шаг 5 из 7
+          {% endif %}
+        </p>
+        <h1>Выбери стиль песни</h1>
 
-    <div class="consultant-box">
-      <strong>Комментарий консультанта</strong>
-      <p>
-        Этот выбор уйдёт в промт для генерации песни. Если хочешь смешать несколько стилей
-        или указать свой вариант, просто уточни это в отдельном поле ниже.
-      </p>
+        <div class="consultant-box">
+          <strong>Комментарий консультанта</strong>
+          <p>
+            Выбери настроение будущей песни. Если хочешь смешать несколько направлений или нужен свой необычный стиль,
+            просто сразу уточни это в поле ниже.
+          </p>
+        </div>
+
+        {% if saved %}
+          <div class="notice notice-success">Финальный текст сохранён.</div>
+        {% endif %}
+
+        {% if error %}
+          <div class="notice notice-error">{{ error }}</div>
+        {% endif %}
+
+        <form class="form-card" method="post" action="/questionnaire/style" data-song-style-form>
+          <div class="radio-grid song-style-grid">
+            <label class="radio-card">
+              <input type="radio" name="song_style" value="pop" {% if (form_song_style or draft.song_style or '') == 'pop' %}checked{% endif %} />
+              <span class="radio-card-title">Поп</span>
+            </label>
+
+            <label class="radio-card">
+              <input type="radio" name="song_style" value="rap" {% if (form_song_style or draft.song_style or '') == 'rap' %}checked{% endif %} />
+              <span class="radio-card-title">Рэп</span>
+            </label>
+
+            <label class="radio-card">
+              <input type="radio" name="song_style" value="rock" {% if (form_song_style or draft.song_style or '') == 'rock' %}checked{% endif %} />
+              <span class="radio-card-title">Рок</span>
+            </label>
+
+            <label class="radio-card">
+              <input type="radio" name="song_style" value="chanson" {% if (form_song_style or draft.song_style or '') == 'chanson' %}checked{% endif %} />
+              <span class="radio-card-title">Шансон</span>
+            </label>
+
+            <label class="radio-card">
+              <input type="radio" name="song_style" value="indie" {% if (form_song_style or draft.song_style or '') == 'indie' %}checked{% endif %} />
+              <span class="radio-card-title">Инди</span>
+            </label>
+
+            <label class="radio-card">
+              <input type="radio" name="song_style" value="multi" {% if (form_song_style or draft.song_style or '') == 'multi' %}checked{% endif %} />
+              <span class="radio-card-title">Несколько стилей</span>
+              <span class="radio-card-text">Например: поп + рэп, рок + инди.</span>
+            </label>
+
+            <label class="radio-card">
+              <input type="radio" name="song_style" value="custom" {% if (form_song_style or draft.song_style or '') == 'custom' %}checked{% endif %} />
+              <span class="radio-card-title">Свой вариант</span>
+              <span class="radio-card-text">Если нужен редкий, авторский или нестандартный стиль.</span>
+            </label>
+          </div>
+
+          <div
+            class="questionnaire-extra-field"
+            data-style-detail-wrap
+            {% if (form_song_style or draft.song_style or '') not in ['multi', 'custom'] %}hidden{% endif %}
+          >
+            <label class="form-label" for="song_style_custom">Уточнение по стилю</label>
+            <input
+              id="song_style_custom"
+              name="song_style_custom"
+              type="text"
+              class="text-input"
+              data-style-detail-input
+              placeholder="Например: поп-рок с рэп-вставками"
+              value="{{ form_song_style_custom or draft.song_style_custom or '' }}"
+            />
+          </div>
+
+          <div class="form-actions">
+            <a href="{% if draft.lyrics_mode == 'custom' %}/questionnaire/custom-text{% else %}/questionnaire/lyrics{% endif %}" class="btn btn-secondary">
+              Назад
+            </a>
+            <button type="submit" class="btn btn-primary">Продолжить</button>
+          </div>
+        </form>
+      </div>
     </div>
-
-    {% if saved %}
-      <div class="notice notice-success">Финальный текст сохранён.</div>
-    {% endif %}
-
-    {% if error %}
-      <div class="notice notice-error">{{ error }}</div>
-    {% endif %}
-
-    <form class="form-card" method="post" action="/questionnaire/style" data-song-style-form>
-      <div class="radio-grid">
-        <label class="radio-card">
-          <input type="radio" name="song_style" value="pop" {% if (form_song_style or draft.song_style or '') == 'pop' %}checked{% endif %} />
-          <span class="radio-card-title">Поп</span>
-        </label>
-
-        <label class="radio-card">
-          <input type="radio" name="song_style" value="rap" {% if (form_song_style or draft.song_style or '') == 'rap' %}checked{% endif %} />
-          <span class="radio-card-title">Рэп</span>
-        </label>
-
-        <label class="radio-card">
-          <input type="radio" name="song_style" value="rock" {% if (form_song_style or draft.song_style or '') == 'rock' %}checked{% endif %} />
-          <span class="radio-card-title">Рок</span>
-        </label>
-
-        <label class="radio-card">
-          <input type="radio" name="song_style" value="chanson" {% if (form_song_style or draft.song_style or '') == 'chanson' %}checked{% endif %} />
-          <span class="radio-card-title">Шансон</span>
-        </label>
-
-        <label class="radio-card">
-          <input type="radio" name="song_style" value="indie" {% if (form_song_style or draft.song_style or '') == 'indie' %}checked{% endif %} />
-          <span class="radio-card-title">Инди</span>
-        </label>
-
-        <label class="radio-card">
-          <input type="radio" name="song_style" value="multi" {% if (form_song_style or draft.song_style or '') == 'multi' %}checked{% endif %} />
-          <span class="radio-card-title">Несколько стилей</span>
-          <span class="radio-card-text">Например: поп + рэп, рок + инди и т.д.</span>
-        </label>
-
-        <label class="radio-card">
-          <input type="radio" name="song_style" value="custom" {% if (form_song_style or draft.song_style or '') == 'custom' %}checked{% endif %} />
-          <span class="radio-card-title">Свой вариант</span>
-          <span class="radio-card-text">Если нужен редкий или авторский стиль.</span>
-        </label>
-      </div>
-
-      <div
-        class="questionnaire-extra-field"
-        data-style-detail-wrap
-        {% if (form_song_style or draft.song_style or '') not in ['multi', 'custom'] %}hidden{% endif %}
-      >
-        <label class="form-label" for="song_style_custom">Уточнение по стилю</label>
-        <input
-          id="song_style_custom"
-          name="song_style_custom"
-          type="text"
-          class="text-input"
-          data-style-detail-input
-          placeholder="Например: поп-рок с рэп-вставками"
-          value="{{ form_song_style_custom or draft.song_style_custom or '' }}"
-        />
-      </div>
-
-      <div class="form-actions">
-        <a href="{% if draft.lyrics_mode == 'custom' %}/questionnaire/custom-text{% else %}/questionnaire/lyrics{% endif %}" class="btn btn-secondary">
-          Назад
-        </a>
-        <button type="submit" class="btn btn-primary">Продолжить</button>
-      </div>
-    </form>
   </div>
 </section>
 {% endblock %}
