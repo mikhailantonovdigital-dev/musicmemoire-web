@@ -1,98 +1,102 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="section">
+<section class="section questionnaire-stage">
   <div class="container">
-    <p class="eyebrow">Шаг 4 из 7</p>
-    <h1>Выбери лучший вариант текста</h1>
+    <div class="questionnaire-shell">
+      <div class="questionnaire-stack">
+        <p class="eyebrow">Шаг 4 из 7</p>
+        <h1>Выбери лучший вариант текста</h1>
 
-    <div class="consultant-box">
-      <strong>Комментарий консультанта</strong>
-      <p>
-        Ниже ты видишь готовые варианты текста. Выбери тот, который ближе по настроению,
-        и при необходимости сразу отредактируй финальный текст.
-      </p>
-    </div>
+        <div class="consultant-box">
+          <strong>Комментарий консультанта</strong>
+          <p>
+            Ниже ты видишь готовые варианты текста. Выбери тот, который ближе по настроению,
+            и при необходимости сразу отредактируй финальный текст.
+          </p>
+        </div>
 
-    {% if generated %}
-      <div class="notice notice-success">
-        Генерация завершена.
-      </div>
-    {% endif %}
+        {% if generated %}
+          <div class="notice notice-success">
+            Генерация завершена.
+          </div>
+        {% endif %}
 
-    {% if partial and generation_warning %}
-      <div class="notice notice-warning">
-        {{ generation_warning }}
-      </div>
-    {% endif %}
+        {% if partial and generation_warning %}
+          <div class="notice notice-warning">
+            {{ generation_warning }}
+          </div>
+        {% endif %}
 
-    {% if saved %}
-      <div class="notice notice-success">
-        Выбранный вариант и финальный текст сохранены.
-      </div>
-    {% endif %}
+        {% if saved %}
+          <div class="notice notice-success">
+            Выбранный вариант и финальный текст сохранены.
+          </div>
+        {% endif %}
 
-    {% if error %}
-      <div class="notice notice-error">{{ error }}</div>
-    {% endif %}
+        {% if error %}
+          <div class="notice notice-error">{{ error }}</div>
+        {% endif %}
 
-    <div class="lyrics-grid">
-      {% for version in versions %}
-        <article class="lyrics-card">
-          <div class="lyrics-card-head">
-            <div>
-              <h2>Вариант {{ loop.index }}</h2>
-              <p class="lyrics-angle">Персональный текст песни</p>
-            </div>
+        <div class="lyrics-grid">
+          {% for version in versions %}
+            <article class="lyrics-card">
+              <div class="lyrics-card-head">
+                <div>
+                  <h2>Вариант {{ loop.index }}</h2>
+                  <p class="lyrics-angle">Персональный текст песни</p>
+                </div>
+              </div>
+
+              <textarea class="textarea textarea-readonly" readonly>{{ version.lyrics_text }}</textarea>
+            </article>
+          {% endfor %}
+        </div>
+
+        <form class="form-card" method="post" action="/questionnaire/lyrics" data-lyrics-picker>
+          <h2 class="form-title">Финальный выбор</h2>
+
+          <div class="radio-grid">
+            {% for version in versions %}
+              <label class="radio-card">
+                <input
+                  type="radio"
+                  name="selected_version_public_id"
+                  value="{{ version.public_id }}"
+                  {% if version.public_id == selected_version.public_id %}checked{% endif %}
+                  data-lyrics-source-id="{{ version.public_id }}"
+                />
+                <span class="radio-card-title">Вариант {{ loop.index }}</span>
+                <span class="radio-card-text">Выбери этот вариант как основу финального текста.</span>
+              </label>
+
+              <textarea
+                hidden
+                data-lyrics-source-text="{{ version.public_id }}"
+              >{% if version.public_id == selected_version.public_id and version.edited_lyrics_text %}{{ version.edited_lyrics_text }}{% else %}{{ version.lyrics_text }}{% endif %}</textarea>
+            {% endfor %}
           </div>
 
-          <textarea class="textarea textarea-readonly" readonly>{{ version.lyrics_text }}</textarea>
-        </article>
-      {% endfor %}
-    </div>
-
-    <form class="form-card" method="post" action="/questionnaire/lyrics" data-lyrics-picker>
-      <h2 class="form-title">Финальный выбор</h2>
-
-      <div class="radio-grid">
-        {% for version in versions %}
-          <label class="radio-card">
-            <input
-              type="radio"
-              name="selected_version_public_id"
-              value="{{ version.public_id }}"
-              {% if version.public_id == selected_version.public_id %}checked{% endif %}
-              data-lyrics-source-id="{{ version.public_id }}"
-            />
-            <span class="radio-card-title">Вариант {{ loop.index }}</span>
-            <span class="radio-card-text">Выбери этот вариант как основу финального текста.</span>
-          </label>
+          <div class="final-lyrics-block">
+            <label class="form-label final-lyrics-label" for="final_lyrics_text">Финальный текст</label>
+            <p class="helper-text final-lyrics-help">Можно отредактировать перед созданием песни.</p>
+          </div>
 
           <textarea
-            hidden
-            data-lyrics-source-text="{{ version.public_id }}"
-          >{% if version.public_id == selected_version.public_id and version.edited_lyrics_text %}{{ version.edited_lyrics_text }}{% else %}{{ version.lyrics_text }}{% endif %}</textarea>
-        {% endfor %}
-      </div>
+            id="final_lyrics_text"
+            name="final_lyrics_text"
+            class="textarea"
+            data-final-lyrics-text
+            placeholder="Здесь можно сразу отредактировать выбранный вариант..."
+          >{{ final_lyrics_text }}</textarea>
 
-      <div class="final-lyrics-block">
-        <label class="form-label final-lyrics-label" for="final_lyrics_text">Финальный текст</label>
-        <p class="helper-text final-lyrics-help">Можно отредактировать перед созданием песни.</p>
+          <div class="form-actions">
+            <a href="/questionnaire/story" class="btn btn-secondary">Назад</a>
+            <button type="submit" class="btn btn-primary">Сохранить и продолжить</button>
+          </div>
+        </form>
       </div>
-
-      <textarea
-        id="final_lyrics_text"
-        name="final_lyrics_text"
-        class="textarea"
-        data-final-lyrics-text
-        placeholder="Здесь можно сразу отредактировать выбранный вариант..."
-      >{{ final_lyrics_text }}</textarea>
-
-      <div class="form-actions">
-        <a href="/questionnaire/story" class="btn btn-secondary">Назад</a>
-        <button type="submit" class="btn btn-primary">Сохранить и продолжить</button>
-      </div>
-    </form>
+    </div>
   </div>
 </section>
 {% endblock %}
