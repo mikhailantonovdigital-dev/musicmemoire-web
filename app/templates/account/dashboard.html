@@ -9,7 +9,7 @@
           <p class="eyebrow eyebrow-dark">Личный кабинет</p>
           <h1>Ваши заказы и тексты в одном месте</h1>
           <p class="section-lead">
-            Здесь хранятся финальные тексты, статусы генерации и переходы к следующему действию.
+            Здесь хранятся финальные тексты, выбранный стиль песни, исполнение и текущие статусы заказа.
           </p>
         </div>
 
@@ -80,6 +80,29 @@
                       <div class="detail-list-item">
                         <span class="detail-label">Режим текста</span>
                         <strong class="detail-value">{{ "Свой текст" if order.lyrics_mode == "custom" else "2 версии бесплатно" }}</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="panel-card panel-card-dark">
+                    <div class="mini-label">Параметры песни</div>
+                  
+                    <div class="detail-list">
+                      <div class="detail-list-item">
+                        <span class="detail-label">Стиль</span>
+                        <strong class="detail-value">{{ card.song_style_label }}</strong>
+                      </div>
+                  
+                      {% if card.song_style_details %}
+                        <div class="detail-list-item">
+                          <span class="detail-label">Уточнение по стилю</span>
+                          <strong class="detail-value">{{ card.song_style_details }}</strong>
+                        </div>
+                      {% endif %}
+                  
+                      <div class="detail-list-item">
+                        <span class="detail-label">Исполнение</span>
+                        <strong class="detail-value">{{ card.singer_label }}</strong>
                       </div>
                     </div>
                   </div>
