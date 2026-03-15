@@ -5013,7 +5013,35 @@ strong,
 /* ===== Commit 12.6 — questionnaire premium pass ===== */
 
 .page-questionnaire .site-main {
+  position: relative;
   min-height: calc(100vh - 160px);
+  background:
+    radial-gradient(circle at top left, rgba(93, 107, 255, 0.16), transparent 30%),
+    radial-gradient(circle at 85% 10%, rgba(118, 77, 255, 0.18), transparent 26%),
+    radial-gradient(circle at 50% 100%, rgba(69, 177, 255, 0.12), transparent 34%),
+    linear-gradient(180deg, #060b14 0%, #09101b 52%, #070c15 100%);
+}
+
+.page-questionnaire .site-main::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0)),
+    radial-gradient(circle at 18% 22%, rgba(152, 118, 255, 0.10), transparent 18%),
+    radial-gradient(circle at 82% 78%, rgba(76, 193, 255, 0.08), transparent 20%);
+}
+
+.page-questionnaire .container,
+.page-questionnaire .container.narrow {
+  position: relative;
+  z-index: 1;
+}
+
+.questionnaire-shell > .eyebrow,
+.questionnaire-shell > h1 {
+  margin-top: 0;
 }
 
 .questionnaire-stage {
