@@ -366,20 +366,36 @@ function initExclusiveAudioPlayers() {
 function initQuestionnaireGenerationState() {
   const form = document.querySelector("[data-generation-form]");
   const overlay = document.querySelector("[data-generation-overlay]");
-  const submitBtn = document.querySelector("[data-generate-submit]");
+  const submitBtn = form ? form.querySelector("[data-generate-submit]") : null;
 
   if (!form || !overlay || !submitBtn) return;
 
-  form.addEventListener("submit", () => {
+  form.addEventListener("submit", (event) => {
+    if (form.dataset.isSubmitting === "true") {
+      return;
+    }
+
+    event.preventDefault();
+    form.dataset.isSubmitting = "true";
+
     overlay.hidden = false;
     form.classList.add("is-generating");
 
-    const secondaryButtons = form.querySelectorAll('button:not([data-generate-submit])');
-    secondaryButtons.forEach((button) => {
-      button.disabled = true;
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Формируем текст...";
+
+    const otherButtons = form.querySelectorAll("button");
+    otherButtons.forEach((button) => {
+      if (button !== submitBtn) {
+        button.disabled = true;
+      }
     });
 
-    submitBtn.textContent = "Формируем текст...";
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        form.submit();
+      });
+    });
   });
 }
 
