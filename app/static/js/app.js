@@ -387,4 +387,6 @@ document.addEventListener("DOMContentLoaded", () => {
   initVoiceRecorder();
   initLyricsPicker();
   initSongStylePicker();
+  initExclusiveAudioPlayers();
+  initQuestionnaireGenerationState();
 });
