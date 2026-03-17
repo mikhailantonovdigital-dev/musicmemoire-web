@@ -45,7 +45,7 @@ class Settings(BaseSettings):
     SUPPORT_TG_URL: str = "https://t.me/mikhailantonov19"
     SUPPORT_MAX_URL: str = "https://max.ru/u/f9LHodD0cOKg36L-baFKeBJquxSx5xydupa2AYOKdl7BUFipfVYS5FVVV80"
 
-    PRICE_RUB: int = 4900
+    PRICE_RUB: int = 990
 
     UPLOADS_DIR: str = "/var/data/musicmemoire/uploads"
     MAX_VOICE_FILE_MB: int = 25
