@@ -458,6 +458,7 @@ def render_screen(request: Request, key: str):
         {
             "request": request,
             "screen": screen,
+            "price_rub": settings.PRICE_RUB,
             **meta,
         },
     )
