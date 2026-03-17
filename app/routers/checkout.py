@@ -127,7 +127,7 @@ async def checkout_start(order_public_id: str, request: Request, db: Session = D
     db.add(payment)
     db.flush()
 
-    return_url = f"{settings.BASE_URL}/checkout/status?payment={payment.public_id}"
+    return_url = f"{settings.BASE_URL.rstrip('/')}/checkout/status?payment={payment.public_id}"
     payment.return_url = return_url
 
     try:
