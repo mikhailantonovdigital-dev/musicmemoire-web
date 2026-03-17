@@ -508,4 +508,4 @@ async def policy_page(request: Request):
 
 @router.get("/health")
 async def health():
-    return {"ok": True, "service": "magicmoment-web"}
+    return {"ok": True, "service": "magic-music-web"}
