@@ -3,25 +3,25 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>{{ page_title or "Magic Moment" }}</title>
+  <title>{{ page_title or "Magic Music" }}</title>
   <meta
     name="description"
-    content="{{ meta_description or 'Magic Moment: персональные песни в подарок. Расскажите историю текстом или голосом, получите 2 версии текста и выберите лучший вариант.' }}"
+    content="{{ meta_description or 'Magic Music: персональные песни в подарок. Расскажите историю текстом или голосом, получите 2 версии текста и выберите лучший вариант.' }}"
   />
   <meta name="robots" content="index,follow" />
   <link rel="canonical" href="{{ canonical_url or request.url }}" />
   
-  <meta property="og:site_name" content="Magic Moment" />
+  <meta property="og:site_name" content="Magic Music" />
   <meta property="og:locale" content="ru_RU" />
   <meta property="og:type" content="{{ og_type or 'website' }}" />
-  <meta property="og:title" content="{{ og_title or page_title or 'Magic Moment' }}" />
-  <meta property="og:description" content="{{ og_description or meta_description or 'Magic Moment: персональные песни в подарок.' }}" />
+  <meta property="og:title" content="{{ og_title or page_title or 'Magic Music' }}" />
+  <meta property="og:description" content="{{ og_description or meta_description or 'Magic Music: персональные песни в подарок.' }}" />
   <meta property="og:url" content="{{ og_url or request.url }}" />
   <meta property="og:image" content="{{ og_image or '/static/img/hero-gift-song.jpg' }}" />
   
   <meta name="twitter:card" content="{{ twitter_card or 'summary_large_image' }}" />
-  <meta name="twitter:title" content="{{ og_title or page_title or 'Magic Moment' }}" />
-  <meta name="twitter:description" content="{{ og_description or meta_description or 'Magic Moment: персональные песни в подарок.' }}" />
+  <meta name="twitter:title" content="{{ og_title or page_title or 'Magic Music' }}" />
+  <meta name="twitter:description" content="{{ og_description or meta_description or 'Magic Music: персональные песни в подарок.' }}" />
   <meta name="twitter:image" content="{{ og_image or '/static/img/hero-gift-song.jpg' }}" />
   <link rel="icon" href="/static/img/favicon.svg?v=2" type="image/svg+xml" sizes="any" />
   <link rel="shortcut icon" href="/static/img/favicon.svg?v=2" type="image/svg+xml" />
@@ -43,7 +43,7 @@
       <a href="/" class="brand brand-dark">
         <span class="logo-badge">MM</span>
         <span class="brand-copy">
-          <span class="logo-text">Magic Moment</span>
+          <span class="logo-text">Magic Music</span>
         </span>
       </a>
 
@@ -67,7 +67,7 @@
 
   <footer class="site-footer site-footer-dark{% if is_marketing_screen %} site-footer-minimal{% endif %}{% if is_legal_screen %} site-footer-legal{% endif %}">
     <div class="container footer-bottom {% if is_marketing_screen %}footer-bottom-minimal{% else %}footer-bottom-default{% endif %}">
-      <p>© Magic Moment. Копирование и распространение материалов разрешены только при указании активной ссылки на источник.</p>
+      <p>© Magic Music. Копирование и распространение материалов разрешены только при указании активной ссылки на источник.</p>
       <div class="footer-legal-links">
         <a class="footer-legal-btn {% if path == '/offer' %}is-active{% endif %}" href="/offer">Оферта</a>
         <a class="footer-legal-btn {% if path == '/policy' %}is-active{% endif %}" href="/policy">Политика</a>
