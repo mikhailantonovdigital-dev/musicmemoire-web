@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="not-found-screen">
+  <div class="container">
+    <div class="not-found-shell">
+      <div class="not-found-card">
+        <p class="eyebrow hero-eyebrow-thin">Ошибка 404</p>
+        <h1>Страница не найдена</h1>
+        <p class="lead">
+          Возможно, ссылка устарела или адрес введён с ошибкой.
+          Вернитесь на главную, посмотрите примеры работ или сразу перейдите к созданию своей песни.
+        </p>
+
+        <div class="not-found-actions">
+          <a class="btn btn-primary btn-hero-xl" href="/">На главную</a>
+          <a class="btn btn-secondary btn-hero-xl" href="/questionnaire/">Создать песню</a>
+          <a class="btn btn-secondary btn-hero-xl" href="/portfolio">Портфолио</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
