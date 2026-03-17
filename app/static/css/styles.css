@@ -5559,3 +5559,87 @@ strong,
 .final-lyrics-help {
   margin: 0;
 }
+
+/* ===== legal + 404 pass ===== */
+
+.page-not-found .site-main {
+  min-height: calc(100vh - 160px);
+  padding: 0 0 32px;
+}
+
+.not-found-screen {
+  padding: 132px 0 40px;
+}
+
+.not-found-shell {
+  display: grid;
+}
+
+.not-found-card {
+  position: relative;
+  overflow: hidden;
+  max-width: 760px;
+  padding: 38px;
+  border-radius: 34px;
+  background:
+    radial-gradient(circle at 14% 18%, rgba(92, 124, 255, 0.18), transparent 24%),
+    radial-gradient(circle at 84% 16%, rgba(156, 102, 255, 0.16), transparent 22%),
+    radial-gradient(circle at 76% 82%, rgba(76, 193, 255, 0.10), transparent 20%),
+    linear-gradient(135deg, rgba(18, 28, 50, 0.56), rgba(28, 40, 74, 0.40) 44%, rgba(31, 48, 86, 0.36) 100%);
+  border: 1px solid rgba(160, 181, 220, 0.14);
+  box-shadow:
+    0 32px 84px rgba(4, 12, 28, 0.34),
+    0 0 88px rgba(74, 122, 255, 0.12),
+    0 0 140px rgba(46, 179, 255, 0.06);
+}
+
+.not-found-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0)),
+    radial-gradient(circle at 84% 24%, rgba(255,255,255,0.06), transparent 20%);
+}
+
+.not-found-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.not-found-card h1 {
+  margin-bottom: 14px;
+}
+
+.not-found-card .lead {
+  max-width: 620px;
+  margin-bottom: 24px;
+}
+
+.not-found-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .not-found-screen {
+    padding-top: 112px;
+    padding-bottom: 24px;
+  }
+
+  .not-found-card {
+    padding: 24px;
+    border-radius: 24px;
+  }
+
+  .not-found-actions {
+    flex-direction: column;
+  }
+
+  .not-found-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
