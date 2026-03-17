@@ -12,13 +12,13 @@
             Шаг 6 из 7
           {% endif %}
         </p>
-        <h1>Кто должен петь песню?</h1>
+        <h1>Какой голос лучше подойдёт для готовой песни?</h1>
 
         <div class="consultant-box">
           <strong>Комментарий консультанта</strong>
           <p>
-            Выбери, какой голос лучше передаст настроение подарка. Мы учтём это при генерации,
-            чтобы итоговая песня звучала ближе к твоей задумке.
+            Выбери тот вариант, в котором ты легче представляешь готовую песню. Это не строгая настройка,
+            а понятный ориентир для генерации: более тёплое и уверенное звучание или более мягкая и лиричная подача.
           </p>
         </div>
 
@@ -31,13 +31,13 @@
             <label class="radio-card">
               <input type="radio" name="singer_gender" value="male" {% if (form_singer_gender or draft.singer_gender or '') == 'male' %}checked{% endif %} />
               <span class="radio-card-title">Мужской голос</span>
-              <span class="radio-card-text">Подойдёт для более плотного, уверенного или тёплого звучания.</span>
+              <span class="radio-card-text">Подойдёт, если хочется более уверенного, тёплого и собранного звучания.</span>
             </label>
 
             <label class="radio-card">
               <input type="radio" name="singer_gender" value="female" {% if (form_singer_gender or draft.singer_gender or '') == 'female' %}checked{% endif %} />
               <span class="radio-card-title">Женский голос</span>
-              <span class="radio-card-text">Подойдёт для нежного, светлого или эмоционального звучания.</span>
+              <span class="radio-card-text">Подойдёт, если хочется более нежного, светлого и эмоционального звучания.</span>
             </label>
           </div>
 
