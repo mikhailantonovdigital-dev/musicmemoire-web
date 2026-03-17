@@ -8,7 +8,7 @@
     name="description"
     content="{{ meta_description or 'Magic Music: персональные песни в подарок. Расскажите историю текстом или голосом, получите 2 версии текста и выберите лучший вариант.' }}"
   />
-  <meta name="robots" content="index,follow" />
+  <meta name="robots" content="{{ meta_robots or 'index,follow' }}" />
   <link rel="canonical" href="{{ canonical_url or request.url }}" />
   
   <meta property="og:site_name" content="Magic Music" />
@@ -34,7 +34,7 @@
 {% set is_marketing_screen = path in ['/', '/portfolio', '/how-it-works', '/reviews'] %}
 {% set is_legal_screen = path in ['/offer', '/policy'] %}
 {% set is_questionnaire_screen = path.startswith('/questionnaire') %}
-<body class="theme-dark-premium{% if path == '/' %} page-home{% endif %}{% if is_marketing_screen %} page-marketing-screen{% endif %}{% if is_legal_screen %} page-legal-screen{% endif %}{% if is_questionnaire_screen %} page-questionnaire{% endif %}">
+<body class="theme-dark-premium{% if path == '/' %} page-home{% endif %}{% if is_marketing_screen %} page-marketing-screen{% endif %}{% if is_legal_screen %} page-legal-screen{% endif %}{% if is_questionnaire_screen %} page-questionnaire{% endif %}{% if body_class %} {{ body_class }}{% endif %}">
   <div class="page-bg page-bg-dark"></div>
   <div class="page-noise"></div>
 
