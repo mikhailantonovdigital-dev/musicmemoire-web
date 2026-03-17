@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     )
 
     APP_ENV: str = "development"
-    APP_NAME: str = "Magic Moment"
+    APP_NAME: str = "Magic Music"
     APP_DOMAIN: str = "http://127.0.0.1:8000"
     BASE_URL: str = "http://127.0.0.1:8000"
     SESSION_SECRET: str = "change-me"
@@ -56,7 +56,7 @@ class Settings(BaseSettings):
     SMTP_USER: str | None = None
     SMTP_PASSWORD: str | None = None
     SMTP_FROM_EMAIL: str | None = None
-    SMTP_FROM_NAME: str = "Magic Moment"
+    SMTP_FROM_NAME: str = "Magic Music"
 
     MAGIC_LINK_TTL_MINUTES: int = 30
     MAGIC_LINK_STUB_MODE: bool = True
