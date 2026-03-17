@@ -156,17 +156,23 @@
         {% endfor %}
       </div>
 
+      <div class="hero-price-pill" aria-label="Стоимость песни">
+        <span class="hero-price-pill-kicker">Цена готовой песни</span>
+        <strong>{{ price_rub }} ₽</strong>
+        <span class="hero-price-pill-note">Оплата через ЮKassa после выбора текста и сохранения заказа в кабинете</span>
+      </div>
+
       <div class="hero-actions hero-actions-xl hero-actions-home">
         <a class="btn btn-primary btn-hero-xl" href="{{ screen.primary_href }}">{{ screen.primary_label }}</a>
-      
-      <div class="hero-cta-promise" aria-label="После оплаты будет 2 варианта песни">
-        <span class="hero-cta-promise-dot"></span>
-        <div class="hero-cta-promise-copy">
-          <span class="hero-cta-promise-kicker">После оплаты</span>
-          <strong>Будет 2 варианта песни</strong>
+
+        <div class="hero-cta-promise" aria-label="После оплаты будет 2 варианта песни">
+          <span class="hero-cta-promise-dot"></span>
+          <div class="hero-cta-promise-copy">
+            <span class="hero-cta-promise-kicker">После оплаты</span>
+            <strong>Будет 2 варианта песни</strong>
+          </div>
         </div>
-      </div>
-      
+
         {% if screen.secondary_href and screen.secondary_label %}
           <a class="btn btn-secondary btn-hero-xl" href="{{ screen.secondary_href }}">{{ screen.secondary_label }}</a>
         {% endif %}
