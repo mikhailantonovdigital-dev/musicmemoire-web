@@ -118,7 +118,7 @@ def create_redirect_payment(
             "type": "redirect",
             "return_url": return_url,
         },
-        "description": f"Magic Moment · {order_number}",
+        "description": f"Magic Music · {order_number}",
         "metadata": {
             "order_public_id": order_public_id,
             "payment_public_id": payment_public_id,
