@@ -26,11 +26,11 @@ def send_magic_link_email(*, recipient_email: str, login_url: str) -> MagicLinkD
         raise EmailServiceError("SMTP не настроен. Проверь SMTP_HOST, SMTP_USER и SMTP_PASSWORD.")
 
     from_email = settings.SMTP_FROM_EMAIL or settings.SMTP_USER
-    subject = "Вход в личный кабинет Magic Moment"
+    subject = "Вход в личный кабинет Magic Music"
 
     text_body = f"""Здравствуйте!
 
-Ваш заказ сохранён в Magic Moment.
+Ваш заказ сохранён в Magic Music.
 
 Чтобы войти в личный кабинет, откройте ссылку:
 {login_url}
