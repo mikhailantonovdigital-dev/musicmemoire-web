@@ -9,3 +9,19 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.8
+      - key: APP_ENV
+        value: production
+      - key: PRICE_RUB
+        value: 990
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: APP_DOMAIN
+        sync: false
+      - key: BASE_URL
+        sync: false
+      - key: YOOKASSA_SHOP_ID
+        sync: false
+      - key: YOOKASSA_SECRET_KEY
+        sync: false
+      - key: YOOKASSA_RECEIPT_EMAIL
+        sync: false
