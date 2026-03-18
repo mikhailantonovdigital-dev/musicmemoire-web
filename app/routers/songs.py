@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -12,8 +12,11 @@ from app.models import Order, OrderEvent, SongGeneration
 from app.services.song_workflow import (
     RUNNING_SONG_STATUSES,
     create_song_job,
+    ensure_song_track_cached,
     get_latest_ready_song,
     get_latest_song,
+    get_song_track_entry,
+    get_song_track_storage_path,
     humanize_song_status,
     process_song_callback,
     sync_song_job_state,
@@ -23,10 +26,17 @@ from app.services.suno_service import SunoServiceError
 router = APIRouter(prefix="/songs", tags=["songs"])
 
 
+def has_admin_access(request: Request) -> bool:
+    return bool(request.session.get("admin_access"))
+
+
 def get_song_order(request: Request, db: Session, order_public_id: str) -> Order | None:
     order = db.query(Order).filter(Order.public_id == order_public_id).first()
     if order is None:
         return None
+
+    if has_admin_access(request):
+        return order
 
     draft_order_id = request.session.get("draft_order_id")
     if draft_order_id and int(draft_order_id) == order.id:
@@ -49,6 +59,44 @@ def get_song_job(request: Request, db: Session, job_public_id: str) -> SongGener
         return None
 
     return job
+
+
+@router.get("/file/{job_public_id}/{track_index}", name="song_track_file")
+async def song_track_file(job_public_id: str, track_index: int, request: Request, download: int = 0, db: Session = Depends(get_db)):
+    song = get_song_job(request, db, job_public_id)
+    if song is None:
+        raise HTTPException(status_code=404, detail="Аудиофайл не найден.")
+
+    if track_index < 0:
+        raise HTTPException(status_code=404, detail="Аудиофайл не найден.")
+
+    try:
+        ensure_song_track_cached(db, song, track_index, source="song_file_route")
+        db.commit()
+        db.refresh(song)
+    except Exception:
+        db.rollback()
+        song = get_song_job(request, db, job_public_id)
+        if song is None:
+            raise HTTPException(status_code=404, detail="Аудиофайл не найден.")
+
+    track = get_song_track_entry(song, track_index)
+    if track is None:
+        raise HTTPException(status_code=404, detail="Аудиофайл не найден.")
+
+    stored_path = get_song_track_storage_path(song, track_index)
+    if stored_path is not None:
+        media_type = (track.get("stored_content_type") or "audio/mpeg").strip() or "audio/mpeg"
+        filename = track.get("stored_original_filename") or f"{song.order.order_number}-track-{track_index + 1}.mp3"
+        if download:
+            return FileResponse(stored_path, media_type=media_type, filename=filename)
+        return FileResponse(stored_path, media_type=media_type)
+
+    remote_url = (track.get("audio_url") or track.get("stream_audio_url") or "").strip()
+    if remote_url:
+        return RedirectResponse(url=remote_url, status_code=307)
+
+    raise HTTPException(status_code=404, detail="Аудиофайл не найден.")
 
 
 @router.post("/callback/suno")
