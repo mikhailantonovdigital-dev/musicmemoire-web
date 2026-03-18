@@ -78,38 +78,34 @@
                         <strong class="detail-value">{{ card.song_status_label }}</strong>
                       </div>
                       <div class="detail-list-item">
-                        <span class="detail-label">Сумма</span>
-                        <strong class="detail-value">{{ card.current_amount_rub }} ₽</strong>
-                      </div>
-                      {% if card.has_discount %}
-                        <div class="detail-list-item">
-                          <span class="detail-label">Скидка</span>
-                          <strong class="detail-value">-{{ card.discount_amount_rub }} ₽</strong>
-                        </div>
-                      {% endif %}
-                      <div class="detail-list-item">
                         <span class="detail-label">Режим текста</span>
                         <strong class="detail-value">{{ "Свой текст" if order.lyrics_mode == "custom" else "2 версии бесплатно" }}</strong>
                       </div>
+                      {% if latest_song and latest_song.audio_variants %}
+                        <div class="detail-list-item">
+                          <span class="detail-label">Готово вариантов</span>
+                          <strong class="detail-value">{{ latest_song.audio_variants|length }}</strong>
+                        </div>
+                      {% endif %}
                     </div>
                   </div>
 
                   <div class="panel-card panel-card-dark">
                     <div class="mini-label">Параметры песни</div>
-
+                  
                     <div class="detail-list">
                       <div class="detail-list-item">
                         <span class="detail-label">Стиль</span>
                         <strong class="detail-value">{{ card.song_style_label }}</strong>
                       </div>
-
+                  
                       {% if card.song_style_details %}
                         <div class="detail-list-item">
                           <span class="detail-label">Уточнение по стилю</span>
                           <strong class="detail-value">{{ card.song_style_details }}</strong>
                         </div>
                       {% endif %}
-
+                  
                       <div class="detail-list-item">
                         <span class="detail-label">Исполнение</span>
                         <strong class="detail-value">{{ card.singer_label }}</strong>
@@ -117,16 +113,21 @@
                     </div>
                   </div>
 
-                  {% if latest_song and latest_song.audio_url %}
+                  {% if latest_song and latest_song.audio_variants %}
                     <div class="panel-card panel-card-dark">
                       <div class="mini-label">Аудио</div>
-                      <audio class="audio-player" controls preload="none" src="{{ latest_song.audio_url }}"></audio>
+                      <p class="muted" style="margin: 0 0 12px;">Готово вариантов: {{ latest_song.audio_variants|length }}</p>
+                      {% set first_track = latest_song.audio_variants[0] %}
+                      {% set first_url = first_track.audio_url or first_track.stream_audio_url %}
+                      {% if first_url %}
+                        <audio class="audio-player" controls preload="none" src="{{ first_url }}"></audio>
+                      {% endif %}
                     </div>
                   {% elif latest_song and card.song_is_ready and suno_stub_mode %}
                     <div class="panel-card panel-card-dark">
                       <div class="mini-label">Аудио</div>
                       <p class="muted" style="margin: 0;">
-                        В режиме заглушки задача уже считается готовой, но реальный аудиофайл появится после подключения боевой генерации.
+                        В тестовом режиме задача уже считается готовой, но для боевого результата выключите SUNO_STUB_MODE.
                       </p>
                     </div>
                   {% endif %}
