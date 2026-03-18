@@ -46,6 +46,11 @@
             <form method="post" action="/admin/orders/{{ order.public_id }}/payment-sync">
               <button type="submit" class="btn btn-primary">Обновить статус оплаты</button>
             </form>
+            {% if can_resend_payment_email %}
+              <form method="post" action="/admin/orders/{{ order.public_id }}/payment-email-resend">
+                <button type="submit" class="btn btn-secondary">Переотправить письмо об оплате</button>
+              </form>
+            {% endif %}
           </div>
 
           {% if latest_payment.confirmation_url %}
@@ -109,6 +114,12 @@
             {% if latest_song and latest_song.status in ["queued", "processing"] %}
               <form method="post" action="/admin/orders/{{ order.public_id }}/song-sync">
                 <button type="submit" class="btn btn-secondary">Обновить статус песни</button>
+              </form>
+            {% endif %}
+
+            {% if can_resend_song_ready_email %}
+              <form method="post" action="/admin/orders/{{ order.public_id }}/song-ready-email-resend">
+                <button type="submit" class="btn btn-secondary">Переотправить письмо о готовой песне</button>
               </form>
             {% endif %}
           {% else %}
