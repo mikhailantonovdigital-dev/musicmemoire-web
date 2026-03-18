@@ -34,6 +34,7 @@ ALLOWED_STORY_SOURCES = {"text", "voice"}
 ALLOWED_LYRICS_MODES = {"generate", "custom"}
 ALLOWED_SONG_STYLES = {"pop", "rap", "rock", "chanson", "indie", "multi", "custom"}
 ALLOWED_SINGER_GENDERS = {"male", "female"}
+LYRICS_GENERATION_DAILY_LIMIT = 3
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
@@ -94,6 +95,48 @@ def get_lyrics_versions(db: Session, order_id: int) -> list[LyricsVersion]:
         .filter(LyricsVersion.order_id == order_id)
         .order_by(LyricsVersion.id.asc())
         .all()
+    )
+
+def get_lyrics_generation_scope(request: Request, db: Session, draft: Order) -> tuple[str, int | str]:
+    session_user = get_session_user(request, db)
+    user_id = draft.user_id or (session_user.id if session_user else None)
+    if user_id is not None:
+        return "user", user_id
+    return "session", ensure_visitor_session(request)
+
+
+def count_lyrics_generation_attempts_today(
+    request: Request,
+    db: Session,
+    draft: Order,
+) -> int:
+    scope_kind, scope_value = get_lyrics_generation_scope(request, db, draft)
+    now = utcnow()
+    day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    day_end = day_start + timedelta(days=1)
+
+    query = (
+        db.query(OrderEvent)
+        .join(Order, OrderEvent.order_id == Order.id)
+        .filter(
+            OrderEvent.event_type == "lyrics_generation_started",
+            OrderEvent.created_at >= day_start,
+            OrderEvent.created_at < day_end,
+        )
+    )
+
+    if scope_kind == "user":
+        query = query.filter(Order.user_id == int(scope_value))
+    else:
+        query = query.filter(Order.session_id == str(scope_value))
+
+    return query.count()
+
+
+def get_lyrics_generation_limit_error() -> str:
+    return (
+        f"Новые 2 версии текста можно генерировать не более {LYRICS_GENERATION_DAILY_LIMIT} раз в день. "
+        "Сегодня лимит уже исчерпан. Попробуй снова завтра."
     )
 
 
@@ -704,6 +747,44 @@ async def questionnaire_story_submit(
     db.commit()
 
     if action == "generate":
+        attempts_today = count_lyrics_generation_attempts_today(request, db, draft)
+        if attempts_today >= LYRICS_GENERATION_DAILY_LIMIT:
+            scope_kind, scope_value = get_lyrics_generation_scope(request, db, draft)
+            db.add(
+                OrderEvent(
+                    order=draft,
+                    event_type="lyrics_generation_limit_reached",
+                    payload={
+                        "scope": scope_kind,
+                        "scope_value": str(scope_value),
+                        "attempts_today": attempts_today,
+                        "limit": LYRICS_GENERATION_DAILY_LIMIT,
+                    },
+                )
+            )
+            db.commit()
+
+            return templates.TemplateResponse(
+                "questionnaire/story.html",
+                {
+                    "request": request,
+                    "page_title": "Анкета — история",
+                    "draft": draft,
+                    "latest_voice": latest_voice,
+                    "latest_voice_size": format_size(latest_voice.size_bytes) if latest_voice else None,
+                    "latest_voice_status_label": humanize_transcription_status(
+                        latest_voice.transcription_status if latest_voice else None
+                    ),
+                    "saved": False,
+                    "voice_uploaded": False,
+                    "transcribed": False,
+                    "transcription_failed": False,
+                    "transcription_error": None,
+                    "error": get_lyrics_generation_limit_error(),
+                },
+                status_code=400,
+            )
+
         try:
             variant_errors = await generate_versions_for_draft(db, draft)
         except LyricsGenerationError as exc:
