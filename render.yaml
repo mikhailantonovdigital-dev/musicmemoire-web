@@ -21,7 +21,9 @@ services:
         sync: false
       - key: YOOKASSA_SHOP_ID
         sync: false
-      - key: YOOKASSA_SECRET_KEY
+      - key: YOOKASSA_TAX_SYSTEM_CODE
+        sync: false
+      - key: YOOKASSA_VAT_CODE
         sync: false
       - key: YOOKASSA_RECEIPT_EMAIL
         sync: false
