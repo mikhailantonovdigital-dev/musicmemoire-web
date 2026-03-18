@@ -27,6 +27,7 @@ from app.services.transcription_service import (
 )
 
 templates = Jinja2Templates(directory="app/templates")
+templates.env.globals["settings"] = settings
 
 router = APIRouter(prefix="/questionnaire", tags=["questionnaire"])
 
