@@ -18,9 +18,11 @@ from app.services.song_workflow import (
     get_latest_song,
     has_successful_payment,
     humanize_song_status,
+    resend_song_ready_email,
     sync_song_job_state,
 )
-from app.services.payment_workflow import sync_payment_with_remote
+from app.services.email_service import EmailServiceError
+from app.services.payment_workflow import resend_payment_success_email, sync_payment_with_remote
 from app.services.suno_service import SunoServiceError
 from app.services.yookassa_service import YooKassaError
 
@@ -70,6 +72,16 @@ def can_run_song(order: Order) -> bool:
     return has_successful_payment(order)
 
 
+def can_resend_payment_email(order: Order) -> bool:
+    latest_payment = get_latest_payment(order)
+    return bool(latest_payment and latest_payment.status == "succeeded" and order.user and order.user.email)
+
+
+def can_resend_song_ready_email(order: Order) -> bool:
+    latest_song = get_latest_song(order)
+    return bool(latest_song and latest_song.status == "succeeded" and order.user and order.user.email)
+
+
 def build_order_card(order: Order) -> dict:
     latest_payment = get_latest_payment(order)
     latest_song = get_latest_song(order)
@@ -80,6 +92,8 @@ def build_order_card(order: Order) -> dict:
         "payment_status_label": humanize_payment_status(latest_payment.status if latest_payment else None),
         "song_status_label": humanize_song_status(latest_song.status if latest_song else None),
         "can_run_song": can_run_song(order),
+        "can_resend_payment_email": can_resend_payment_email(order),
+        "can_resend_song_ready_email": can_resend_song_ready_email(order),
     }
 
 
@@ -254,6 +268,8 @@ async def admin_order_detail(order_public_id: str, request: Request, db: Session
             "payment_status_label": humanize_payment_status(latest_payment.status if latest_payment else None),
             "song_status_label": humanize_song_status(latest_song.status if latest_song else None),
             "can_run_song": can_run_song(order),
+            "can_resend_payment_email": can_resend_payment_email(order),
+            "can_resend_song_ready_email": can_resend_song_ready_email(order),
             "events": events,
         },
     )
@@ -349,4 +365,58 @@ async def admin_order_song_sync(order_public_id: str, request: Request, db: Sess
     else:
         set_admin_flash(request, "success", "Статус песни обновлён. Генерация ещё продолжается.")
 
+    return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
+
+
+@router.post("/orders/{order_public_id}/payment-email-resend")
+async def admin_order_payment_email_resend(order_public_id: str, request: Request, db: Session = Depends(get_db)):
+    if not has_admin_access(request):
+        return RedirectResponse(url="/admin/login", status_code=303)
+
+    order = db.query(Order).filter(Order.public_id == order_public_id).first()
+    if order is None:
+        set_admin_flash(request, "error", "Заказ не найден.")
+        return RedirectResponse(url="/admin/", status_code=303)
+
+    latest_payment = get_latest_payment(order)
+    if latest_payment is None or latest_payment.status != "succeeded":
+        set_admin_flash(request, "warning", "Письмо об оплате можно отправить только для успешно оплаченного заказа.")
+        return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
+
+    try:
+        resend_payment_success_email(db, order, latest_payment)
+        db.commit()
+    except EmailServiceError as exc:
+        db.rollback()
+        set_admin_flash(request, "error", str(exc))
+        return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
+
+    set_admin_flash(request, "success", "Письмо об успешной оплате отправлено повторно.")
+    return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
+
+
+@router.post("/orders/{order_public_id}/song-ready-email-resend")
+async def admin_order_song_ready_email_resend(order_public_id: str, request: Request, db: Session = Depends(get_db)):
+    if not has_admin_access(request):
+        return RedirectResponse(url="/admin/login", status_code=303)
+
+    order = db.query(Order).filter(Order.public_id == order_public_id).first()
+    if order is None:
+        set_admin_flash(request, "error", "Заказ не найден.")
+        return RedirectResponse(url="/admin/", status_code=303)
+
+    latest_song = get_latest_song(order)
+    if latest_song is None or latest_song.status != "succeeded":
+        set_admin_flash(request, "warning", "Письмо о готовой песне можно отправить только после успешной генерации.")
+        return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
+
+    try:
+        resend_song_ready_email(db, latest_song)
+        db.commit()
+    except EmailServiceError as exc:
+        db.rollback()
+        set_admin_flash(request, "error", str(exc))
+        return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
+
+    set_admin_flash(request, "success", "Письмо о готовой песне отправлено повторно.")
     return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
