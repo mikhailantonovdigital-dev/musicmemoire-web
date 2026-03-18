@@ -7,7 +7,7 @@
       <p class="eyebrow">Оплата</p>
       <h1>Заказ {{ order.order_number }}</h1>
       <p class="section-lead">
-        Здесь пользователь видит итог оплаты и сразу понимает, что делать дальше.
+        Здесь видно, прошла ли оплата через ЮKassa, и что делать дальше по заказу.
       </p>
 
       <div class="step-meta">
@@ -27,6 +27,12 @@
       {% elif is_canceled %}
         <div class="notice notice-warning">
           Оплата не завершена или была отменена.
+        </div>
+      {% endif %}
+
+      {% if error or is_canceled %}
+        <div style="margin-top: 20px;">
+          {% include "partials/support_card.html" with context %}
         </div>
       {% endif %}
 
