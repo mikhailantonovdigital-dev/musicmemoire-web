@@ -7,13 +7,13 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.db import get_db
 from app.core.security import generate_magic_token, hash_magic_token, utcnow
 from app.core.storage import save_voice_file
+from app.core.templates import templates
 from app.models import LyricsVersion, MagicLoginToken, Order, OrderEvent, User, VoiceInput
 from app.services.email_service import EmailServiceError, send_magic_link_email
 from app.services.lyrics_generation_service import (
@@ -25,9 +25,6 @@ from app.services.transcription_service import (
     TranscriptionServiceError,
     transcribe_audio_file,
 )
-
-templates = Jinja2Templates(directory="app/templates")
-templates.env.globals["settings"] = settings
 
 router = APIRouter(prefix="/questionnaire", tags=["questionnaire"])
 
