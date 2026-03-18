@@ -26,6 +26,12 @@
           </p>
         </div>
 
+        {% if has_discount %}
+          <div class="notice notice-success">
+            Для этого заказа уже активна скидка 50% на повторную покупку: {{ base_price_rub }} ₽ → {{ price_rub }} ₽.
+          </div>
+        {% endif %}
+
         {% if saved %}
           <div class="notice notice-success">Финальный текст сохранён.</div>
         {% endif %}
@@ -51,6 +57,23 @@
             value="{{ form_email or '' }}"
             required
           />
+
+          <div class="detail-list" style="margin-bottom: 16px;">
+            <div class="detail-list-item">
+              <span class="detail-label">Сумма к оплате</span>
+              <strong class="detail-value">{{ price_rub }} ₽</strong>
+            </div>
+            {% if has_discount %}
+              <div class="detail-list-item">
+                <span class="detail-label">Базовая цена</span>
+                <strong class="detail-value">{{ base_price_rub }} ₽</strong>
+              </div>
+              <div class="detail-list-item">
+                <span class="detail-label">Скидка</span>
+                <strong class="detail-value">-{{ discount_rub }} ₽</strong>
+              </div>
+            {% endif %}
+          </div>
 
           <div class="form-actions">
             <a href="/questionnaire/singer" class="btn btn-secondary">Назад</a>
