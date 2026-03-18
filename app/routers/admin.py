@@ -20,7 +20,9 @@ from app.services.payment_workflow import resend_payment_success_email, sync_pay
 from app.services.song_workflow import (
     RUNNING_SONG_STATUSES,
     create_song_job,
+    get_latest_ready_song,
     get_latest_song,
+    get_song_attempts,
     has_successful_payment,
     humanize_song_status,
     resend_song_ready_email,
@@ -396,6 +398,8 @@ async def admin_order_detail(order_public_id: str, request: Request, db: Session
 
     latest_payment = get_latest_payment(order)
     latest_song = get_latest_song(order)
+    latest_ready_song = get_latest_ready_song(order)
+    song_attempts = get_song_attempts(order)
     lyrics_versions = get_lyrics_versions(db, order.id)
     selected_version = next((item for item in lyrics_versions if item.is_selected), None)
     voice_inputs = get_voice_inputs(db, order.id)
@@ -413,6 +417,9 @@ async def admin_order_detail(order_public_id: str, request: Request, db: Session
             "order": order,
             "latest_payment": latest_payment,
             "latest_song": latest_song,
+            "latest_ready_song": latest_ready_song,
+            "song_attempts": song_attempts,
+            "has_previous_ready_song": bool(latest_ready_song and latest_song and latest_ready_song.public_id != latest_song.public_id),
             "lyrics_versions": lyrics_versions,
             "selected_version": selected_version,
             "voice_cards": voice_cards,
