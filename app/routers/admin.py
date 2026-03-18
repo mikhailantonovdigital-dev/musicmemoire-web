@@ -14,6 +14,7 @@ from app.core.db import get_db
 from app.core.security import utcnow
 from app.core.templates import templates
 from app.models import LyricsVersion, Order, OrderEvent, OrderPayment, SongGeneration, User, VoiceInput
+from app.models.order_payment import build_order_pricing_preview
 from app.services.email_service import EmailServiceError
 from app.services.lyrics_generation_service import DualGenerationResult, LyricsGenerationError, generate_dual_lyrics_versions
 from app.services.payment_workflow import resend_payment_success_email, sync_payment_with_remote
@@ -187,6 +188,19 @@ def get_latest_payment(order: Order) -> OrderPayment | None:
     return sorted(order.payments, key=lambda item: item.id or 0, reverse=True)[0]
 
 
+def get_order_payments(order: Order) -> list[OrderPayment]:
+    if not order.payments:
+        return []
+    return sorted(order.payments, key=lambda item: item.id or 0, reverse=True)
+
+
+def get_payment_by_public_id(order: Order, payment_public_id: str) -> OrderPayment | None:
+    for payment in get_order_payments(order):
+        if payment.public_id == payment_public_id:
+            return payment
+    return None
+
+
 def get_lyrics_versions(db: Session, order_id: int) -> list[LyricsVersion]:
     return (
         db.query(LyricsVersion)
@@ -210,9 +224,13 @@ def can_run_song(order: Order) -> bool:
     return has_successful_payment(order)
 
 
+def can_resend_payment_email_for_payment(order: Order, payment: OrderPayment | None) -> bool:
+    return bool(payment and payment.status == "succeeded" and order.user and order.user.email)
+
+
 def can_resend_payment_email(order: Order) -> bool:
     latest_payment = get_latest_payment(order)
-    return bool(latest_payment and latest_payment.status == "succeeded" and order.user and order.user.email)
+    return can_resend_payment_email_for_payment(order, latest_payment)
 
 
 def can_resend_song_ready_email(order: Order) -> bool:
@@ -351,6 +369,8 @@ async def admin_dashboard(
     song_status_counts = db.query(SongGeneration.status, func.count(SongGeneration.id)).group_by(SongGeneration.status).order_by(func.count(SongGeneration.id).desc()).all()
     recent_failed_songs = db.query(SongGeneration).filter(SongGeneration.status == "failed").order_by(SongGeneration.updated_at.desc(), SongGeneration.id.desc()).limit(10).all()
 
+    recent_problem_payments = db.query(OrderPayment).filter(OrderPayment.status.in_(["pending", "waiting_for_capture", "canceled"])).order_by(OrderPayment.updated_at.desc(), OrderPayment.id.desc()).limit(10).all()
+
     return templates.TemplateResponse(
         "admin/dashboard.html",
         {
@@ -378,6 +398,7 @@ async def admin_dashboard(
             "order_cards": [build_order_card(order) for order in orders],
             "funnel_counts": build_funnel_counts(db),
             "recent_failed_songs": recent_failed_songs,
+            "recent_problem_payments": recent_problem_payments,
             "order_status_filter_options": ORDER_STATUS_FILTER_OPTIONS,
             "payment_status_filter_options": PAYMENT_STATUS_FILTER_OPTIONS,
             "song_status_filter_options": SONG_STATUS_FILTER_OPTIONS,
@@ -397,6 +418,8 @@ async def admin_order_detail(order_public_id: str, request: Request, db: Session
         return RedirectResponse(url="/admin/", status_code=303)
 
     latest_payment = get_latest_payment(order)
+    payment_attempts = get_order_payments(order)
+    pricing_preview = build_order_pricing_preview(db, order)
     latest_song = get_latest_song(order)
     latest_ready_song = get_latest_ready_song(order)
     song_attempts = get_song_attempts(order)
@@ -416,6 +439,8 @@ async def admin_order_detail(order_public_id: str, request: Request, db: Session
             "admin_token_enabled": bool(settings.ADMIN_TOKEN),
             "order": order,
             "latest_payment": latest_payment,
+            "payment_attempts": payment_attempts,
+            "pricing_preview": pricing_preview,
             "latest_song": latest_song,
             "latest_ready_song": latest_ready_song,
             "song_attempts": song_attempts,
@@ -433,6 +458,7 @@ async def admin_order_detail(order_public_id: str, request: Request, db: Session
             "order_status_options": ORDER_STATUS_OPTIONS,
             "song_status_options": SONG_STATUS_OPTIONS,
             "events": events,
+            "humanize_payment_status": humanize_payment_status,
         },
     )
 
@@ -447,19 +473,39 @@ async def admin_order_payment_sync(order_public_id: str, request: Request, db: S
         return RedirectResponse(url="/admin/", status_code=303)
 
     latest_payment = get_latest_payment(order)
-    if latest_payment is None or not latest_payment.yookassa_payment_id:
+    if latest_payment is None:
         set_admin_flash(request, "warning", "У заказа нет платежа для синхронизации.")
         return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
 
+    return await admin_order_payment_sync_attempt(order_public_id, latest_payment.public_id, request, db)
+
+
+@router.post("/orders/{order_public_id}/payments/{payment_public_id}/sync")
+async def admin_order_payment_sync_attempt(order_public_id: str, payment_public_id: str, request: Request, db: Session = Depends(get_db)):
+    if not has_admin_access(request):
+        return RedirectResponse(url="/admin/login", status_code=303)
+    order = db.query(Order).filter(Order.public_id == order_public_id).first()
+    if order is None:
+        set_admin_flash(request, "error", "Заказ не найден.")
+        return RedirectResponse(url="/admin/", status_code=303)
+
+    payment = get_payment_by_public_id(order, payment_public_id)
+    if payment is None:
+        set_admin_flash(request, "warning", "Платёж не найден у этого заказа.")
+        return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
+    if not payment.yookassa_payment_id:
+        set_admin_flash(request, "warning", "У этого платежа нет внешнего payment id для синхронизации.")
+        return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
+
     try:
-        sync_payment_with_remote(db, latest_payment, trigger="admin_manual_sync", event_name="admin_payment_status_synced")
+        sync_payment_with_remote(db, payment, trigger="admin_manual_sync", event_name="admin_payment_status_synced")
         db.commit()
     except YooKassaError as exc:
         db.rollback()
         set_admin_flash(request, "error", str(exc))
         return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
 
-    set_admin_flash(request, "success", "Статус оплаты обновлён.")
+    set_admin_flash(request, "success", f"Статус платежа {payment.public_id} обновлён: {payment.status}.")
     return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
 
 
@@ -927,19 +973,36 @@ async def admin_order_payment_email_resend(order_public_id: str, request: Reques
         return RedirectResponse(url="/admin/", status_code=303)
 
     latest_payment = get_latest_payment(order)
-    if latest_payment is None or latest_payment.status != "succeeded":
-        set_admin_flash(request, "warning", "Письмо об оплате можно отправить только для успешно оплаченного заказа.")
+    if latest_payment is None:
+        set_admin_flash(request, "warning", "У заказа нет платежа для письма.")
+        return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
+
+    return await admin_order_payment_email_resend_attempt(order_public_id, latest_payment.public_id, request, db)
+
+
+@router.post("/orders/{order_public_id}/payments/{payment_public_id}/payment-email-resend")
+async def admin_order_payment_email_resend_attempt(order_public_id: str, payment_public_id: str, request: Request, db: Session = Depends(get_db)):
+    if not has_admin_access(request):
+        return RedirectResponse(url="/admin/login", status_code=303)
+    order = db.query(Order).filter(Order.public_id == order_public_id).first()
+    if order is None:
+        set_admin_flash(request, "error", "Заказ не найден.")
+        return RedirectResponse(url="/admin/", status_code=303)
+
+    payment = get_payment_by_public_id(order, payment_public_id)
+    if payment is None or payment.status != "succeeded":
+        set_admin_flash(request, "warning", "Письмо об оплате можно отправить только для успешно оплаченного платежа.")
         return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
 
     try:
-        resend_payment_success_email(db, order, latest_payment)
+        resend_payment_success_email(db, order, payment)
         db.commit()
     except EmailServiceError as exc:
         db.rollback()
         set_admin_flash(request, "error", str(exc))
         return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
 
-    set_admin_flash(request, "success", "Письмо об успешной оплате отправлено повторно.")
+    set_admin_flash(request, "success", f"Письмо об успешной оплате отправлено повторно для платежа {payment.public_id}.")
     return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
 
 
