@@ -28,21 +28,96 @@
       <div class="form-card">
         <h2 class="form-title">Оплата</h2>
         {% if latest_payment %}
-          <p><strong>Статус:</strong> {{ payment_status_label }}</p>
-          <p><strong>Итоговая сумма:</strong> {{ latest_payment.final_amount_rub }} ₽</p>
-          <p><strong>Базовая цена:</strong> {{ latest_payment.base_amount_rub }} ₽</p>
-          <p><strong>Скидка:</strong> {% if latest_payment.has_discount %}-{{ latest_payment.discount_amount_rub }} ₽{% else %}—{% endif %}</p>
-          <p><strong>Внутренний payment ID:</strong> {{ latest_payment.public_id }}</p>
-          <p><strong>ЮKassa ID:</strong> {{ latest_payment.yookassa_payment_id or "—" }}</p>
-          <p><strong>Idempotence key:</strong> {{ latest_payment.idempotence_key or "—" }}</p>
-          <p><strong>Оплачено в:</strong> {{ latest_payment.paid_at or "—" }}</p>
+          <div class="detail-list" style="margin-bottom: 14px;">
+            <div class="detail-list-item">
+              <span class="detail-label">Текущий статус</span>
+              <strong class="detail-value">{{ payment_status_label }}</strong>
+            </div>
+            <div class="detail-list-item">
+              <span class="detail-label">Итоговая сумма</span>
+              <strong class="detail-value">{{ latest_payment.final_amount_rub }} ₽</strong>
+            </div>
+            <div class="detail-list-item">
+              <span class="detail-label">Базовая цена</span>
+              <strong class="detail-value">{{ latest_payment.base_amount_rub }} ₽</strong>
+            </div>
+            <div class="detail-list-item">
+              <span class="detail-label">Скидка</span>
+              <strong class="detail-value">{% if latest_payment.has_discount %}-{{ latest_payment.discount_amount_rub }} ₽{% else %}—{% endif %}</strong>
+            </div>
+            <div class="detail-list-item">
+              <span class="detail-label">Оплачено в</span>
+              <strong class="detail-value">{{ latest_payment.paid_at or "—" }}</strong>
+            </div>
+          </div>
+
           <div class="form-actions">
-            <form method="post" action="/admin/orders/{{ order.public_id }}/payment-sync"><button type="submit" class="btn btn-primary">Обновить статус оплаты</button></form>
+            <form method="post" action="/admin/orders/{{ order.public_id }}/payment-sync"><button type="submit" class="btn btn-primary">Обновить статус последнего платежа</button></form>
             {% if can_resend_payment_email %}<form method="post" action="/admin/orders/{{ order.public_id }}/payment-email-resend"><button type="submit" class="btn btn-secondary">Переотправить письмо об оплате</button></form>{% endif %}
           </div>
-          {% if latest_payment.confirmation_url %}<p><strong>Ссылка на оплату:</strong></p><p class="helper-text">{{ latest_payment.confirmation_url }}</p>{% endif %}
         {% else %}
           <p class="muted">Платёж ещё не создавался.</p>
+        {% endif %}
+
+        <div class="notice" style="margin-top: 16px;">
+          {% if latest_payment %}
+            Следующая попытка оплаты для этого заказа сейчас будет на сумму <strong>{{ pricing_preview.final_price_rub }} ₽</strong>{% if pricing_preview.has_discount %} (базовая цена {{ pricing_preview.base_price_rub }} ₽, скидка -{{ pricing_preview.discount_rub }} ₽){% endif %}.
+          {% else %}
+            Если создать оплату сейчас, сумма будет <strong>{{ pricing_preview.final_price_rub }} ₽</strong>{% if pricing_preview.has_discount %} (базовая цена {{ pricing_preview.base_price_rub }} ₽, скидка -{{ pricing_preview.discount_rub }} ₽){% endif %}.
+          {% endif %}
+        </div>
+
+        {% if payment_attempts %}
+          <div style="margin-top: 18px; display: grid; gap: 14px;">
+            <h3 style="margin: 0;">История платежных попыток</h3>
+            {% for payment in payment_attempts %}
+              <div class="panel-card" style="padding: 16px; background: #fafafa; border: 1px solid #ececec;">
+                <div class="lyrics-card-head" style="margin-bottom: 10px;">
+                  <div>
+                    <h3 style="margin: 0;">Платёж {{ loop.index }}</h3>
+                    <p class="lyrics-angle">{{ humanize_payment_status(payment.status) }} · {{ payment.final_amount_rub }} ₽</p>
+                    <p class="lyrics-angle">Внутренний ID: {{ payment.public_id }}</p>
+                    <p class="lyrics-angle">ЮKassa ID: {{ payment.yookassa_payment_id or "—" }}</p>
+                  </div>
+                  <span class="variant-chip">{% if latest_payment and latest_payment.public_id == payment.public_id %}Последний{% else %}История{% endif %}</span>
+                </div>
+
+                <div class="detail-list">
+                  <div class="detail-list-item"><span class="detail-label">Создан</span><strong class="detail-value">{{ payment.created_at }}</strong></div>
+                  <div class="detail-list-item"><span class="detail-label">Оплачен</span><strong class="detail-value">{{ payment.paid_at or "—" }}</strong></div>
+                  <div class="detail-list-item"><span class="detail-label">Базовая цена</span><strong class="detail-value">{{ payment.base_amount_rub }} ₽</strong></div>
+                  <div class="detail-list-item"><span class="detail-label">Скидка</span><strong class="detail-value">{% if payment.has_discount %}-{{ payment.discount_amount_rub }} ₽{% else %}—{% endif %}</strong></div>
+                  <div class="detail-list-item"><span class="detail-label">Итог</span><strong class="detail-value">{{ payment.final_amount_rub }} ₽</strong></div>
+                  <div class="detail-list-item"><span class="detail-label">Idempotence key</span><strong class="detail-value">{{ payment.idempotence_key or "—" }}</strong></div>
+                </div>
+
+                <div class="form-actions" style="margin-top: 12px;">
+                  {% if payment.yookassa_payment_id %}
+                    <form method="post" action="/admin/orders/{{ order.public_id }}/payments/{{ payment.public_id }}/sync">
+                      <button type="submit" class="btn btn-secondary">Синхронизировать этот платёж</button>
+                    </form>
+                  {% endif %}
+                  {% if payment.confirmation_url %}
+                    <a href="{{ payment.confirmation_url }}" class="btn btn-secondary" target="_blank" rel="noopener">Открыть ссылку оплаты</a>
+                  {% endif %}
+                  {% if payment.status == "succeeded" and order.user and order.user.email %}
+                    <form method="post" action="/admin/orders/{{ order.public_id }}/payments/{{ payment.public_id }}/payment-email-resend">
+                      <button type="submit" class="btn btn-secondary">Переотправить письмо по этому платежу</button>
+                    </form>
+                  {% endif %}
+                </div>
+
+                {% if payment.confirmation_url %}<p class="helper-text" style="margin-top: 10px;">{{ payment.confirmation_url }}</p>{% endif %}
+
+                {% if payment.raw_payload %}
+                  <details style="margin-top: 12px;">
+                    <summary style="cursor: pointer;">Показать raw payload</summary>
+                    <pre style="white-space: pre-wrap; word-break: break-word; margin-top: 12px; font-size: 13px; line-height: 1.45;">{{ payment.raw_payload | tojson(indent=2) }}</pre>
+                  </details>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
         {% endif %}
 
         <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #ececec;">
