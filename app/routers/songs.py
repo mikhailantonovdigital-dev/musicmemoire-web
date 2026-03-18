@@ -14,6 +14,7 @@ from app.services.suno_service import SunoServiceError, start_song_generation, s
 
 router = APIRouter(prefix="/songs", tags=["songs"])
 templates = Jinja2Templates(directory="app/templates")
+templates.env.globals["settings"] = settings
 
 RUNNING_SONG_STATUSES = {"queued", "processing"}
 
