@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.db import get_db
-from app.core.security import get_session_user, utcnow
+from app.core.security import get_session_user
 from app.core.templates import templates
 from app.models import Order, OrderEvent, SongGeneration
 from app.services.song_workflow import (
@@ -116,6 +116,7 @@ async def song_status(job: str, request: Request, db: Session = Depends(get_db))
         raise HTTPException(status_code=404, detail="Задача генерации не найдена.")
 
     error = None
+    auto_refresh_enabled = song.status in RUNNING_SONG_STATUSES
     if song.status in RUNNING_SONG_STATUSES:
         try:
             song = sync_song_job_state(db, song)
@@ -123,17 +124,22 @@ async def song_status(job: str, request: Request, db: Session = Depends(get_db))
             db.refresh(song)
         except SunoServiceError as exc:
             error = str(exc)
-            song.status = "failed"
-            song.error_message = str(exc)
-            song.finished_at = utcnow()
-            song.order.status = "song_failed"
+            auto_refresh_enabled = False
+            db.rollback()
+
+            song = get_song_job(request, db, job)
+            if song is None:
+                raise HTTPException(status_code=404, detail="Задача генерации не найдена.")
+
             db.add(
                 OrderEvent(
                     order=song.order,
-                    event_type="song_generation_failed",
+                    event_type="song_generation_status_sync_failed",
                     payload={
                         "song_job_id": song.public_id,
-                        "error": str(exc),
+                        "external_job_id": song.external_job_id,
+                        "error": error,
+                        "source": "status_page",
                     },
                 )
             )
@@ -152,6 +158,7 @@ async def song_status(job: str, request: Request, db: Session = Depends(get_db))
             "is_running": song.status in RUNNING_SONG_STATUSES,
             "is_failed": song.status == "failed",
             "error": error,
+            "auto_refresh_enabled": auto_refresh_enabled and song.status in RUNNING_SONG_STATUSES,
             "suno_stub_mode": settings.SUNO_STUB_MODE,
         },
     )
