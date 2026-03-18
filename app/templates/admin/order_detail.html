@@ -384,6 +384,25 @@
     {% if order.story_text %}<div class="form-card" style="margin-top: 20px;"><h2 class="form-title">История пользователя</h2><textarea class="textarea textarea-readonly" readonly>{{ order.story_text }}</textarea></div>{% endif %}
     {% if order.custom_lyrics_text %}<div class="form-card" style="margin-top: 20px;"><h2 class="form-title">Свой текст пользователя</h2><textarea class="textarea textarea-readonly" readonly>{{ order.custom_lyrics_text }}</textarea></div>{% endif %}
 
+    {% if security_events %}
+      <div class="form-card" style="margin-top: 20px;">
+        <h2 class="form-title">Блокировки и подозрительные действия по заказу</h2>
+        <div class="admin-events">
+          {% for item in security_events %}
+            {% set event = item.event %}
+            <div class="admin-event">
+              <div class="admin-event-head"><strong>{{ item.action_label }}</strong><span>{{ event.created_at }}</span></div>
+              <p style="margin: 0 0 8px;"><strong>Статус:</strong> {{ item.status_label }}</p>
+              <p style="margin: 0 0 8px;"><strong>Scope:</strong> {{ item.scope_label }}</p>
+              <p style="margin: 0 0 8px;"><strong>IP:</strong> {{ item.ip }}</p>
+              {% if item.limit and item.recent_count %}<p style="margin: 0 0 8px;"><strong>Лимит:</strong> {{ item.recent_count }} / {{ item.limit }} за {{ item.window_seconds }} сек.</p>{% endif %}
+              {% if event.payload %}<pre class="admin-pre">{{ event.payload | tojson(indent=2) }}</pre>{% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
     <div class="form-card" style="margin-top: 20px;">
       <h2 class="form-title">Последние события</h2>
       {% if events %}
