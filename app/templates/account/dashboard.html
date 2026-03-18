@@ -129,8 +129,8 @@
                         <p class="muted" style="margin: 0 0 12px;">Готово вариантов: {{ card.ready_variants_count }}</p>
                       {% endif %}
                       {% set first_track = playback_song.audio_variants[0] %}
-                      {% set first_url = first_track.audio_url or first_track.stream_audio_url %}
-                      {% if first_url %}
+                      {% set first_url = request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=0) %}
+                      {% if first_track.audio_url or first_track.stream_audio_url %}
                         <audio class="audio-player" controls preload="none" src="{{ first_url }}"></audio>
                       {% endif %}
                     </div>
@@ -140,7 +140,7 @@
                       {% if card.has_previous_ready_song %}
                         <p class="muted" style="margin: 0 0 12px;">Последняя успешная песня доступна из попытки {{ playback_song.attempt_no }}.</p>
                       {% endif %}
-                      <audio class="audio-player" controls preload="none" src="{{ playback_song.audio_url }}"></audio>
+                      <audio class="audio-player" controls preload="none" src="{{ request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=0) }}"></audio>
                     </div>
                   {% elif latest_song and card.song_is_ready and suno_stub_mode %}
                     <div class="panel-card panel-card-dark">
