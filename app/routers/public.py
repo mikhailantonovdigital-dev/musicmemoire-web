@@ -508,6 +508,58 @@ FAQ_PAGE = {
     ],
 }
 
+SUPPORT_PAGE = {
+    "page_title": "Поддержка - Magic Music",
+    "meta_description": "Поддержка Magic Music: контакты Telegram и MAX, помощь по анкете, кабинету, оплате и готовому заказу.",
+    "eyebrow": "Поддержка",
+    "title": "Связаться с поддержкой Magic Music",
+    "lead": "Если возник вопрос по анкете, кабинету, оплате или готовому заказу, напишите нам в удобный канал связи.",
+    "updated_at": "Актуально на 18.03.2026",
+    "sections": [
+        {
+            "title": "По каким вопросам можно писать",
+            "paragraphs": [
+                "Поддержка помогает по шагам анкеты, доступу в кабинет, оплате, статусу заказа и проблемам с готовым результатом.",
+                "Если что-то непонятно в текущем заказе, лучше написать сразу, чем пытаться пройти сценарий заново."
+            ],
+            "bullet_items": [
+                "не приходит ссылка входа или не открывается кабинет;",
+                "не получается пройти шаг анкеты;",
+                "возник вопрос по оплате или статусу заказа;",
+                "нужно уточнить, где смотреть готовый результат.",
+            ],
+        },
+        {
+            "title": "Что лучше сразу указать в сообщении",
+            "paragraphs": [
+                "Чтобы поддержка быстрее помогла, полезно сразу отправить максимум конкретики по ситуации.",
+            ],
+            "bullet_items": [
+                "email, на который оформлялся заказ;",
+                "ссылку на кабинет или номер заказа, если он уже есть;",
+                "краткое описание проблемы;",
+                "скриншот ошибки, если она отображается на сайте.",
+            ],
+        },
+        {
+            "title": "Какие каналы связи доступны",
+            "paragraphs": [
+                "Для связи доступны Telegram и MAX. На странице выше размещены быстрые кнопки перехода в оба канала.",
+                "Можно выбрать любой удобный вариант и написать туда напрямую."
+            ],
+            "bullet_items": [],
+        },
+        {
+            "title": "Где после этого смотреть статус",
+            "paragraphs": [
+                "Если заказ уже сохранён за email, все основные изменения по нему лучше отслеживать в личном кабинете Magic Music.",
+                "Поддержка помогает разобраться в спорных ситуациях, но сам статус заказа и итоговый результат появляются именно в кабинете."
+            ],
+            "bullet_items": [],
+        },
+    ],
+}
+
 def build_public_meta(path: str, page_title: str, meta_description: str) -> dict:
     base_url = settings.BASE_URL.rstrip("/")
     canonical_url = f"{base_url}{path}"
@@ -579,6 +631,28 @@ def render_faq_page(request: Request):
     )
 
 
+def render_support_page(request: Request):
+    meta = build_public_meta(
+        path=request.url.path,
+        page_title=SUPPORT_PAGE["page_title"],
+        meta_description=SUPPORT_PAGE.get("meta_description", ""),
+    )
+
+    return templates.TemplateResponse(
+        "public/legal.html",
+        {
+            "request": request,
+            "legal_page": SUPPORT_PAGE,
+            "show_support_card": True,
+            "support_title": "Напишите в поддержку Magic Music",
+            "support_text": "Быстрее всего отвечаем в Telegram и MAX. Лучше сразу приложить email, номер заказа или краткое описание вопроса.",
+            "support_tg_url": settings.SUPPORT_TG_URL,
+            "support_max_url": settings.SUPPORT_MAX_URL,
+            **meta,
+        },
+    )
+
+
 @router.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return render_screen(request, "home")
@@ -609,6 +683,11 @@ async def faq_page(request: Request):
     return render_faq_page(request)
 
 
+@router.get("/support", response_class=HTMLResponse)
+async def support_page(request: Request):
+    return render_support_page(request)
+
+
 @router.get("/robots.txt", response_class=PlainTextResponse)
 async def robots_txt():
     base_url = settings.BASE_URL.rstrip("/")
@@ -635,6 +714,7 @@ async def sitemap_xml():
         f"{base_url}/offer",
         f"{base_url}/policy",
         f"{base_url}/faq",
+        f"{base_url}/support",
     ]
     xml = (
         '<?xml version="1.0" encoding="UTF-8"?>'
