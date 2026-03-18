@@ -17,9 +17,10 @@ from app.core.security import (
     utcnow,
 )
 from app.core.templates import templates
-from app.models import MagicLoginToken, Order, SongGeneration, User
+from app.models import MagicLoginToken, Order, User
 from app.models.order_payment import build_order_pricing_preview
 from app.services.email_service import EmailServiceError, send_magic_link_email
+from app.services.song_workflow import get_latest_ready_song, get_latest_song, get_song_attempts
 
 router = APIRouter(prefix="/account", tags=["account"])
 
@@ -87,12 +88,6 @@ def get_latest_payment(order: Order):
     if not order.payments:
         return None
     return sorted(order.payments, key=lambda item: item.id or 0, reverse=True)[0]
-
-
-def get_latest_song(order: Order) -> SongGeneration | None:
-    if not order.song_generations:
-        return None
-    return sorted(order.song_generations, key=lambda item: item.id or 0, reverse=True)[0]
 
 
 def has_successful_payment(order: Order) -> bool:
@@ -282,15 +277,28 @@ async def account_dashboard(request: Request, db: Session = Depends(get_db)):
     for order in orders:
         latest_payment = get_latest_payment(order)
         latest_song = get_latest_song(order)
+        latest_ready_song = get_latest_ready_song(order)
+        song_attempts = get_song_attempts(order)
         song_profile = build_song_profile(order)
 
         pricing = get_order_pricing_context(db, order)
+        playback_song = latest_ready_song
+        has_previous_ready_song = bool(
+            playback_song and latest_song and playback_song.public_id != latest_song.public_id
+        )
+        ready_variants_count = 0
+        if playback_song is not None:
+            ready_variants_count = len(playback_song.audio_variants) if playback_song.audio_variants else (1 if playback_song.audio_url else 0)
 
         order_cards.append(
             {
                 "order": order,
                 "latest_payment": latest_payment,
                 "latest_song": latest_song,
+                "latest_ready_song": latest_ready_song,
+                "playback_song": playback_song,
+                "song_attempts": song_attempts,
+                "has_previous_ready_song": has_previous_ready_song,
                 "payment_status_label": humanize_payment_status(latest_payment.status if latest_payment else None),
                 "song_status_label": humanize_song_status(latest_song.status if latest_song else None),
                 "song_style_label": song_profile["style_label"],
@@ -302,6 +310,8 @@ async def account_dashboard(request: Request, db: Session = Depends(get_db)):
                 "song_is_running": latest_song is not None and latest_song.status in RUNNING_SONG_STATUSES,
                 "song_is_ready": latest_song is not None and latest_song.status == "succeeded",
                 "song_is_failed": latest_song is not None and latest_song.status == "failed",
+                "has_ready_song": playback_song is not None,
+                "ready_variants_count": ready_variants_count,
                 **pricing,
             }
         )
@@ -343,6 +353,10 @@ async def account_order_detail(
 
     latest_payment = get_latest_payment(order)
     latest_song = get_latest_song(order)
+    latest_ready_song = get_latest_ready_song(order)
+    song_attempts = get_song_attempts(order)
+    playback_song = latest_ready_song
+    has_previous_ready_song = bool(playback_song and latest_song and playback_song.public_id != latest_song.public_id)
     song_profile = build_song_profile(order)
     pricing = get_order_pricing_context(db, order)
 
@@ -358,6 +372,10 @@ async def account_order_detail(
             "order": order,
             "latest_payment": latest_payment,
             "latest_song": latest_song,
+            "latest_ready_song": latest_ready_song,
+            "playback_song": playback_song,
+            "song_attempts": song_attempts,
+            "has_previous_ready_song": has_previous_ready_song,
             "payment_status_label": humanize_payment_status(latest_payment.status if latest_payment else None),
             "song_status_label": humanize_song_status(latest_song.status if latest_song else None),
             "song_style_label": song_profile["style_label"],
