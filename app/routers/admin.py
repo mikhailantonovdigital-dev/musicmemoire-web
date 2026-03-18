@@ -20,8 +20,9 @@ from app.services.song_workflow import (
     humanize_song_status,
     sync_song_job_state,
 )
+from app.services.payment_workflow import sync_payment_with_remote
 from app.services.suno_service import SunoServiceError
-from app.services.yookassa_service import YooKassaError, fetch_payment
+from app.services.yookassa_service import YooKassaError
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -80,36 +81,6 @@ def build_order_card(order: Order) -> dict:
         "song_status_label": humanize_song_status(latest_song.status if latest_song else None),
         "can_run_song": can_run_song(order),
     }
-
-
-def sync_payment_status(db: Session, payment: OrderPayment) -> None:
-    remote = fetch_payment(payment.yookassa_payment_id)
-
-    payment.status = remote.status
-    payment.confirmation_url = remote.confirmation_url
-    payment.raw_payload = remote.raw
-
-    if remote.status == "succeeded":
-        if payment.paid_at is None:
-            from app.core.security import utcnow
-            payment.paid_at = utcnow()
-        payment.order.status = "paid"
-    elif remote.status == "canceled":
-        payment.order.status = "payment_canceled"
-    else:
-        payment.order.status = "payment_pending"
-
-    db.add(
-        OrderEvent(
-            order=payment.order,
-            event_type="admin_payment_status_synced",
-            payload={
-                "payment_public_id": payment.public_id,
-                "yookassa_payment_id": payment.yookassa_payment_id,
-                "status": payment.status,
-            },
-        )
-    )
 
 
 @router.get("/login", response_class=HTMLResponse)
@@ -304,7 +275,12 @@ async def admin_order_payment_sync(order_public_id: str, request: Request, db: S
         return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
 
     try:
-        sync_payment_status(db, latest_payment)
+        sync_payment_with_remote(
+            db,
+            latest_payment,
+            trigger="admin_manual_sync",
+            event_name="admin_payment_status_synced",
+        )
         db.commit()
     except YooKassaError as exc:
         db.rollback()
