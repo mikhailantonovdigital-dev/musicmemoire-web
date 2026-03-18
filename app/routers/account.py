@@ -20,6 +20,7 @@ from app.core.templates import templates
 from app.models import MagicLoginToken, Order, User
 from app.models.order_payment import build_order_pricing_preview
 from app.services.email_service import EmailServiceError, send_magic_link_email
+from app.services.rate_limit_service import RateLimitRule, enforce_rate_limit, get_client_ip
 from app.services.song_workflow import get_latest_ready_song, get_latest_song, get_song_attempts
 
 router = APIRouter(prefix="/account", tags=["account"])
@@ -170,6 +171,34 @@ async def account_login_submit(
         )
 
     user = db.query(User).filter(User.email == email).first()
+
+    limit_decision = enforce_rate_limit(
+        db,
+        request=request,
+        action="account_magic_link_send",
+        user_message="Ссылка для входа уже запрашивалась слишком часто. Подождите немного и попробуйте снова.",
+        rules=[
+            RateLimitRule("ip", get_client_ip(request), settings.MAGIC_LINK_IP_LIMIT_PER_HOUR, 60 * 60),
+            RateLimitRule("email", email, settings.MAGIC_LINK_EMAIL_LIMIT_PER_HOUR, 60 * 60),
+        ],
+        extra_payload={"email": email, "user_exists": bool(user)},
+    )
+    if not limit_decision.allowed:
+        db.commit()
+        return templates.TemplateResponse(
+            "account/login.html",
+            {
+                "request": request,
+                "page_title": "Вход в кабинет",
+                "sent": False,
+                "stub_mode": settings.MAGIC_LINK_STUB_MODE,
+                "stub_login_url": None,
+                "error": limit_decision.message,
+            },
+            status_code=429,
+        )
+
+    db.commit()
 
     if user:
         raw_token = generate_magic_token()
