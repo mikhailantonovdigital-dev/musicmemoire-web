@@ -12,6 +12,7 @@ from app.core.config import settings
 from app.core.db import get_db
 from app.core.templates import templates
 from app.models import Order, OrderEvent, OrderPayment, SongGeneration, User
+from app.core.security import utcnow
 from app.services.song_workflow import (
     RUNNING_SONG_STATUSES,
     create_song_job,
@@ -29,6 +30,54 @@ from app.services.yookassa_service import YooKassaError
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 BERLIN_TZ = ZoneInfo("Europe/Berlin")
+
+ORDER_STATUS_OPTIONS = [
+    ("draft", "draft"),
+    ("awaiting_payment", "awaiting_payment"),
+    ("payment_pending", "payment_pending"),
+    ("payment_canceled", "payment_canceled"),
+    ("paid", "paid"),
+    ("song_pending", "song_pending"),
+    ("song_ready", "song_ready"),
+    ("song_failed", "song_failed"),
+]
+
+SONG_STATUS_OPTIONS = [
+    ("queued", "queued"),
+    ("processing", "processing"),
+    ("succeeded", "succeeded"),
+    ("failed", "failed"),
+    ("canceled", "canceled"),
+]
+
+VALID_ORDER_STATUSES = {value for value, _label in ORDER_STATUS_OPTIONS}
+VALID_SONG_STATUSES = {value for value, _label in SONG_STATUS_OPTIONS}
+
+
+def normalize_multiline_urls(value: str | None) -> list[str]:
+    if not value:
+        return []
+    items: list[str] = []
+    normalized = value.replace("\r", "\n")
+    for line in normalized.split("\n"):
+        item = line.strip()
+        if item:
+            items.append(item)
+    return items
+
+
+def build_manual_result_tracks(urls: list[str]) -> list[dict]:
+    tracks: list[dict] = []
+    for index, url in enumerate(urls, start=1):
+        tracks.append({
+            "id": f"manual-{index}",
+            "title": f"Вариант {index}",
+            "audio_url": url,
+            "stream_audio_url": url,
+            "source": "admin_manual",
+        })
+    return tracks
+
 
 
 def has_admin_access(request: Request) -> bool:
@@ -270,6 +319,8 @@ async def admin_order_detail(order_public_id: str, request: Request, db: Session
             "can_run_song": can_run_song(order),
             "can_resend_payment_email": can_resend_payment_email(order),
             "can_resend_song_ready_email": can_resend_song_ready_email(order),
+            "order_status_options": ORDER_STATUS_OPTIONS,
+            "song_status_options": SONG_STATUS_OPTIONS,
             "events": events,
         },
     )
@@ -365,6 +416,141 @@ async def admin_order_song_sync(order_public_id: str, request: Request, db: Sess
     else:
         set_admin_flash(request, "success", "Статус песни обновлён. Генерация ещё продолжается.")
 
+    return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
+
+
+@router.post("/orders/{order_public_id}/status-update")
+async def admin_order_status_update(
+    order_public_id: str,
+    request: Request,
+    status: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    if not has_admin_access(request):
+        return RedirectResponse(url="/admin/login", status_code=303)
+
+    order = db.query(Order).filter(Order.public_id == order_public_id).first()
+    if order is None:
+        set_admin_flash(request, "error", "Заказ не найден.")
+        return RedirectResponse(url="/admin/", status_code=303)
+
+    target_status = (status or "").strip()
+    if target_status not in VALID_ORDER_STATUSES:
+        set_admin_flash(request, "error", "Недопустимый статус заказа.")
+        return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
+
+    previous_status = order.status
+    if previous_status == target_status:
+        set_admin_flash(request, "warning", "Статус заказа уже такой.")
+        return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
+
+    order.status = target_status
+    db.add(
+        OrderEvent(
+            order=order,
+            event_type="admin_order_status_changed",
+            payload={
+                "status_from": previous_status,
+                "status_to": target_status,
+                "trigger": "admin_manual_status_change",
+            },
+        )
+    )
+    db.commit()
+
+    set_admin_flash(request, "success", f"Статус заказа изменён: {previous_status} → {target_status}.")
+    return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
+
+
+@router.post("/orders/{order_public_id}/song-status-update")
+async def admin_order_song_status_update(
+    order_public_id: str,
+    request: Request,
+    song_status: str = Form(...),
+    audio_urls: str = Form(""),
+    error_message: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    if not has_admin_access(request):
+        return RedirectResponse(url="/admin/login", status_code=303)
+
+    order = db.query(Order).filter(Order.public_id == order_public_id).first()
+    if order is None:
+        set_admin_flash(request, "error", "Заказ не найден.")
+        return RedirectResponse(url="/admin/", status_code=303)
+
+    song = get_latest_song(order)
+    if song is None:
+        set_admin_flash(request, "warning", "У заказа нет задачи песни для ручного обновления.")
+        return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
+
+    target_status = (song_status or "").strip()
+    if target_status not in VALID_SONG_STATUSES:
+        set_admin_flash(request, "error", "Недопустимый статус песни.")
+        return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
+
+    urls = normalize_multiline_urls(audio_urls)
+    manual_error = (error_message or "").strip()
+
+    previous_status = song.status
+    previous_order_status = order.status
+
+    song.status = target_status
+
+    if target_status in {"queued", "processing"}:
+        if song.started_at is None:
+            song.started_at = utcnow()
+        song.finished_at = None
+        order.status = "song_pending"
+        if manual_error:
+            song.error_message = manual_error
+        elif target_status != "failed":
+            song.error_message = None
+    elif target_status == "succeeded":
+        if song.started_at is None:
+            song.started_at = utcnow()
+        song.finished_at = utcnow()
+        order.status = "song_ready"
+        song.error_message = None
+    elif target_status == "failed":
+        if song.started_at is None:
+            song.started_at = utcnow()
+        song.finished_at = utcnow()
+        order.status = "song_failed"
+        song.error_message = manual_error or song.error_message or "Статус вручную переведён в failed оператором."
+    else:  # canceled
+        if song.started_at is None:
+            song.started_at = utcnow()
+        song.finished_at = utcnow()
+        order.status = "paid"
+        song.error_message = manual_error or song.error_message
+
+    if urls:
+        song.audio_url = urls[0]
+        song.result_tracks = build_manual_result_tracks(urls)
+    elif target_status == "succeeded" and song.audio_url:
+        if not song.result_tracks:
+            song.result_tracks = build_manual_result_tracks([song.audio_url])
+
+    db.add(
+        OrderEvent(
+            order=order,
+            event_type="admin_song_status_changed",
+            payload={
+                "song_job_id": song.public_id,
+                "status_from": previous_status,
+                "status_to": target_status,
+                "order_status_from": previous_order_status,
+                "order_status_to": order.status,
+                "audio_url_count": len(urls),
+                "has_error_message": bool(song.error_message),
+                "trigger": "admin_manual_status_change",
+            },
+        )
+    )
+    db.commit()
+
+    set_admin_flash(request, "success", f"Статус песни изменён: {previous_status} → {target_status}.")
     return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
 
 
