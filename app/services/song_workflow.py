@@ -124,10 +124,28 @@ def resend_song_ready_email(db: Session, song: SongGeneration) -> None:
         raise
 
 
-def get_latest_song(order: Order) -> SongGeneration | None:
+def get_song_attempts(order: Order) -> list[SongGeneration]:
     if not order.song_generations:
-        return None
-    return sorted(order.song_generations, key=lambda item: item.id or 0, reverse=True)[0]
+        return []
+    return sorted(order.song_generations, key=lambda item: item.id or 0, reverse=True)
+
+
+def get_latest_song(order: Order) -> SongGeneration | None:
+    attempts = get_song_attempts(order)
+    return attempts[0] if attempts else None
+
+
+def song_has_audio(song: SongGeneration | None) -> bool:
+    if song is None:
+        return False
+    return bool(song.audio_url or song.audio_variants)
+
+
+def get_latest_ready_song(order: Order) -> SongGeneration | None:
+    for song in get_song_attempts(order):
+        if song.status == "succeeded" and song_has_audio(song):
+            return song
+    return None
 
 
 def has_successful_payment(order: Order) -> bool:
