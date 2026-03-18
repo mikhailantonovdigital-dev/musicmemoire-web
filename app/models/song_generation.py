@@ -66,6 +66,10 @@ class SongGeneration(Base):
         Text,
         nullable=True,
     )
+    result_tracks: Mapped[list[dict[str, Any]] | None] = mapped_column(
+        JSON,
+        nullable=True,
+    )
     error_message: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
@@ -96,3 +100,9 @@ class SongGeneration(Base):
 
     order: Mapped["Order"] = relationship(back_populates="song_generations")
     user: Mapped["User | None"] = relationship(back_populates="song_generations")
+
+    @property
+    def audio_variants(self) -> list[dict[str, Any]]:
+        if isinstance(self.result_tracks, list):
+            return [item for item in self.result_tracks if isinstance(item, dict)]
+        return []
