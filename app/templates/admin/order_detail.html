@@ -95,6 +95,12 @@
                 {% endif %}
               </button>
             </form>
+
+            {% if latest_song %}
+              <form method="post" action="/admin/orders/{{ order.public_id }}/song-sync">
+                <button type="submit" class="btn btn-secondary">Обновить статус песни</button>
+              </form>
+            {% endif %}
           {% else %}
             <span class="btn btn-secondary">Сначала нужна оплата</span>
           {% endif %}
