@@ -13,6 +13,7 @@ from app.core.db import get_db
 from app.core.security import utcnow
 from app.core.templates import templates
 from app.models import Order, OrderEvent, OrderPayment, SongGeneration, User
+from app.models.order_payment import build_order_pricing_preview
 from app.services.suno_service import SunoServiceError, start_song_generation
 from app.services.yookassa_service import YooKassaError, fetch_payment
 
@@ -82,6 +83,25 @@ def has_successful_payment(order: Order) -> bool:
 
 def can_run_song(order: Order) -> bool:
     return has_successful_payment(order)
+
+
+def get_order_pricing_context(db: Session, order: Order) -> dict[str, int | bool]:
+    latest_payment = get_latest_payment(order)
+    if latest_payment is not None:
+        return {
+            "current_amount_rub": latest_payment.final_amount_rub,
+            "base_amount_rub": latest_payment.base_amount_rub,
+            "discount_amount_rub": latest_payment.discount_amount_rub,
+            "has_discount": latest_payment.has_discount,
+        }
+
+    preview = build_order_pricing_preview(db, order)
+    return {
+        "current_amount_rub": int(preview["final_price_rub"]),
+        "base_amount_rub": int(preview["base_price_rub"]),
+        "discount_amount_rub": int(preview["discount_rub"]),
+        "has_discount": bool(preview["has_discount"]),
+    }
 
 
 def build_order_card(order: Order) -> dict:
@@ -339,6 +359,7 @@ async def admin_order_detail(
 
     latest_payment = get_latest_payment(order)
     latest_song = get_latest_song(order)
+    pricing = get_order_pricing_context(db, order)
     events = (
         db.query(OrderEvent)
         .filter(OrderEvent.order_id == order.id)
@@ -361,6 +382,7 @@ async def admin_order_detail(
             "song_status_label": humanize_song_status(latest_song.status if latest_song else None),
             "can_run_song": can_run_song(order),
             "events": events,
+            **pricing,
         },
     )
 
