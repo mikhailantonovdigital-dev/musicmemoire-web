@@ -35,10 +35,8 @@
 
         {% if latest_payment %}
           <p><strong>Статус:</strong> {{ payment_status_label }}</p>
-          <p><strong>Итоговая сумма:</strong> {{ current_amount_rub }} ₽</p>
-          <p><strong>Базовая цена:</strong> {{ base_amount_rub }} ₽</p>
-          <p><strong>Скидка:</strong> -{{ discount_amount_rub }} ₽</p>
-          <p><strong>Внешний ID оплаты:</strong> {{ latest_payment.yookassa_payment_id or "—" }}</p>
+          <p><strong>Сумма:</strong> {{ latest_payment.amount_value }} {{ latest_payment.currency }}</p>
+          <p><strong>ЮKassa ID:</strong> {{ latest_payment.yookassa_payment_id or "—" }}</p>
           <p><strong>Внутренний payment ID:</strong> {{ latest_payment.public_id }}</p>
           <p><strong>Idempotence key:</strong> {{ latest_payment.idempotence_key or "—" }}</p>
           <p><strong>Return URL:</strong> {{ latest_payment.return_url or "—" }}</p>
@@ -56,9 +54,6 @@
           {% endif %}
         {% else %}
           <p class="muted">Платёж ещё не создавался.</p>
-          <p><strong>Ожидаемая сумма:</strong> {{ current_amount_rub }} ₽</p>
-          <p><strong>Базовая цена:</strong> {{ base_amount_rub }} ₽</p>
-          <p><strong>Скидка:</strong> -{{ discount_amount_rub }} ₽</p>
         {% endif %}
       </div>
 
@@ -68,13 +63,28 @@
         {% if latest_song %}
           <p><strong>Статус:</strong> {{ song_status_label }}</p>
           <p><strong>Попытка:</strong> {{ latest_song.attempt_no }}</p>
-          <p><strong>Внешний job id:</strong> {{ latest_song.external_job_id or "—" }}</p>
+          <p><strong>Внешний task id:</strong> {{ latest_song.external_job_id or "—" }}</p>
 
           {% if latest_song.error_message %}
             <div class="notice notice-error">{{ latest_song.error_message }}</div>
           {% endif %}
 
-          {% if latest_song.audio_url %}
+          {% if latest_song.audio_variants %}
+            <div style="display: grid; gap: 12px; margin-top: 12px;">
+              {% for track in latest_song.audio_variants %}
+                {% set playable_url = track.audio_url or track.stream_audio_url %}
+                <div class="panel-card" style="padding: 14px; background: #fafafa; border: 1px solid #ececec;">
+                  <p style="margin: 0 0 8px;"><strong>Вариант {{ loop.index }}</strong></p>
+                  {% if playable_url %}
+                    <audio class="audio-player" controls preload="none" src="{{ playable_url }}"></audio>
+                  {% endif %}
+                  {% if track.audio_url %}
+                    <p class="helper-text" style="margin-top: 8px;">{{ track.audio_url }}</p>
+                  {% endif %}
+                </div>
+              {% endfor %}
+            </div>
+          {% elif latest_song.audio_url %}
             <audio class="audio-player" controls preload="none" src="{{ latest_song.audio_url }}"></audio>
             <p class="helper-text">{{ latest_song.audio_url }}</p>
           {% endif %}
@@ -96,7 +106,7 @@
               </button>
             </form>
 
-            {% if latest_song %}
+            {% if latest_song and latest_song.status in ["queued", "processing"] %}
               <form method="post" action="/admin/orders/{{ order.public_id }}/song-sync">
                 <button type="submit" class="btn btn-secondary">Обновить статус песни</button>
               </form>
