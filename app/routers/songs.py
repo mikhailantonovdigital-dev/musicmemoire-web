@@ -9,6 +9,7 @@ from app.core.db import get_db
 from app.core.security import get_session_user
 from app.core.templates import templates
 from app.models import Order, OrderEvent, SongGeneration
+from app.services.rate_limit_service import RateLimitRule, enforce_rate_limit
 from app.services.song_workflow import (
     RUNNING_SONG_STATUSES,
     create_song_job,
@@ -131,6 +132,44 @@ async def song_start(order_public_id: str, request: Request, db: Session = Depen
     if order is None:
         raise HTTPException(status_code=403, detail="Нет доступа к заказу.")
 
+    limit_decision = enforce_rate_limit(
+        db,
+        request=request,
+        action="song_generation_start",
+        user_message=f"Генерацию песни можно запускать не более {settings.SONG_START_LIMIT_PER_ORDER_PER_DAY} раз в день для одного заказа.",
+        rules=[
+            RateLimitRule("order", order.public_id, settings.SONG_START_LIMIT_PER_ORDER_PER_DAY, 24 * 60 * 60),
+        ],
+        order=order,
+        extra_payload={"order_public_id": order.public_id, "trigger": "user_start"},
+    )
+    if not limit_decision.allowed:
+        db.commit()
+        latest_song = get_latest_song(order)
+        latest_ready_song = get_latest_ready_song(order)
+        fallback_ready_song = latest_ready_song if latest_ready_song and (latest_song is None or latest_ready_song.public_id != latest_song.public_id) else None
+        return templates.TemplateResponse(
+            "songs/status.html",
+            {
+                "request": request,
+                "page_title": "Генерация песни",
+                "order": order,
+                "song": latest_song,
+                "fallback_ready_song": fallback_ready_song,
+                "song_status_label": humanize_song_status(latest_song.status if latest_song else None),
+                "fallback_song_status_label": humanize_song_status(fallback_ready_song.status if fallback_ready_song else None),
+                "is_ready": bool(latest_song and latest_song.status == "succeeded"),
+                "is_running": bool(latest_song and latest_song.status in RUNNING_SONG_STATUSES),
+                "is_failed": bool(latest_song and latest_song.status == "failed"),
+                "error": limit_decision.message,
+                "auto_refresh_enabled": False,
+                "suno_stub_mode": settings.SUNO_STUB_MODE,
+            },
+            status_code=429,
+        )
+
+    db.commit()
+
     try:
         song = create_song_job(db, order)
         db.commit()
@@ -228,6 +267,43 @@ async def song_retry(job_public_id: str, request: Request, db: Session = Depends
 
     if song.status in RUNNING_SONG_STATUSES:
         return RedirectResponse(url=f"/songs/status?job={song.public_id}", status_code=303)
+
+    limit_decision = enforce_rate_limit(
+        db,
+        request=request,
+        action="song_generation_start",
+        user_message=f"Генерацию песни можно запускать не более {settings.SONG_START_LIMIT_PER_ORDER_PER_DAY} раз в день для одного заказа.",
+        rules=[
+            RateLimitRule("order", song.order.public_id, settings.SONG_START_LIMIT_PER_ORDER_PER_DAY, 24 * 60 * 60),
+        ],
+        order=song.order,
+        extra_payload={"order_public_id": song.order.public_id, "trigger": "user_retry", "previous_song_job_id": song.public_id},
+    )
+    if not limit_decision.allowed:
+        db.commit()
+        latest_ready_song = get_latest_ready_song(song.order)
+        fallback_ready_song = latest_ready_song if latest_ready_song and latest_ready_song.public_id != song.public_id else None
+        return templates.TemplateResponse(
+            "songs/status.html",
+            {
+                "request": request,
+                "page_title": "Генерация песни",
+                "order": song.order,
+                "song": song,
+                "fallback_ready_song": fallback_ready_song,
+                "song_status_label": humanize_song_status(song.status),
+                "fallback_song_status_label": humanize_song_status(fallback_ready_song.status if fallback_ready_song else None),
+                "is_ready": song.status == "succeeded",
+                "is_running": song.status in RUNNING_SONG_STATUSES,
+                "is_failed": song.status == "failed",
+                "error": limit_decision.message,
+                "auto_refresh_enabled": False,
+                "suno_stub_mode": settings.SUNO_STUB_MODE,
+            },
+            status_code=429,
+        )
+
+    db.commit()
 
     try:
         new_song = create_song_job(db, song.order)
