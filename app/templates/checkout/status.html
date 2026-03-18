@@ -7,11 +7,15 @@
       <p class="eyebrow">Оплата</p>
       <h1>Заказ {{ order.order_number }}</h1>
       <p class="section-lead">
-        Здесь видно, прошла ли оплата через ЮKassa, и что происходит с запуском генерации песни.
+        Здесь видно, прошла ли оплата, и что происходит с запуском генерации песни.
       </p>
 
       <div class="step-meta">
-        <span>Сумма: <strong>{{ price_rub }} ₽</strong></span>
+        <span>Итог: <strong>{{ price_rub }} ₽</strong></span>
+        {% if has_discount %}
+          <span>Базовая цена: <strong>{{ base_price_rub }} ₽</strong></span>
+          <span>Скидка: <strong>-{{ discount_rub }} ₽</strong></span>
+        {% endif %}
         <span>Статус оплаты: <strong>{{ payment_status_label }}</strong></span>
         {% if is_success %}
           <span>Песня: <strong>{{ song_status_label }}</strong></span>
@@ -36,7 +40,7 @@
         </div>
       {% elif is_pending %}
         <div class="notice">
-          Мы ждём подтверждение оплаты от ЮKassa. Эта страница обновится автоматически.
+          Мы ждём подтверждение оплаты. Эта страница обновится автоматически.
         </div>
         <meta http-equiv="refresh" content="5">
       {% elif is_canceled %}
@@ -75,9 +79,19 @@
               <strong class="detail-value">{{ order.order_number }}</strong>
             </div>
             <div class="detail-list-item">
-              <span class="detail-label">Сумма</span>
+              <span class="detail-label">Итоговая сумма</span>
               <strong class="detail-value">{{ price_rub }} ₽</strong>
             </div>
+            {% if has_discount %}
+              <div class="detail-list-item">
+                <span class="detail-label">Базовая цена</span>
+                <strong class="detail-value">{{ base_price_rub }} ₽</strong>
+              </div>
+              <div class="detail-list-item">
+                <span class="detail-label">Скидка</span>
+                <strong class="detail-value">-{{ discount_rub }} ₽</strong>
+              </div>
+            {% endif %}
             <div class="detail-list-item">
               <span class="detail-label">Статус оплаты</span>
               <strong class="detail-value">{{ payment_status_label }}</strong>
