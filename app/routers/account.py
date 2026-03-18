@@ -5,17 +5,14 @@ from datetime import timedelta
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.db import get_db
 from app.core.security import generate_magic_token, hash_magic_token, utcnow
+from app.core.templates import templates
 from app.models import MagicLoginToken, Order, SongGeneration, User
 from app.services.email_service import EmailServiceError, send_magic_link_email
-
-templates = Jinja2Templates(directory="app/templates")
-templates.env.globals["settings"] = settings
 
 router = APIRouter(prefix="/account", tags=["account"])
 
