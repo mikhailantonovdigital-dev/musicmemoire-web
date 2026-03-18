@@ -13,7 +13,7 @@ from app.core.config import settings
 from app.core.db import get_db
 from app.core.security import utcnow
 from app.core.templates import templates
-from app.models import LyricsVersion, Order, OrderEvent, OrderPayment, SongGeneration, User, VoiceInput
+from app.models import LyricsVersion, Order, OrderEvent, OrderPayment, SecurityEvent, SongGeneration, User, VoiceInput
 from app.models.order_payment import build_order_pricing_preview
 from app.services.email_service import EmailServiceError
 from app.services.lyrics_generation_service import DualGenerationResult, LyricsGenerationError, generate_dual_lyrics_versions
@@ -239,6 +239,52 @@ def can_resend_song_ready_email(order: Order) -> bool:
     return bool(latest_song and latest_song.status == "succeeded" and order.user and order.user.email)
 
 
+def humanize_security_action(action: str | None) -> str:
+    mapping = {
+        "account_magic_link_send": "Ссылка для входа в кабинет",
+        "questionnaire_magic_link_send": "Ссылка после анкеты",
+        "questionnaire_voice_upload": "Загрузка голосового",
+        "questionnaire_voice_retranscribe": "Перезапуск расшифровки",
+        "song_generation_start": "Запуск генерации песни",
+    }
+    return mapping.get(action or "", action or "—")
+
+
+def humanize_security_status(status: str | None) -> str:
+    mapping = {
+        "allowed": "Разрешено",
+        "blocked": "Заблокировано",
+        "suspicious": "Подозрительно",
+    }
+    return mapping.get(status or "", status or "—")
+
+
+def build_security_event_card(event: SecurityEvent) -> dict:
+    payload = event.payload if isinstance(event.payload, dict) else {}
+    return {
+        "event": event,
+        "action_label": humanize_security_action(event.action),
+        "status_label": humanize_security_status(event.status),
+        "order_number": event.order.order_number if event.order else "—",
+        "scope_label": f"{event.scope_kind}: {event.scope_value}",
+        "ip": payload.get("ip") or "—",
+        "path": payload.get("path") or "—",
+        "recent_count": payload.get("recent_count"),
+        "limit": payload.get("limit"),
+        "window_seconds": payload.get("window_seconds"),
+    }
+
+
+def get_recent_security_events_for_order(db: Session, order_id: int, limit: int = 20) -> list[SecurityEvent]:
+    return (
+        db.query(SecurityEvent)
+        .filter(SecurityEvent.order_id == order_id)
+        .order_by(SecurityEvent.id.desc())
+        .limit(limit)
+        .all()
+    )
+
+
 def build_order_card(order: Order) -> dict:
     latest_payment = get_latest_payment(order)
     latest_song = get_latest_song(order)
@@ -344,6 +390,7 @@ async def admin_dashboard(
     song_errors_today = db.query(func.count(SongGeneration.id)).filter(SongGeneration.status == "failed", SongGeneration.updated_at >= day_start_utc, SongGeneration.updated_at < day_end_utc).scalar() or 0
     pending_payments = db.query(func.count(OrderPayment.id)).filter(OrderPayment.status.in_(["pending", "waiting_for_capture"])).scalar() or 0
     failed_song_jobs = db.query(func.count(SongGeneration.id)).filter(SongGeneration.status == "failed").scalar() or 0
+    blocked_security_events_today = db.query(func.count(SecurityEvent.id)).filter(SecurityEvent.status.in_(["blocked", "suspicious"]), SecurityEvent.created_at >= day_start_utc, SecurityEvent.created_at < day_end_utc).scalar() or 0
 
     orders_query = db.query(Order).outerjoin(User, Order.user_id == User.id)
     if query_text:
@@ -371,6 +418,7 @@ async def admin_dashboard(
     recent_failed_songs = db.query(SongGeneration).filter(SongGeneration.status == "failed").order_by(SongGeneration.updated_at.desc(), SongGeneration.id.desc()).limit(10).all()
 
     recent_problem_payments = db.query(OrderPayment).filter(OrderPayment.status.in_(["pending", "waiting_for_capture", "canceled"])).order_by(OrderPayment.updated_at.desc(), OrderPayment.id.desc()).limit(10).all()
+    recent_security_events = db.query(SecurityEvent).filter(SecurityEvent.status.in_(["blocked", "suspicious"])).order_by(SecurityEvent.id.desc()).limit(12).all()
 
     return templates.TemplateResponse(
         "admin/dashboard.html",
@@ -393,6 +441,7 @@ async def admin_dashboard(
             "song_errors_today": song_errors_today,
             "failed_song_jobs": failed_song_jobs,
             "pending_payments": pending_payments,
+            "blocked_security_events_today": blocked_security_events_today,
             "order_status_counts": order_status_counts,
             "payment_status_counts": payment_status_counts,
             "song_status_counts": song_status_counts,
@@ -400,6 +449,8 @@ async def admin_dashboard(
             "funnel_counts": build_funnel_counts(db),
             "recent_failed_songs": recent_failed_songs,
             "recent_problem_payments": recent_problem_payments,
+            "recent_security_events": [build_security_event_card(item) for item in recent_security_events],
+            "humanize_security_action": humanize_security_action,
             "order_status_filter_options": ORDER_STATUS_FILTER_OPTIONS,
             "payment_status_filter_options": PAYMENT_STATUS_FILTER_OPTIONS,
             "song_status_filter_options": SONG_STATUS_FILTER_OPTIONS,
@@ -430,6 +481,7 @@ async def admin_order_detail(order_public_id: str, request: Request, db: Session
     voice_cards = build_voice_cards(request, voice_inputs)
     latest_voice = voice_inputs[0] if voice_inputs else None
     events = db.query(OrderEvent).filter(OrderEvent.order_id == order.id).order_by(OrderEvent.id.desc()).limit(30).all()
+    security_events = get_recent_security_events_for_order(db, order.id, limit=20)
 
     return templates.TemplateResponse(
         "admin/order_detail.html",
@@ -459,7 +511,9 @@ async def admin_order_detail(order_public_id: str, request: Request, db: Session
             "order_status_options": ORDER_STATUS_OPTIONS,
             "song_status_options": SONG_STATUS_OPTIONS,
             "events": events,
+            "security_events": [build_security_event_card(item) for item in security_events],
             "humanize_payment_status": humanize_payment_status,
+            "humanize_security_action": humanize_security_action,
         },
     )
 
