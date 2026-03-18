@@ -5,6 +5,7 @@ from app.models.lyrics_version import LyricsVersion
 from app.models.magic_login_token import MagicLoginToken
 from app.models.order_payment import OrderPayment
 from app.models.song_generation import SongGeneration
+from app.models.security_event import SecurityEvent
 
 __all__ = [
     "User",
@@ -15,4 +16,5 @@ __all__ = [
     "MagicLoginToken",
     "OrderPayment",
     "SongGeneration",
+    "SecurityEvent",
 ]
