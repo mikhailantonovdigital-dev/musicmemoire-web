@@ -81,6 +81,48 @@ def maybe_send_song_ready_email(db: Session, song: SongGeneration) -> None:
             )
         )
 
+def resend_song_ready_email(db: Session, song: SongGeneration) -> None:
+    order = song.order
+    if order.user is None or not order.user.email:
+        raise EmailServiceError("У заказа нет email для отправки письма.")
+
+    order_url = f"{settings.BASE_URL.rstrip('/')}/account/orders/{order.public_id}"
+
+    try:
+        send_song_ready_email(
+            recipient_email=order.user.email,
+            order_number=order.order_number,
+            order_url=order_url,
+            audio_url=song.audio_url,
+        )
+        db.add(
+            OrderEvent(
+                order=order,
+                event_type="song_ready_email_resent",
+                payload={
+                    "song_job_id": song.public_id,
+                    "email": order.user.email,
+                    "audio_url": song.audio_url,
+                    "trigger": "admin_manual_resend",
+                },
+            )
+        )
+    except EmailServiceError as exc:
+        db.add(
+            OrderEvent(
+                order=order,
+                event_type="song_ready_email_resend_failed",
+                payload={
+                    "song_job_id": song.public_id,
+                    "email": order.user.email,
+                    "audio_url": song.audio_url,
+                    "trigger": "admin_manual_resend",
+                    "error": str(exc),
+                },
+            )
+        )
+        raise
+
 
 def get_latest_song(order: Order) -> SongGeneration | None:
     if not order.song_generations:
