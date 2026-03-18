@@ -47,7 +47,7 @@
       {% if song and song.audio_url %}
         <audio class="audio-player" controls preload="none" src="{{ song.audio_url }}"></audio>
       {% elif is_ready and suno_stub_mode %}
-        <p class="muted">В заглушке задача считается выполненной, но реальный аудиофайл появится после подключения настоящей интеграции Suno.</p>
+        <p class="muted">В заглушке задача считается выполненной, но реальный аудиофайл появится после подключения боевой генерации.</p>
       {% elif is_running %}
         <p class="muted">Подожди немного. Мы проверим статус ещё раз автоматически.</p>
       {% else %}
