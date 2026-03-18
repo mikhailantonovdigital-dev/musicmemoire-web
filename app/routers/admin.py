@@ -14,8 +14,9 @@ from app.core.security import utcnow
 from app.core.templates import templates
 from app.models import Order, OrderEvent, OrderPayment, SongGeneration, User
 from app.models.order_payment import build_order_pricing_preview
+from app.services.payment_workflow import sync_payment_with_remote
 from app.services.suno_service import SunoServiceError, start_song_generation
-from app.services.yookassa_service import YooKassaError, fetch_payment
+from app.services.yookassa_service import YooKassaError
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -115,35 +116,6 @@ def build_order_card(order: Order) -> dict:
         "song_status_label": humanize_song_status(latest_song.status if latest_song else None),
         "can_run_song": can_run_song(order),
     }
-
-
-def sync_payment_status(db: Session, payment: OrderPayment) -> None:
-    remote = fetch_payment(payment.yookassa_payment_id)
-
-    payment.status = remote.status
-    payment.confirmation_url = remote.confirmation_url
-    payment.raw_payload = remote.raw
-
-    if remote.status == "succeeded":
-        if payment.paid_at is None:
-            payment.paid_at = utcnow()
-        payment.order.status = "paid"
-    elif remote.status == "canceled":
-        payment.order.status = "payment_canceled"
-    else:
-        payment.order.status = "payment_pending"
-
-    db.add(
-        OrderEvent(
-            order=payment.order,
-            event_type="admin_payment_status_synced",
-            payload={
-                "payment_public_id": payment.public_id,
-                "yookassa_payment_id": payment.yookassa_payment_id,
-                "status": payment.status,
-            },
-        )
-    )
 
 
 def run_song_generation_from_admin(db: Session, order: Order) -> SongGeneration:
@@ -407,14 +379,22 @@ async def admin_order_payment_sync(
         return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
 
     try:
-        sync_payment_status(db, latest_payment)
+        sync_payment_with_remote(
+            db,
+            latest_payment,
+            trigger="admin_payment_sync",
+            event_name="admin_payment_status_synced",
+        )
         db.commit()
     except YooKassaError as exc:
         db.rollback()
         set_admin_flash(request, "error", str(exc))
         return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
 
-    set_admin_flash(request, "success", "Статус оплаты обновлён.")
+    success_text = "Статус оплаты обновлён."
+    if latest_payment.status == "succeeded":
+        success_text = "Статус оплаты обновлён. Заказ переведён в paid, письмо и автозапуск песни обработаны."
+    set_admin_flash(request, "success", success_text)
     return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
 
 
