@@ -21,6 +21,7 @@ from app.core.security import (
 from app.core.storage import save_voice_file
 from app.core.templates import templates
 from app.models import LyricsVersion, MagicLoginToken, Order, OrderEvent, User, VoiceInput
+from app.models.order_payment import build_order_pricing_preview
 from app.services.email_service import EmailServiceError, send_magic_link_email
 from app.services.lyrics_generation_service import (
     DualGenerationResult,
@@ -1138,6 +1139,7 @@ async def questionnaire_access(request: Request, db: Session = Depends(get_db)):
     saved = request.query_params.get("saved") == "1"
     sent = request.query_params.get("sent") == "1"
     stub_login_url = request.session.get("stub_questionnaire_login_url")
+    pricing = build_order_pricing_preview(db, draft)
 
     return templates.TemplateResponse(
         "questionnaire/access.html",
@@ -1149,7 +1151,10 @@ async def questionnaire_access(request: Request, db: Session = Depends(get_db)):
             "sent": sent,
             "stub_mode": settings.MAGIC_LINK_STUB_MODE,
             "stub_login_url": stub_login_url,
-            "price_rub": settings.PRICE_RUB,
+            "price_rub": int(pricing["final_price_rub"]),
+            "base_price_rub": int(pricing["base_price_rub"]),
+            "discount_rub": int(pricing["discount_rub"]),
+            "has_discount": bool(pricing["has_discount"]),
             "error": None,
             "form_email": draft.user.email if draft.user else "",
         },
@@ -1178,6 +1183,7 @@ async def questionnaire_access_submit(
     email = normalize_email(email)
 
     if not is_valid_email(email):
+        pricing = build_order_pricing_preview(db, draft)
         return templates.TemplateResponse(
             "questionnaire/access.html",
             {
@@ -1188,7 +1194,10 @@ async def questionnaire_access_submit(
                 "sent": False,
                 "stub_mode": settings.MAGIC_LINK_STUB_MODE,
                 "stub_login_url": None,
-                "price_rub": settings.PRICE_RUB,
+                "price_rub": int(pricing["final_price_rub"]),
+                "base_price_rub": int(pricing["base_price_rub"]),
+                "discount_rub": int(pricing["discount_rub"]),
+                "has_discount": bool(pricing["has_discount"]),
                 "error": "Укажи корректный email.",
                 "form_email": email,
             },
@@ -1238,6 +1247,7 @@ async def questionnaire_access_submit(
             login_url=login_url,
         )
     except EmailServiceError as exc:
+        pricing = build_order_pricing_preview(db, draft)
         return templates.TemplateResponse(
             "questionnaire/access.html",
             {
@@ -1248,7 +1258,10 @@ async def questionnaire_access_submit(
                 "sent": False,
                 "stub_mode": settings.MAGIC_LINK_STUB_MODE,
                 "stub_login_url": None,
-                "price_rub": settings.PRICE_RUB,
+                "price_rub": int(pricing["final_price_rub"]),
+                "base_price_rub": int(pricing["base_price_rub"]),
+                "discount_rub": int(pricing["discount_rub"]),
+                "has_discount": bool(pricing["has_discount"]),
                 "error": str(exc),
                 "form_email": email,
             },
