@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.db import get_db
 from app.core.templates import templates
-from app.models import Order, OrderEvent, OrderPayment, SongGeneration, User
+from app.models import LyricsVersion, Order, OrderEvent, OrderPayment, SongGeneration, User
 from app.core.security import utcnow
 from app.services.song_workflow import (
     RUNNING_SONG_STATUSES,
@@ -105,6 +105,20 @@ def get_latest_payment(order: Order) -> OrderPayment | None:
     if not order.payments:
         return None
     return sorted(order.payments, key=lambda item: item.id or 0, reverse=True)[0]
+
+
+def get_sorted_lyrics_versions(order: Order) -> list[LyricsVersion]:
+    if not order.lyrics_versions:
+        return []
+    return sorted(order.lyrics_versions, key=lambda item: item.id or 0)
+
+
+def get_selected_lyrics_version(order: Order) -> LyricsVersion | None:
+    versions = get_sorted_lyrics_versions(order)
+    for version in versions:
+        if version.is_selected:
+            return version
+    return versions[-1] if versions else None
 
 
 def humanize_payment_status(status: str | None) -> str:
@@ -296,6 +310,8 @@ async def admin_order_detail(order_public_id: str, request: Request, db: Session
 
     latest_payment = get_latest_payment(order)
     latest_song = get_latest_song(order)
+    lyrics_versions = get_sorted_lyrics_versions(order)
+    selected_lyrics_version = get_selected_lyrics_version(order)
     events = (
         db.query(OrderEvent)
         .filter(OrderEvent.order_id == order.id)
@@ -314,6 +330,8 @@ async def admin_order_detail(order_public_id: str, request: Request, db: Session
             "order": order,
             "latest_payment": latest_payment,
             "latest_song": latest_song,
+            "lyrics_versions": lyrics_versions,
+            "selected_lyrics_version": selected_lyrics_version,
             "payment_status_label": humanize_payment_status(latest_payment.status if latest_payment else None),
             "song_status_label": humanize_song_status(latest_song.status if latest_song else None),
             "can_run_song": can_run_song(order),
@@ -551,6 +569,59 @@ async def admin_order_song_status_update(
     db.commit()
 
     set_admin_flash(request, "success", f"Статус песни изменён: {previous_status} → {target_status}.")
+    return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
+
+
+@router.post("/orders/{order_public_id}/final-lyrics-update")
+async def admin_order_final_lyrics_update(
+    order_public_id: str,
+    request: Request,
+    final_lyrics_text: str = Form(default=""),
+    db: Session = Depends(get_db),
+):
+    if not has_admin_access(request):
+        return RedirectResponse(url="/admin/login", status_code=303)
+
+    order = db.query(Order).filter(Order.public_id == order_public_id).first()
+    if order is None:
+        set_admin_flash(request, "error", "Заказ не найден.")
+        return RedirectResponse(url="/admin/", status_code=303)
+
+    value = (final_lyrics_text or "").strip()
+    if not value:
+        set_admin_flash(request, "error", "Финальный текст не может быть пустым.")
+        return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
+
+    previous_value = (order.final_lyrics_text or "").strip()
+    if previous_value == value:
+        set_admin_flash(request, "warning", "Финальный текст уже такой.")
+        return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
+
+    order.final_lyrics_text = value
+
+    selected_version = get_selected_lyrics_version(order)
+    synced_selected_version = False
+    if selected_version is not None:
+        selected_version.edited_lyrics_text = value
+        synced_selected_version = True
+
+    db.add(
+        OrderEvent(
+            order=order,
+            event_type="admin_final_lyrics_updated",
+            payload={
+                "previous_length": len(previous_value),
+                "new_length": len(value),
+                "lyrics_mode": order.lyrics_mode,
+                "selected_version_public_id": selected_version.public_id if selected_version else None,
+                "selected_version_synced": synced_selected_version,
+                "trigger": "admin_manual_edit",
+            },
+        )
+    )
+    db.commit()
+
+    set_admin_flash(request, "success", "Финальный текст сохранён. Следующий запуск песни возьмёт уже новую версию.")
     return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
 
 
