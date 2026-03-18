@@ -1,38 +1,80 @@
 services:
   - type: web
     name: magic-music-web
-    env: python
+    runtime: python
     plan: starter
     buildCommand: "pip install -r requirements.txt"
     startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    healthCheckPath: /
     autoDeploy: true
+    disk:
+      name: uploads
+      mountPath: /var/data
+      sizeGB: 1
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.8
+
       - key: APP_ENV
         value: production
-      - key: PRICE_RUB
-        value: 990
-      - key: SESSION_SECRET
-        generateValue: true
-      - key: APP_DOMAIN
-        sync: false
+      - key: APP_NAME
+        value: Magic Music
       - key: BASE_URL
         sync: false
-      - key: SMTP_HOST
+      - key: SESSION_SECRET
+        generateValue: true
+
+      - key: DATABASE_URL
         sync: false
-      - key: SMTP_PORT
-        value: 465
-      - key: SMTP_USER
+      - key: REDIS_URL
         sync: false
-      - key: SMTP_PASSWORD
+
+      - key: OPENAI_API_KEY
         sync: false
-      - key: SMTP_FROM_EMAIL
+      - key: OPENAI_MODEL
         sync: false
-      - key: SMTP_FROM_NAME
-        value: Magic Music
-      - key: MAGIC_LINK_STUB_MODE
-        value: false
+      - key: OPENAI_TRANSCRIBE_MODEL
+        value: gpt-4o-mini-transcribe
+      - key: AUDIO_TRANSCRIBE_LANGUAGE
+        value: ru
+
+      - key: SUNO_API_KEY
+        sync: false
+      - key: SUNO_MODEL
+        sync: false
+      - key: SUNO_STUB_MODE
+        value: true
+      - key: SUNO_STUB_DELAY_SECONDS
+        value: 12
+      - key: SUNO_STUB_AUDIO_URL
+        sync: false
+
+      - key: YOOKASSA_SHOP_ID
+        sync: false
+      - key: YOOKASSA_SECRET_KEY
+        sync: false
+      - key: YOOKASSA_TAX_SYSTEM_CODE
+        sync: false
+      - key: YOOKASSA_VAT_CODE
+        sync: false
+      - key: YOOKASSA_RECEIPT_EMAIL
+        sync: false
+
+      - key: METRICA_COUNTER_ID
+        sync: false
+
+      - key: SUPPORT_TG_URL
+        value: https://t.me/mikhailantonov19
+      - key: SUPPORT_MAX_URL
+        value: https://max.ru/u/f9LHodD0cOKg36L-baFKeBJquxSx5xydupa2AYOKdl7BUFipfVYS5FVVV80
+
+      - key: PRICE_RUB
+        value: 990
+      - key: UPLOADS_DIR
+        value: /var/data/musicmemoire/uploads
+      - key: MAX_VOICE_FILE_MB
+        value: 25
+
       - key: SMTP_HOST
         sync: false
       - key: SMTP_PORT
@@ -47,13 +89,11 @@ services:
         value: Magic Music
       - key: SMTP_TIMEOUT_SECONDS
         value: 20
+
+      - key: MAGIC_LINK_TTL_MINUTES
+        value: 30
       - key: MAGIC_LINK_STUB_MODE
         value: false
-      - key: YOOKASSA_SHOP_ID
-        sync: false
-      - key: YOOKASSA_TAX_SYSTEM_CODE
-        sync: false
-      - key: YOOKASSA_VAT_CODE
-        sync: false
-      - key: YOOKASSA_RECEIPT_EMAIL
+
+      - key: ADMIN_TOKEN
         sync: false
