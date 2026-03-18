@@ -2,17 +2,13 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.core.config import settings
 from app.core.db import init_db
 from app.core.storage import ensure_storage_dirs
+from app.core.templates import templates
 from app.routers import public, questionnaire, account, admin, songs, checkout
-
-
-templates = Jinja2Templates(directory="app/templates")
-templates.env.globals["settings"] = settings
 
 
 @asynccontextmanager
