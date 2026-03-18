@@ -32,40 +32,66 @@
 
         <form class="form-card" method="post" action="/questionnaire/style" data-song-style-form>
           <div class="radio-grid song-style-grid">
-            <label class="radio-card">
+            <label class="radio-card song-style-card">
               <input type="radio" name="song_style" value="pop" {% if (form_song_style or draft.song_style or '') == 'pop' %}checked{% endif %} />
-              <span class="radio-card-title">Поп</span>
+              <span class="song-style-card-head">
+                <span class="song-style-card-icon" aria-hidden="true">✨</span>
+                <span class="radio-card-title">Поп</span>
+              </span>
+              <span class="radio-card-text">Мелодично, тепло и легко запоминается.</span>
             </label>
 
-            <label class="radio-card">
+            <label class="radio-card song-style-card">
               <input type="radio" name="song_style" value="rap" {% if (form_song_style or draft.song_style or '') == 'rap' %}checked{% endif %} />
-              <span class="radio-card-title">Рэп</span>
+              <span class="song-style-card-head">
+                <span class="song-style-card-icon" aria-hidden="true">🎤</span>
+                <span class="radio-card-title">Рэп</span>
+              </span>
+              <span class="radio-card-text">Ритмично, смело и ближе к разговорной подаче.</span>
             </label>
 
-            <label class="radio-card">
+            <label class="radio-card song-style-card">
               <input type="radio" name="song_style" value="rock" {% if (form_song_style or draft.song_style or '') == 'rock' %}checked{% endif %} />
-              <span class="radio-card-title">Рок</span>
+              <span class="song-style-card-head">
+                <span class="song-style-card-icon" aria-hidden="true">🎸</span>
+                <span class="radio-card-title">Рок</span>
+              </span>
+              <span class="radio-card-text">Энергично, мощно и с живым драйвом.</span>
             </label>
 
-            <label class="radio-card">
+            <label class="radio-card song-style-card">
               <input type="radio" name="song_style" value="chanson" {% if (form_song_style or draft.song_style or '') == 'chanson' %}checked{% endif %} />
-              <span class="radio-card-title">Шансон</span>
+              <span class="song-style-card-head">
+                <span class="song-style-card-icon" aria-hidden="true">🪗</span>
+                <span class="radio-card-title">Шансон</span>
+              </span>
+              <span class="radio-card-text">Душевно, с акцентом на историю и эмоции.</span>
             </label>
 
-            <label class="radio-card">
+            <label class="radio-card song-style-card">
               <input type="radio" name="song_style" value="indie" {% if (form_song_style or draft.song_style or '') == 'indie' %}checked{% endif %} />
-              <span class="radio-card-title">Инди</span>
+              <span class="song-style-card-head">
+                <span class="song-style-card-icon" aria-hidden="true">🌙</span>
+                <span class="radio-card-title">Инди</span>
+              </span>
+              <span class="radio-card-text">Атмосферно, нежно и чуть более авторски.</span>
             </label>
 
-            <label class="radio-card">
+            <label class="radio-card song-style-card">
               <input type="radio" name="song_style" value="multi" {% if (form_song_style or draft.song_style or '') == 'multi' %}checked{% endif %} />
-              <span class="radio-card-title">Несколько стилей</span>
+              <span class="song-style-card-head">
+                <span class="song-style-card-icon" aria-hidden="true">🔀</span>
+                <span class="radio-card-title">Несколько стилей</span>
+              </span>
               <span class="radio-card-text">Например: поп + рэп, рок + инди.</span>
             </label>
 
-            <label class="radio-card">
+            <label class="radio-card song-style-card">
               <input type="radio" name="song_style" value="custom" {% if (form_song_style or draft.song_style or '') == 'custom' %}checked{% endif %} />
-              <span class="radio-card-title">Свой вариант</span>
+              <span class="song-style-card-head">
+                <span class="song-style-card-icon" aria-hidden="true">🪄</span>
+                <span class="radio-card-title">Свой вариант</span>
+              </span>
               <span class="radio-card-text">Если нужен редкий, авторский или нестандартный стиль.</span>
             </label>
           </div>
