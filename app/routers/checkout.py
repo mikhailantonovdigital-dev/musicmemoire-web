@@ -2,19 +2,17 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.db import get_db
 from app.core.security import utcnow
+from app.core.templates import templates
 from app.models import Order, OrderEvent, OrderPayment, User
 from app.services.email_service import EmailServiceError, send_payment_success_email
 from app.services.yookassa_service import YooKassaError, create_redirect_payment, fetch_payment
 
 router = APIRouter(prefix="/checkout", tags=["checkout"])
-templates = Jinja2Templates(directory="app/templates")
-templates.env.globals["settings"] = settings
 
 FINAL_PAYMENT_STATUSES = {"succeeded", "canceled"}
 PENDING_PAYMENT_STATUSES = {"pending", "waiting_for_capture"}
