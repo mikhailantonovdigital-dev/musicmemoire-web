@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from datetime import datetime, time, timedelta, timezone
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
@@ -12,8 +13,9 @@ from app.core.config import settings
 from app.core.db import get_db
 from app.core.security import utcnow
 from app.core.templates import templates
-from app.models import LyricsVersion, Order, OrderEvent, OrderPayment, SongGeneration, User
+from app.models import LyricsVersion, Order, OrderEvent, OrderPayment, SongGeneration, User, VoiceInput
 from app.services.email_service import EmailServiceError
+from app.services.lyrics_generation_service import DualGenerationResult, LyricsGenerationError, generate_dual_lyrics_versions
 from app.services.payment_workflow import resend_payment_success_email, sync_payment_with_remote
 from app.services.song_workflow import (
     RUNNING_SONG_STATUSES,
@@ -25,6 +27,7 @@ from app.services.song_workflow import (
     sync_song_job_state,
 )
 from app.services.suno_service import SunoServiceError
+from app.services.transcription_service import TranscriptionServiceError, transcribe_audio_file
 from app.services.yookassa_service import YooKassaError
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -107,6 +110,52 @@ def build_manual_result_tracks(urls: list[str]) -> list[dict]:
             "source": "admin_manual",
         })
     return tracks
+
+def format_size(size_bytes: int | None) -> str | None:
+    if size_bytes is None:
+        return None
+    return f"{size_bytes / (1024 * 1024):.2f} МБ"
+
+
+def humanize_transcription_status(status: str | None) -> str:
+    mapping = {
+        "uploaded": "Загружено",
+        "transcribing": "Распознаём",
+        "done": "Расшифровано",
+        "failed": "Ошибка распознавания",
+    }
+    return mapping.get(status or "", "—")
+
+
+def get_voice_inputs(db: Session, order_id: int) -> list[VoiceInput]:
+    return (
+        db.query(VoiceInput)
+        .filter(VoiceInput.order_id == order_id)
+        .order_by(VoiceInput.id.desc())
+        .all()
+    )
+
+
+def build_voice_cards(request: Request, voice_inputs: list[VoiceInput]) -> list[dict]:
+    cards: list[dict] = []
+    for voice in voice_inputs:
+        cards.append({
+            "voice": voice,
+            "size_label": format_size(voice.size_bytes),
+            "status_label": humanize_transcription_status(voice.transcription_status),
+            "stream_url": str(request.url_for("admin_voice_stream", voice_public_id=voice.public_id)),
+        })
+    return cards
+
+
+def get_latest_voice_input(db: Session, order_id: int) -> VoiceInput | None:
+    return (
+        db.query(VoiceInput)
+        .filter(VoiceInput.order_id == order_id)
+        .order_by(VoiceInput.id.desc())
+        .first()
+    )
+
 
 
 def has_admin_access(request: Request) -> bool:
@@ -221,6 +270,28 @@ async def admin_logout(request: Request):
     return RedirectResponse(url="/", status_code=303)
 
 
+@router.get("/voice/{voice_public_id}")
+async def admin_voice_stream(voice_public_id: str, request: Request, db: Session = Depends(get_db)):
+    if not has_admin_access(request):
+        return RedirectResponse(url="/admin/login", status_code=303)
+
+    voice_input = db.query(VoiceInput).filter(VoiceInput.public_id == voice_public_id).first()
+    if voice_input is None:
+        set_admin_flash(request, "error", "Голосовой файл не найден.")
+        return RedirectResponse(url="/admin/", status_code=303)
+
+    file_path = Path(voice_input.storage_path)
+    if not file_path.exists():
+        set_admin_flash(request, "error", "Файл голосового не найден на диске.")
+        return RedirectResponse(url=f"/admin/orders/{voice_input.order.public_id}", status_code=303)
+
+    return FileResponse(
+        path=file_path,
+        media_type=voice_input.content_type,
+        filename=voice_input.original_filename or file_path.name,
+    )
+
+
 @router.get("/", response_class=HTMLResponse)
 async def admin_dashboard(
     request: Request,
@@ -327,6 +398,9 @@ async def admin_order_detail(order_public_id: str, request: Request, db: Session
     latest_song = get_latest_song(order)
     lyrics_versions = get_lyrics_versions(db, order.id)
     selected_version = next((item for item in lyrics_versions if item.is_selected), None)
+    voice_inputs = get_voice_inputs(db, order.id)
+    voice_cards = build_voice_cards(request, voice_inputs)
+    latest_voice = voice_inputs[0] if voice_inputs else None
     events = db.query(OrderEvent).filter(OrderEvent.order_id == order.id).order_by(OrderEvent.id.desc()).limit(30).all()
 
     return templates.TemplateResponse(
@@ -341,6 +415,9 @@ async def admin_order_detail(order_public_id: str, request: Request, db: Session
             "latest_song": latest_song,
             "lyrics_versions": lyrics_versions,
             "selected_version": selected_version,
+            "voice_cards": voice_cards,
+            "latest_voice": latest_voice,
+            "voice_source_is_active": order.story_source == "voice",
             "payment_status_label": humanize_payment_status(latest_payment.status if latest_payment else None),
             "song_status_label": humanize_song_status(latest_song.status if latest_song else None),
             "can_run_song": can_run_song(order),
@@ -603,6 +680,233 @@ async def admin_order_lyrics_select(order_public_id: str, request: Request, vers
     }))
     db.commit()
     set_admin_flash(request, "success", f"Выбрана версия текста: {selected_version.angle_label}.")
+    return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
+
+
+@router.post("/orders/{order_public_id}/transcript-update")
+async def admin_order_transcript_update(
+    order_public_id: str,
+    request: Request,
+    transcript_text: str = Form(""),
+    sync_latest_voice: bool = Form(False),
+    db: Session = Depends(get_db),
+):
+    if not has_admin_access(request):
+        return RedirectResponse(url="/admin/login", status_code=303)
+    order = db.query(Order).filter(Order.public_id == order_public_id).first()
+    if order is None:
+        set_admin_flash(request, "error", "Заказ не найден.")
+        return RedirectResponse(url="/admin/", status_code=303)
+
+    value = (transcript_text or "").strip()
+    if not value:
+        set_admin_flash(request, "warning", "Расшифровка не может быть пустой.")
+        return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
+
+    previous_text = (order.transcript_text or "").strip()
+    if previous_text == value:
+        set_admin_flash(request, "warning", "Расшифровка не изменилась.")
+        return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
+
+    order.transcript_text = value
+    synced_voice_id = None
+    latest_voice = get_latest_voice_input(db, order.id)
+    if sync_latest_voice and latest_voice is not None:
+        latest_voice.transcript_text = value
+        latest_voice.transcription_status = "done"
+        synced_voice_id = latest_voice.public_id
+
+    db.add(OrderEvent(order=order, event_type="admin_transcript_updated", payload={
+        "text_length": len(value),
+        "synced_voice_id": synced_voice_id,
+        "trigger": "admin_manual_transcript_update",
+    }))
+    db.commit()
+    set_admin_flash(request, "success", "Расшифровка сохранена.")
+    return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
+
+
+@router.post("/orders/{order_public_id}/voice-apply")
+async def admin_order_voice_apply(
+    order_public_id: str,
+    request: Request,
+    voice_public_id: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    if not has_admin_access(request):
+        return RedirectResponse(url="/admin/login", status_code=303)
+    order = db.query(Order).filter(Order.public_id == order_public_id).first()
+    if order is None:
+        set_admin_flash(request, "error", "Заказ не найден.")
+        return RedirectResponse(url="/admin/", status_code=303)
+
+    voice_input = (
+        db.query(VoiceInput)
+        .filter(VoiceInput.order_id == order.id, VoiceInput.public_id == voice_public_id)
+        .first()
+    )
+    if voice_input is None:
+        set_admin_flash(request, "error", "Голосовое не найдено.")
+        return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
+
+    transcript = (voice_input.transcript_text or "").strip()
+    if not transcript:
+        set_admin_flash(request, "warning", "У выбранного голосового пока нет расшифровки.")
+        return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
+
+    order.transcript_text = transcript
+    db.add(OrderEvent(order=order, event_type="admin_voice_transcript_applied", payload={
+        "voice_input_id": voice_input.public_id,
+        "text_length": len(transcript),
+        "trigger": "admin_voice_apply",
+    }))
+    db.commit()
+    set_admin_flash(request, "success", "Расшифровка из голосового подставлена в заказ.")
+    return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
+
+
+@router.post("/orders/{order_public_id}/voice-retranscribe")
+async def admin_order_voice_retranscribe(
+    order_public_id: str,
+    request: Request,
+    voice_public_id: str = Form(...),
+    apply_to_order: bool = Form(False),
+    db: Session = Depends(get_db),
+):
+    if not has_admin_access(request):
+        return RedirectResponse(url="/admin/login", status_code=303)
+    order = db.query(Order).filter(Order.public_id == order_public_id).first()
+    if order is None:
+        set_admin_flash(request, "error", "Заказ не найден.")
+        return RedirectResponse(url="/admin/", status_code=303)
+
+    voice_input = (
+        db.query(VoiceInput)
+        .filter(VoiceInput.order_id == order.id, VoiceInput.public_id == voice_public_id)
+        .first()
+    )
+    if voice_input is None:
+        set_admin_flash(request, "error", "Голосовое не найдено.")
+        return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
+
+    file_path = Path(voice_input.storage_path)
+    if not file_path.exists():
+        set_admin_flash(request, "error", "Файл голосового не найден на сервере.")
+        return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
+
+    voice_input.transcription_status = "transcribing"
+    db.add(OrderEvent(order=order, event_type="admin_voice_retranscription_started", payload={
+        "voice_input_id": voice_input.public_id,
+        "trigger": "admin_voice_retranscribe",
+    }))
+    db.commit()
+
+    try:
+        result = await transcribe_audio_file(voice_input.storage_path)
+    except TranscriptionServiceError as exc:
+        voice_input.transcription_status = "failed"
+        db.add(OrderEvent(order=order, event_type="admin_voice_retranscription_failed", payload={
+            "voice_input_id": voice_input.public_id,
+            "error": str(exc),
+            "trigger": "admin_voice_retranscribe",
+        }))
+        db.commit()
+        set_admin_flash(request, "error", str(exc))
+        return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
+
+    voice_input.transcription_status = "done"
+    voice_input.transcript_text = result.text
+    if apply_to_order:
+        order.transcript_text = result.text
+
+    db.add(OrderEvent(order=order, event_type="admin_voice_retranscription_done", payload={
+        "voice_input_id": voice_input.public_id,
+        "text_length": len(result.text),
+        "model": result.model,
+        "language": result.language,
+        "applied_to_order": bool(apply_to_order),
+        "trigger": "admin_voice_retranscribe",
+    }))
+    db.commit()
+    set_admin_flash(request, "success", "Голосовое заново расшифровано.")
+    return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
+
+
+@router.post("/orders/{order_public_id}/lyrics-regenerate")
+async def admin_order_lyrics_regenerate(order_public_id: str, request: Request, db: Session = Depends(get_db)):
+    if not has_admin_access(request):
+        return RedirectResponse(url="/admin/login", status_code=303)
+    order = db.query(Order).filter(Order.public_id == order_public_id).first()
+    if order is None:
+        set_admin_flash(request, "error", "Заказ не найден.")
+        return RedirectResponse(url="/admin/", status_code=303)
+
+    if order.lyrics_mode != "generate":
+        set_admin_flash(request, "warning", "Перегенерация текстов доступна только для режима генерации.")
+        return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
+
+    source_text = (order.transcript_text if order.story_source == "voice" else order.story_text or "").strip()
+    if not source_text:
+        set_admin_flash(request, "warning", "Сначала нужен исходный текст для генерации.")
+        return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
+
+    db.add(OrderEvent(order=order, event_type="admin_lyrics_regeneration_started", payload={
+        "story_source": order.story_source,
+        "text_length": len(source_text),
+        "trigger": "admin_manual_regenerate",
+    }))
+    db.commit()
+
+    try:
+        result: DualGenerationResult = await generate_dual_lyrics_versions(source_text)
+    except LyricsGenerationError as exc:
+        db.add(OrderEvent(order=order, event_type="admin_lyrics_regeneration_failed", payload={
+            "error": str(exc),
+            "trigger": "admin_manual_regenerate",
+        }))
+        db.commit()
+        set_admin_flash(request, "error", str(exc))
+        return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
+
+    db.query(LyricsVersion).filter(LyricsVersion.order_id == order.id).delete(synchronize_session=False)
+
+    selected_version_id = None
+    final_text = None
+    for index, item in enumerate(result.versions):
+        version = LyricsVersion(
+            order_id=order.id,
+            provider=item.provider,
+            model_name=item.model_name,
+            angle_label=item.angle_label,
+            prompt_text=item.prompt_text,
+            lyrics_text=item.lyrics_text,
+            edited_lyrics_text=None,
+            is_selected=index == 0,
+        )
+        db.add(version)
+        db.flush()
+        if index == 0:
+            selected_version_id = version.public_id
+            final_text = item.lyrics_text
+
+    if final_text:
+        order.final_lyrics_text = final_text
+
+    variant_errors = [{
+        "slot_label": err.slot_label,
+        "user_message": err.user_message,
+        "technical_message": err.technical_message,
+    } for err in result.errors]
+
+    db.add(OrderEvent(order=order, event_type="admin_lyrics_regeneration_done", payload={
+        "versions_count": len(result.versions),
+        "selected_version_id": selected_version_id,
+        "model": result.versions[0].model_name if result.versions else None,
+        "errors": variant_errors,
+        "trigger": "admin_manual_regenerate",
+    }))
+    db.commit()
+    set_admin_flash(request, "success", f"Тексты перегенерированы. Получено версий: {len(result.versions)}.")
     return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
 
 
