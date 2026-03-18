@@ -1,10 +1,6 @@
-from pathlib import Path
-from jinja2 import Environment, FileSystemLoader, select_autoescape
+from fastapi.templating import Jinja2Templates
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-TEMPLATES_DIR = BASE_DIR / "templates"
+from app.core.config import settings
 
-templates_env = Environment(
-    loader=FileSystemLoader(str(TEMPLATES_DIR)),
-    autoescape=select_autoescape(["html", "xml"]),
-)
+templates = Jinja2Templates(directory="app/templates")
+templates.env.globals["settings"] = settings
