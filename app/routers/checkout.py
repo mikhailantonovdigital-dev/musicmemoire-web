@@ -9,6 +9,7 @@ from app.core.config import settings
 from app.core.db import get_db
 from app.core.security import utcnow
 from app.models import Order, OrderEvent, OrderPayment, User
+from app.services.email_service import EmailServiceError, send_payment_success_email
 from app.services.yookassa_service import YooKassaError, create_redirect_payment, fetch_payment
 
 router = APIRouter(prefix="/checkout", tags=["checkout"])
@@ -61,6 +62,54 @@ def humanize_payment_status(status: str | None) -> str:
     }
     return mapping.get(status or "", "Не начата")
 
+def has_order_event(db: Session, order: Order, event_type: str) -> bool:
+    return (
+        db.query(OrderEvent.id)
+        .filter(OrderEvent.order_id == order.id, OrderEvent.event_type == event_type)
+        .first()
+        is not None
+    )
+
+
+def maybe_send_payment_success_email(db: Session, order: Order, payment: OrderPayment) -> None:
+    if order.user is None or not order.user.email:
+        return
+
+    if has_order_event(db, order, "payment_success_email_sent"):
+        return
+
+    order_url = f"{settings.BASE_URL.rstrip('/')}/account/orders/{order.public_id}"
+
+    try:
+        send_payment_success_email(
+            recipient_email=order.user.email,
+            order_number=order.order_number,
+            order_url=order_url,
+            price_rub=settings.PRICE_RUB,
+        )
+        db.add(
+            OrderEvent(
+                order=order,
+                event_type="payment_success_email_sent",
+                payload={
+                    "payment_public_id": payment.public_id,
+                    "email": order.user.email,
+                },
+            )
+        )
+    except EmailServiceError as exc:
+        db.add(
+            OrderEvent(
+                order=order,
+                event_type="payment_success_email_failed",
+                payload={
+                    "payment_public_id": payment.public_id,
+                    "email": order.user.email,
+                    "error": str(exc),
+                },
+            )
+        )
+
 
 def sync_payment_with_remote(db: Session, payment: OrderPayment, *, event_name: str | None = None) -> None:
     if not payment.yookassa_payment_id:
@@ -78,6 +127,7 @@ def sync_payment_with_remote(db: Session, payment: OrderPayment, *, event_name: 
         if payment.paid_at is None:
             payment.paid_at = utcnow()
         order.status = "paid"
+        maybe_send_payment_success_email(db, order, payment)
         if event_name:
             db.add(
                 OrderEvent(
