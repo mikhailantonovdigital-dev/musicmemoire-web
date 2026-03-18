@@ -55,6 +55,12 @@ def ensure_visitor_session(request: Request) -> str:
         request.session["visitor_id"] = visitor_id
     return visitor_id
 
+def get_session_user(request: Request, db: Session) -> User | None:
+    user_id = request.session.get("account_user_id")
+    if not user_id:
+        return None
+    return db.query(User).filter(User.id == int(user_id)).first()
+
 
 def get_current_draft(db: Session, request: Request) -> Order | None:
     visitor_id = ensure_visitor_session(request)
@@ -1036,6 +1042,28 @@ async def questionnaire_access(request: Request, db: Session = Depends(get_db)):
     if draft.singer_gender not in ALLOWED_SINGER_GENDERS:
         return RedirectResponse(url=request.url_for("questionnaire_singer"), status_code=303)
 
+    session_user = get_session_user(request, db)
+    if session_user is not None:
+        if draft.user_id is None:
+            draft.user_id = session_user.id
+            db.add(
+                OrderEvent(
+                    order=draft,
+                    event_type="account_linked_from_session",
+                    payload={
+                        "email": session_user.email,
+                        "user_id": session_user.public_id,
+                    },
+                )
+            )
+            db.commit()
+
+        if draft.user_id == session_user.id:
+            return RedirectResponse(
+                url=request.url_for("account_order_detail", order_public_id=draft.public_id),
+                status_code=303,
+            )
+
     saved = request.query_params.get("saved") == "1"
     sent = request.query_params.get("sent") == "1"
     stub_login_url = request.session.get("stub_questionnaire_login_url")
@@ -1131,7 +1159,7 @@ async def questionnaire_access_submit(
     )
     db.commit()
 
-    login_url = f"{settings.BASE_URL}/account/magic-login?token={raw_token}"
+    login_url = f"{settings.BASE_URL.rstrip('/')}/account/magic-login?token={raw_token}"
 
     try:
         delivery = send_magic_link_email(
@@ -1156,10 +1184,17 @@ async def questionnaire_access_submit(
             status_code=400,
         )
 
+    request.session["account_user_id"] = user.id
+
     if delivery.mode == "stub":
         request.session["stub_questionnaire_login_url"] = delivery.login_url
+    else:
+        request.session.pop("stub_questionnaire_login_url", None)
 
     return RedirectResponse(
-        url=f"{request.url_for('questionnaire_access')}?sent=1",
+        url=(
+            f"{request.url_for('account_order_detail', order_public_id=draft.public_id)}"
+            f"?welcome=1&delivery={delivery.mode}"
+        ),
         status_code=303,
     )
