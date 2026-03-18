@@ -187,7 +187,8 @@ async def account_login_submit(
                 recipient_email=email,
                 login_url=login_url,
             )
-        except EmailServiceError:
+
+        except EmailServiceError as exc:
             return templates.TemplateResponse(
                 "account/login.html",
                 {
@@ -196,7 +197,7 @@ async def account_login_submit(
                     "sent": False,
                     "stub_mode": settings.MAGIC_LINK_STUB_MODE,
                     "stub_login_url": None,
-                    "error": "Не удалось отправить письмо со ссылкой для входа.",
+                    "error": str(exc),
                 },
                 status_code=400,
             )
