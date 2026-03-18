@@ -9,11 +9,11 @@ class Base(DeclarativeBase):
 
 
 def normalize_database_url(raw_url: str) -> str:
-    if raw_url.startswith('postgres://'):
-        return raw_url.replace('postgres://', 'postgresql+psycopg://', 1)
+    if raw_url.startswith("postgres://"):
+        return raw_url.replace("postgres://", "postgresql+psycopg://", 1)
 
-    if raw_url.startswith('postgresql://') and not raw_url.startswith('postgresql+psycopg://'):
-        return raw_url.replace('postgresql://', 'postgresql+psycopg://', 1)
+    if raw_url.startswith("postgresql://") and not raw_url.startswith("postgresql+psycopg://"):
+        return raw_url.replace("postgresql://", "postgresql+psycopg://", 1)
 
     return raw_url
 
@@ -21,8 +21,8 @@ def normalize_database_url(raw_url: str) -> str:
 DATABASE_URL = normalize_database_url(settings.DATABASE_URL)
 
 connect_args = {}
-if DATABASE_URL.startswith('sqlite'):
-    connect_args = {'check_same_thread': False}
+if DATABASE_URL.startswith("sqlite"):
+    connect_args = {"check_same_thread": False}
 
 engine = create_engine(
     DATABASE_URL,
@@ -50,36 +50,30 @@ def get_db():
 def run_bootstrap_migrations() -> None:
     inspector = inspect(engine)
 
-    if 'orders' in inspector.get_table_names():
-        order_columns = {col['name'] for col in inspector.get_columns('orders')}
+    if "orders" in inspector.get_table_names():
+        order_columns = {col["name"] for col in inspector.get_columns("orders")}
 
         with engine.begin() as conn:
-            if 'final_lyrics_text' not in order_columns:
-                conn.execute(text('ALTER TABLE orders ADD COLUMN final_lyrics_text TEXT'))
+            if "final_lyrics_text" not in order_columns:
+                conn.execute(text("ALTER TABLE orders ADD COLUMN final_lyrics_text TEXT"))
 
-            if 'song_style' not in order_columns:
-                conn.execute(text('ALTER TABLE orders ADD COLUMN song_style VARCHAR(32)'))
+            if "song_style" not in order_columns:
+                conn.execute(text("ALTER TABLE orders ADD COLUMN song_style VARCHAR(32)"))
 
-            if 'song_style_custom' not in order_columns:
-                conn.execute(text('ALTER TABLE orders ADD COLUMN song_style_custom TEXT'))
+            if "song_style_custom" not in order_columns:
+                conn.execute(text("ALTER TABLE orders ADD COLUMN song_style_custom TEXT"))
 
-            if 'singer_gender' not in order_columns:
-                conn.execute(text('ALTER TABLE orders ADD COLUMN singer_gender VARCHAR(16)'))
+            if "singer_gender" not in order_columns:
+                conn.execute(text("ALTER TABLE orders ADD COLUMN singer_gender VARCHAR(16)"))
 
-    if 'order_payments' in inspector.get_table_names():
-        payment_columns = {col['name'] for col in inspector.get_columns('order_payments')}
+    if "song_generations" in inspector.get_table_names():
+        song_columns = {col["name"] for col in inspector.get_columns("song_generations")}
 
         with engine.begin() as conn:
-            if 'base_amount_value' not in payment_columns:
-                conn.execute(text('ALTER TABLE order_payments ADD COLUMN base_amount_value VARCHAR(20)'))
+            if "result_tracks" not in song_columns:
+                conn.execute(text("ALTER TABLE song_generations ADD COLUMN result_tracks JSON"))
 
-            if 'discount_amount_value' not in payment_columns:
-                conn.execute(text('ALTER TABLE order_payments ADD COLUMN discount_amount_value VARCHAR(20)'))
-
-            if 'final_amount_value' not in payment_columns:
-                conn.execute(text('ALTER TABLE order_payments ADD COLUMN final_amount_value VARCHAR(20)'))
-
-    if 'magic_login_tokens' not in inspector.get_table_names():
+    if "magic_login_tokens" not in inspector.get_table_names():
         pass
 
 
