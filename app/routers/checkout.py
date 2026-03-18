@@ -6,9 +6,9 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.db import get_db
-from app.core.security import utcnow
+from app.core.security import get_session_user, utcnow
 from app.core.templates import templates
-from app.models import Order, OrderEvent, OrderPayment, User
+from app.models import Order, OrderEvent, OrderPayment
 from app.services.email_service import EmailServiceError, send_payment_success_email
 from app.services.yookassa_service import YooKassaError, create_redirect_payment, fetch_payment
 
@@ -16,13 +16,6 @@ router = APIRouter(prefix="/checkout", tags=["checkout"])
 
 FINAL_PAYMENT_STATUSES = {"succeeded", "canceled"}
 PENDING_PAYMENT_STATUSES = {"pending", "waiting_for_capture"}
-
-
-def get_session_user(request: Request, db: Session) -> User | None:
-    user_id = request.session.get("account_user_id")
-    if not user_id:
-        return None
-    return db.query(User).filter(User.id == int(user_id)).first()
 
 
 def get_checkout_order(request: Request, db: Session, order_public_id: str) -> Order | None:
