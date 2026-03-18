@@ -60,6 +60,21 @@
         {% else %}
           <p class="muted">Платёж ещё не создавался.</p>
         {% endif %}
+
+        <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #ececec;">
+          <p><strong>Ручная смена статуса заказа</strong></p>
+          <form method="post" action="/admin/orders/{{ order.public_id }}/status-update">
+            <label class="label" for="manual-order-status">Новый статус заказа</label>
+            <select id="manual-order-status" name="status" class="input">
+              {% for value, label in order_status_options %}
+                <option value="{{ value }}" {% if order.status == value %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+            <div class="form-actions" style="margin-top: 12px;">
+              <button type="submit" class="btn btn-secondary">Сменить статус заказа вручную</button>
+            </div>
+          </form>
+        </div>
       </div>
 
       <div class="form-card">
@@ -126,6 +141,31 @@
             <span class="btn btn-secondary">Сначала нужна оплата</span>
           {% endif %}
         </div>
+
+        {% if latest_song %}
+          <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #ececec;">
+            <p><strong>Ручная смена статуса песни</strong></p>
+            <form method="post" action="/admin/orders/{{ order.public_id }}/song-status-update">
+              <label class="label" for="manual-song-status">Новый статус песни</label>
+              <select id="manual-song-status" name="song_status" class="input">
+                {% for value, label in song_status_options %}
+                  <option value="{{ value }}" {% if latest_song.status == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+
+              <label class="label" for="manual-audio-urls" style="margin-top: 12px;">Ссылки на mp3, по одной в строке</label>
+              <textarea id="manual-audio-urls" name="audio_urls" class="textarea" rows="4" placeholder="https://.../variant-1.mp3&#10;https://.../variant-2.mp3">{% if latest_song.audio_variants %}{% for track in latest_song.audio_variants %}{{ track.audio_url or track.stream_audio_url }}{% if not loop.last %}
+{% endif %}{% endfor %}{% elif latest_song.audio_url %}{{ latest_song.audio_url }}{% endif %}</textarea>
+
+              <label class="label" for="manual-song-error" style="margin-top: 12px;">Комментарий / ошибка</label>
+              <textarea id="manual-song-error" name="error_message" class="textarea" rows="3" placeholder="Например: финальный статус выставлен оператором после проверки API.">{{ latest_song.error_message or "" }}</textarea>
+
+              <div class="form-actions" style="margin-top: 12px;">
+                <button type="submit" class="btn btn-secondary">Сменить статус песни вручную</button>
+              </div>
+            </form>
+          </div>
+        {% endif %}
       </div>
     </div>
 
