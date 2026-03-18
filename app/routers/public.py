@@ -1,11 +1,8 @@
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse, Response
-from fastapi.templating import Jinja2Templates
 
 from app.core.config import settings
-
-templates = Jinja2Templates(directory="app/templates")
-templates.env.globals["settings"] = settings
+from app.core.templates import templates
 
 router = APIRouter()
 
