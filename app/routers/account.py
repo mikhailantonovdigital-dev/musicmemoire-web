@@ -332,6 +332,9 @@ async def account_order_detail(
     latest_song = get_latest_song(order)
     song_profile = build_song_profile(order)
 
+    welcome = request.query_params.get("welcome") == "1"
+    delivery = (request.query_params.get("delivery") or "").strip().lower()
+
     return templates.TemplateResponse(
         "account/order_detail.html",
         {
@@ -353,5 +356,7 @@ async def account_order_detail(
             "song_is_ready": latest_song is not None and latest_song.status == "succeeded",
             "song_is_failed": latest_song is not None and latest_song.status == "failed",
             "suno_stub_mode": settings.SUNO_STUB_MODE,
+            "welcome": welcome,
+            "welcome_delivery": delivery,
         },
     )
