@@ -19,6 +19,22 @@ services:
         sync: false
       - key: BASE_URL
         sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: 465
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM_EMAIL
+        sync: false
+      - key: SMTP_FROM_NAME
+        value: Magic Music
+      - key: SMTP_TIMEOUT_SECONDS
+        value: 20
+      - key: MAGIC_LINK_STUB_MODE
+        value: false
       - key: YOOKASSA_SHOP_ID
         sync: false
       - key: YOOKASSA_TAX_SYSTEM_CODE
