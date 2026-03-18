@@ -57,6 +57,7 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str | None = None
     SMTP_FROM_EMAIL: str | None = None
     SMTP_FROM_NAME: str = "Magic Music"
+    SMTP_TIMEOUT_SECONDS: int = 20
 
     MAGIC_LINK_TTL_MINUTES: int = 30
     MAGIC_LINK_STUB_MODE: bool = True
