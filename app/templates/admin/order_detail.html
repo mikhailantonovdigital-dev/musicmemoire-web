@@ -60,24 +60,29 @@
       <div class="form-card">
         <h2 class="form-title">Песня</h2>
         {% if latest_song %}
-          <p><strong>Статус:</strong> {{ song_status_label }}</p>
-          <p><strong>Попытка:</strong> {{ latest_song.attempt_no }}</p>
+          <p><strong>Текущий статус:</strong> {{ song_status_label }}</p>
+          <p><strong>Текущая попытка:</strong> {{ latest_song.attempt_no }}</p>
           <p><strong>Внешний task id:</strong> {{ latest_song.external_job_id or "—" }}</p>
+          {% if has_previous_ready_song and latest_ready_song %}
+            <div class="notice" style="margin-bottom: 12px;">Последняя попытка ещё не дала готовый результат, но у заказа уже есть рабочая песня из попытки {{ latest_ready_song.attempt_no }}.</div>
+          {% endif %}
           {% if latest_song.error_message %}<div class="notice notice-error">{{ latest_song.error_message }}</div>{% endif %}
-          {% if latest_song.audio_variants %}
+          {% if latest_ready_song and latest_ready_song.audio_variants %}
             <div style="display: grid; gap: 12px; margin-top: 12px;">
-              {% for track in latest_song.audio_variants %}
+              {% for track in latest_ready_song.audio_variants %}
                 {% set playable_url = track.audio_url or track.stream_audio_url %}
                 <div class="panel-card" style="padding: 14px; background: #fafafa; border: 1px solid #ececec;">
-                  <p style="margin: 0 0 8px;"><strong>Вариант {{ loop.index }}</strong></p>
+                  <p style="margin: 0 0 8px;"><strong>Готовый вариант {{ loop.index }}</strong></p>
+                  <p class="helper-text" style="margin: 0 0 8px;">Попытка {{ latest_ready_song.attempt_no }}</p>
                   {% if playable_url %}<audio class="audio-player" controls preload="none" src="{{ playable_url }}"></audio>{% endif %}
                   {% if track.audio_url %}<p class="helper-text" style="margin-top: 8px;">{{ track.audio_url }}</p>{% endif %}
                 </div>
               {% endfor %}
             </div>
-          {% elif latest_song.audio_url %}
-            <audio class="audio-player" controls preload="none" src="{{ latest_song.audio_url }}"></audio>
-            <p class="helper-text">{{ latest_song.audio_url }}</p>
+          {% elif latest_ready_song and latest_ready_song.audio_url %}
+            <p class="helper-text">Готовый результат из попытки {{ latest_ready_song.attempt_no }}</p>
+            <audio class="audio-player" controls preload="none" src="{{ latest_ready_song.audio_url }}"></audio>
+            <p class="helper-text">{{ latest_ready_song.audio_url }}</p>
           {% endif %}
         {% else %}
           <p class="muted">Генерация песни ещё не запускалась.</p>
@@ -86,7 +91,7 @@
         <div class="form-actions">
           {% if can_run_song %}
             <form method="post" action="/admin/orders/{{ order.public_id }}/song-run">
-              <button type="submit" class="btn btn-primary">{% if latest_song and latest_song.status == "failed" %}Перезапустить генерацию{% elif latest_song %}Запустить ещё раз{% else %}Запустить генерацию{% endif %}</button>
+              <button type="submit" class="btn btn-primary">{% if latest_song and latest_song.status == "failed" %}Перезапустить генерацию на текущем тексте{% elif latest_song %}Запустить новую попытку на текущем тексте{% else %}Запустить генерацию{% endif %}</button>
             </form>
             {% if latest_song and latest_song.status in ["queued", "processing"] %}<form method="post" action="/admin/orders/{{ order.public_id }}/song-sync"><button type="submit" class="btn btn-secondary">Обновить статус песни</button></form>{% endif %}
             {% if can_resend_song_ready_email %}<form method="post" action="/admin/orders/{{ order.public_id }}/song-ready-email-resend"><button type="submit" class="btn btn-secondary">Переотправить письмо о готовой песне</button></form>{% endif %}
@@ -114,6 +119,62 @@
         {% endif %}
       </div>
     </div>
+
+    {% if song_attempts %}
+      <div class="form-card" style="margin-top: 20px;">
+        <div class="lyrics-card-head" style="margin-bottom: 16px;">
+          <div>
+            <h2 class="form-title" style="margin-bottom: 4px;">История попыток генерации</h2>
+            <p class="muted" style="margin: 0;">Здесь видно, на каком тексте запускалась каждая попытка, какой task id был у провайдера и какой результат пришёл.</p>
+          </div>
+        </div>
+        <div style="display: grid; gap: 16px;">
+          {% for attempt in song_attempts %}
+            <div class="panel-card" style="padding: 16px; border: 1px solid #ececec; background: #fafafa;">
+              <div class="lyrics-card-head" style="margin-bottom: 12px;">
+                <div>
+                  <h3 style="margin: 0;">Попытка {{ attempt.attempt_no }}</h3>
+                  <p class="lyrics-angle">Статус: {{ attempt.status }}</p>
+                  <p class="lyrics-angle">task id: {{ attempt.external_job_id or "—" }}</p>
+                  <p class="lyrics-angle">Старт: {{ attempt.started_at or "—" }} · Финиш: {{ attempt.finished_at or "—" }}</p>
+                </div>
+                <span class="variant-chip">{% if latest_song and latest_song.public_id == attempt.public_id %}Текущая{% elif latest_ready_song and latest_ready_song.public_id == attempt.public_id %}Последний готовый результат{% else %}История{% endif %}</span>
+              </div>
+              {% if attempt.error_message %}
+                <div class="notice notice-error" style="margin-bottom: 12px;">{{ attempt.error_message }}</div>
+              {% endif %}
+              {% if attempt.audio_variants %}
+                <div style="display: grid; gap: 10px; margin-bottom: 12px;">
+                  {% for track in attempt.audio_variants %}
+                    {% set playable_url = track.audio_url or track.stream_audio_url %}
+                    <div class="panel-card" style="padding: 12px; background: #fff; border: 1px solid #ececec;">
+                      <p style="margin: 0 0 8px;"><strong>Вариант {{ loop.index }}</strong></p>
+                      {% if playable_url %}<audio class="audio-player" controls preload="none" src="{{ playable_url }}"></audio>{% endif %}
+                      {% if track.audio_url %}<p class="helper-text" style="margin-top: 8px;">{{ track.audio_url }}</p>{% endif %}
+                    </div>
+                  {% endfor %}
+                </div>
+              {% elif attempt.audio_url %}
+                <audio class="audio-player" controls preload="none" src="{{ attempt.audio_url }}"></audio>
+                <p class="helper-text">{{ attempt.audio_url }}</p>
+              {% endif %}
+
+              <details style="margin-top: 12px;">
+                <summary style="cursor: pointer;">Показать текст, на котором запускалась эта попытка</summary>
+                <textarea class="textarea textarea-readonly" readonly rows="12" style="margin-top: 12px;">{{ attempt.lyrics_text_snapshot or "" }}</textarea>
+              </details>
+
+              {% if attempt.raw_payload %}
+                <details style="margin-top: 12px;">
+                  <summary style="cursor: pointer;">Показать сырой ответ API</summary>
+                  <pre class="admin-pre" style="margin-top: 12px;">{{ attempt.raw_payload | tojson(indent=2) }}</pre>
+                </details>
+              {% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
 
     {% if voice_source_is_active or voice_cards %}
       <div class="form-card" style="margin-top: 20px;">
