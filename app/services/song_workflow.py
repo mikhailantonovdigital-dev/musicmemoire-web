@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.security import utcnow
+from app.core.storage import StorageError, cache_remote_song_file, resolve_storage_path
 from app.models import Order, OrderEvent, SongGeneration
 from app.services.email_service import EmailServiceError, send_song_ready_email
 from app.services.suno_service import (
@@ -40,6 +42,15 @@ def has_order_event(db: Session, order: Order, event_type: str) -> bool:
     )
 
 
+def _get_primary_song_audio_url(song: SongGeneration) -> str | None:
+    if song.audio_variants:
+        for track in song.audio_variants:
+            url = (track.get("audio_url") or track.get("stream_audio_url") or "").strip()
+            if url:
+                return url
+    return (song.audio_url or "").strip() or None
+
+
 def maybe_send_song_ready_email(db: Session, song: SongGeneration) -> None:
     order = song.order
     if order.user is None or not order.user.email:
@@ -55,7 +66,7 @@ def maybe_send_song_ready_email(db: Session, song: SongGeneration) -> None:
             recipient_email=order.user.email,
             order_number=order.order_number,
             order_url=order_url,
-            audio_url=song.audio_url,
+            audio_url=_get_primary_song_audio_url(song),
         )
         db.add(
             OrderEvent(
@@ -64,7 +75,7 @@ def maybe_send_song_ready_email(db: Session, song: SongGeneration) -> None:
                 payload={
                     "song_job_id": song.public_id,
                     "email": order.user.email,
-                    "audio_url": song.audio_url,
+                    "audio_url": _get_primary_song_audio_url(song),
                 },
             )
         )
@@ -81,6 +92,7 @@ def maybe_send_song_ready_email(db: Session, song: SongGeneration) -> None:
             )
         )
 
+
 def resend_song_ready_email(db: Session, song: SongGeneration) -> None:
     order = song.order
     if order.user is None or not order.user.email:
@@ -93,7 +105,7 @@ def resend_song_ready_email(db: Session, song: SongGeneration) -> None:
             recipient_email=order.user.email,
             order_number=order.order_number,
             order_url=order_url,
-            audio_url=song.audio_url,
+            audio_url=_get_primary_song_audio_url(song),
         )
         db.add(
             OrderEvent(
@@ -102,7 +114,7 @@ def resend_song_ready_email(db: Session, song: SongGeneration) -> None:
                 payload={
                     "song_job_id": song.public_id,
                     "email": order.user.email,
-                    "audio_url": song.audio_url,
+                    "audio_url": _get_primary_song_audio_url(song),
                     "trigger": "admin_manual_resend",
                 },
             )
@@ -115,7 +127,7 @@ def resend_song_ready_email(db: Session, song: SongGeneration) -> None:
                 payload={
                     "song_job_id": song.public_id,
                     "email": order.user.email,
-                    "audio_url": song.audio_url,
+                    "audio_url": _get_primary_song_audio_url(song),
                     "trigger": "admin_manual_resend",
                     "error": str(exc),
                 },
@@ -154,6 +166,128 @@ def has_successful_payment(order: Order) -> bool:
 
 def can_start_song(order: Order) -> bool:
     return has_successful_payment(order)
+
+
+def get_song_track_entries(song: SongGeneration) -> list[dict[str, Any]]:
+    if song.audio_variants:
+        return [dict(item) for item in song.audio_variants if isinstance(item, dict)]
+    if song.audio_url:
+        return [{
+            "index": 0,
+            "title": "Вариант 1",
+            "audio_url": song.audio_url,
+            "stream_audio_url": song.audio_url,
+        }]
+    return []
+
+
+def get_song_track_entry(song: SongGeneration, track_index: int) -> dict[str, Any] | None:
+    tracks = get_song_track_entries(song)
+    if 0 <= track_index < len(tracks):
+        item = dict(tracks[track_index])
+        item.setdefault("index", track_index)
+        return item
+    return None
+
+
+def get_song_track_storage_path(song: SongGeneration, track_index: int) -> Path | None:
+    track = get_song_track_entry(song, track_index)
+    if track is None:
+        return None
+    relative_path = (track.get("stored_relative_path") or "").strip()
+    if not relative_path:
+        return None
+    try:
+        path = resolve_storage_path(relative_path)
+    except StorageError:
+        return None
+    if not path.exists():
+        return None
+    return path
+
+
+def ensure_song_track_cached(db: Session, song: SongGeneration, track_index: int, *, source: str) -> dict[str, Any] | None:
+    track = get_song_track_entry(song, track_index)
+    if track is None:
+        return None
+
+    existing_path = get_song_track_storage_path(song, track_index)
+    if existing_path is not None:
+        return track
+
+    source_url = (track.get("audio_url") or track.get("stream_audio_url") or "").strip()
+    if not source_url.startswith(("http://", "https://")):
+        return track
+
+    stored = cache_remote_song_file(
+        source_url,
+        order_number=song.order.order_number,
+        song_public_id=song.public_id,
+        track_index=track_index,
+    )
+
+    tracks = get_song_track_entries(song)
+    if not tracks:
+        return None
+
+    updated_track = dict(tracks[track_index])
+    updated_track["index"] = track_index
+    updated_track["stored_relative_path"] = stored.relative_path
+    updated_track["stored_content_type"] = stored.content_type
+    updated_track["stored_size_bytes"] = stored.size_bytes
+    updated_track["stored_original_filename"] = stored.original_filename
+    updated_track["stored_at"] = utcnow().isoformat()
+    tracks[track_index] = updated_track
+    song.result_tracks = tracks
+
+    if not song.audio_url:
+        song.audio_url = source_url
+
+    db.add(
+        OrderEvent(
+            order=song.order,
+            event_type="song_asset_cached",
+            payload={
+                "song_job_id": song.public_id,
+                "attempt_no": song.attempt_no,
+                "track_index": track_index,
+                "source": source,
+                "stored_relative_path": stored.relative_path,
+                "stored_size_bytes": stored.size_bytes,
+            },
+        )
+    )
+    return updated_track
+
+
+def cache_song_assets(db: Session, song: SongGeneration, *, source: str) -> None:
+    tracks = get_song_track_entries(song)
+    if not tracks:
+        return
+
+    errors: list[dict[str, Any]] = []
+    for track_index in range(len(tracks)):
+        try:
+            ensure_song_track_cached(db, song, track_index, source=source)
+        except StorageError as exc:
+            errors.append({
+                "track_index": track_index,
+                "error": str(exc),
+            })
+
+    if errors:
+        db.add(
+            OrderEvent(
+                order=song.order,
+                event_type="song_asset_cache_failed",
+                payload={
+                    "song_job_id": song.public_id,
+                    "attempt_no": song.attempt_no,
+                    "source": source,
+                    "errors": errors,
+                },
+            )
+        )
 
 
 def create_song_job(db: Session, order: Order, *, event_type: str = "song_generation_started") -> SongGeneration:
@@ -248,6 +382,7 @@ def apply_song_sync_result(
         if song.finished_at is None:
             song.finished_at = utcnow()
         song.order.status = "song_ready"
+        cache_song_assets(db, song, source=bucket_name)
         maybe_send_song_ready_email(db, song)
     elif result.status == "failed":
         if song.finished_at is None:
