@@ -78,6 +78,16 @@
                         <strong class="detail-value">{{ card.song_status_label }}</strong>
                       </div>
                       <div class="detail-list-item">
+                        <span class="detail-label">Сумма</span>
+                        <strong class="detail-value">{{ card.current_amount_rub }} ₽</strong>
+                      </div>
+                      {% if card.has_discount %}
+                        <div class="detail-list-item">
+                          <span class="detail-label">Скидка</span>
+                          <strong class="detail-value">-{{ card.discount_amount_rub }} ₽</strong>
+                        </div>
+                      {% endif %}
+                      <div class="detail-list-item">
                         <span class="detail-label">Режим текста</span>
                         <strong class="detail-value">{{ "Свой текст" if order.lyrics_mode == "custom" else "2 версии бесплатно" }}</strong>
                       </div>
@@ -86,20 +96,20 @@
 
                   <div class="panel-card panel-card-dark">
                     <div class="mini-label">Параметры песни</div>
-                  
+
                     <div class="detail-list">
                       <div class="detail-list-item">
                         <span class="detail-label">Стиль</span>
                         <strong class="detail-value">{{ card.song_style_label }}</strong>
                       </div>
-                  
+
                       {% if card.song_style_details %}
                         <div class="detail-list-item">
                           <span class="detail-label">Уточнение по стилю</span>
                           <strong class="detail-value">{{ card.song_style_details }}</strong>
                         </div>
                       {% endif %}
-                  
+
                       <div class="detail-list-item">
                         <span class="detail-label">Исполнение</span>
                         <strong class="detail-value">{{ card.singer_label }}</strong>
