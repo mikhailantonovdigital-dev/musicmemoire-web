@@ -41,6 +41,7 @@
           {% for card in order_cards %}
             {% set order = card.order %}
             {% set latest_song = card.latest_song %}
+            {% set playback_song = card.playback_song %}
 
             <article class="order-card-premium order-card-dark">
               <div class="order-card-top">
@@ -81,10 +82,16 @@
                         <span class="detail-label">Режим текста</span>
                         <strong class="detail-value">{{ "Свой текст" if order.lyrics_mode == "custom" else "2 версии бесплатно" }}</strong>
                       </div>
-                      {% if latest_song and latest_song.audio_variants %}
+                      {% if card.has_ready_song %}
                         <div class="detail-list-item">
                           <span class="detail-label">Готово вариантов</span>
-                          <strong class="detail-value">{{ latest_song.audio_variants|length }}</strong>
+                          <strong class="detail-value">{{ card.ready_variants_count }}</strong>
+                        </div>
+                      {% endif %}
+                      {% if card.has_previous_ready_song %}
+                        <div class="detail-list-item">
+                          <span class="detail-label">Последний готовый результат</span>
+                          <strong class="detail-value">Попытка {{ playback_song.attempt_no }}</strong>
                         </div>
                       {% endif %}
                     </div>
@@ -113,21 +120,33 @@
                     </div>
                   </div>
 
-                  {% if latest_song and latest_song.audio_variants %}
+                  {% if playback_song and playback_song.audio_variants %}
                     <div class="panel-card panel-card-dark">
                       <div class="mini-label">Аудио</div>
-                      <p class="muted" style="margin: 0 0 12px;">Готово вариантов: {{ latest_song.audio_variants|length }}</p>
-                      {% set first_track = latest_song.audio_variants[0] %}
+                      {% if card.has_previous_ready_song %}
+                        <p class="muted" style="margin: 0 0 12px;">Новая попытка ещё не дала готовый результат. Ниже доступна последняя успешная песня из попытки {{ playback_song.attempt_no }}.</p>
+                      {% else %}
+                        <p class="muted" style="margin: 0 0 12px;">Готово вариантов: {{ card.ready_variants_count }}</p>
+                      {% endif %}
+                      {% set first_track = playback_song.audio_variants[0] %}
                       {% set first_url = first_track.audio_url or first_track.stream_audio_url %}
                       {% if first_url %}
                         <audio class="audio-player" controls preload="none" src="{{ first_url }}"></audio>
                       {% endif %}
                     </div>
+                  {% elif playback_song and playback_song.audio_url %}
+                    <div class="panel-card panel-card-dark">
+                      <div class="mini-label">Аудио</div>
+                      {% if card.has_previous_ready_song %}
+                        <p class="muted" style="margin: 0 0 12px;">Последняя успешная песня доступна из попытки {{ playback_song.attempt_no }}.</p>
+                      {% endif %}
+                      <audio class="audio-player" controls preload="none" src="{{ playback_song.audio_url }}"></audio>
+                    </div>
                   {% elif latest_song and card.song_is_ready and suno_stub_mode %}
                     <div class="panel-card panel-card-dark">
                       <div class="mini-label">Аудио</div>
                       <p class="muted" style="margin: 0;">
-                        В тестовом режиме задача уже считается готовой, но для боевого результата выключите SUNO_STUB_MODE.
+                        Тестовый режим задачи завершён. Для боевого результата нужен реальный аудиофайл.
                       </p>
                     </div>
                   {% endif %}
@@ -143,6 +162,8 @@
                       <a class="btn btn-primary" href="/songs/status?job={{ latest_song.public_id }}">Открыть статус</a>
                     {% elif card.song_is_ready %}
                       <a class="btn btn-primary" href="/songs/status?job={{ latest_song.public_id }}">Открыть результат</a>
+                    {% elif card.has_ready_song %}
+                      <a class="btn btn-primary" href="/songs/status?job={{ playback_song.public_id }}">Открыть готовую песню</a>
                     {% elif card.can_start_song %}
                       <form method="post" action="/songs/start/{{ order.public_id }}">
                         <button type="submit" class="btn btn-primary">Сгенерировать песню</button>
