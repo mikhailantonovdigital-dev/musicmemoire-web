@@ -5077,7 +5077,7 @@ strong,
 
 .page-questionnaire .site-main {
   position: relative;
-  min-height: calc(100vh - 160px);
+  min-height: calc(100vh - 180px);
   background:
     radial-gradient(circle at 12% 6%, rgba(118, 132, 255, 0.22), transparent 28%),
     radial-gradient(circle at 88% 12%, rgba(140, 92, 255, 0.24), transparent 26%),
@@ -5103,13 +5103,15 @@ strong,
   z-index: 1;
 }
 
+.questionnaire-stack > .eyebrow,
+.questionnaire-stack > h1,
 .questionnaire-shell > .eyebrow,
 .questionnaire-shell > h1 {
   margin-top: 0;
 }
 
 .questionnaire-stage {
-  padding: 116px 0 82px;
+  padding: 96px 0 64px;
 }
 
 .questionnaire-shell {
@@ -5347,8 +5349,8 @@ strong,
 
 @media (max-width: 980px) {
   .questionnaire-stage {
-    padding-top: 104px;
-    padding-bottom: 72px;
+    padding-top: 82px;
+    padding-bottom: 56px;
   }
 
   .questionnaire-shell {
@@ -5359,8 +5361,8 @@ strong,
 
 @media (max-width: 640px) {
   .questionnaire-stage {
-    padding-top: 96px;
-    padding-bottom: 56px;
+    padding-top: 72px;
+    padding-bottom: 44px;
   }
 
   .questionnaire-shell {
