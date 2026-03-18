@@ -32,6 +32,7 @@ from app.services.transcription_service import (
     TranscriptionServiceError,
     transcribe_audio_file,
 )
+from app.services.rate_limit_service import RateLimitRule, enforce_rate_limit, get_client_ip
 
 router = APIRouter(prefix="/questionnaire", tags=["questionnaire"])
 
@@ -145,6 +146,41 @@ def humanize_transcription_status(status: str | None) -> str:
         "failed": "Ошибка распознавания",
     }
     return mapping.get(status or "", "—")
+
+
+def render_story_template(
+    request: Request,
+    draft: Order,
+    latest_voice: VoiceInput | None,
+    *,
+    error: str | None = None,
+    saved: bool = False,
+    voice_uploaded: bool = False,
+    transcribed: bool = False,
+    transcription_failed: bool = False,
+    transcription_error: str | None = None,
+    status_code: int = 200,
+):
+    return templates.TemplateResponse(
+        "questionnaire/story.html",
+        {
+            "request": request,
+            "page_title": "Анкета — история",
+            "draft": draft,
+            "latest_voice": latest_voice,
+            "latest_voice_size": format_size(latest_voice.size_bytes) if latest_voice else None,
+            "latest_voice_status_label": humanize_transcription_status(
+                latest_voice.transcription_status if latest_voice else None
+            ),
+            "saved": saved,
+            "voice_uploaded": voice_uploaded,
+            "transcribed": transcribed,
+            "transcription_failed": transcription_failed,
+            "transcription_error": transcription_error,
+            "error": error,
+        },
+        status_code=status_code,
+    )
 
 
 async def run_transcription_for_voice(
@@ -503,24 +539,15 @@ async def questionnaire_story(request: Request, db: Session = Depends(get_db)):
     transcription_failed = request.query_params.get("transcription_failed") == "1"
     transcription_error = request.session.pop("voice_transcription_error", None)
 
-    return templates.TemplateResponse(
-        "questionnaire/story.html",
-        {
-            "request": request,
-            "page_title": "Анкета — история",
-            "draft": draft,
-            "latest_voice": latest_voice,
-            "latest_voice_size": format_size(latest_voice.size_bytes) if latest_voice else None,
-            "latest_voice_status_label": humanize_transcription_status(
-                latest_voice.transcription_status if latest_voice else None
-            ),
-            "saved": saved,
-            "voice_uploaded": voice_uploaded,
-            "transcribed": transcribed,
-            "transcription_failed": transcription_failed,
-            "transcription_error": transcription_error,
-            "error": None,
-        },
+    return render_story_template(
+        request,
+        draft,
+        latest_voice,
+        saved=saved,
+        voice_uploaded=voice_uploaded,
+        transcribed=transcribed,
+        transcription_failed=transcription_failed,
+        transcription_error=transcription_error,
     )
 
 
@@ -539,27 +566,41 @@ async def questionnaire_voice_upload(
 
     latest_voice = get_latest_voice_input(db, draft.id)
 
+    limit_decision = enforce_rate_limit(
+        db,
+        request=request,
+        action="questionnaire_voice_upload",
+        user_message=f"Голосовое можно загружать не более {settings.VOICE_UPLOAD_LIMIT_PER_ORDER_PER_DAY} раз в день для одного заказа.",
+        rules=[
+            RateLimitRule("order", draft.public_id, settings.VOICE_UPLOAD_LIMIT_PER_ORDER_PER_DAY, 24 * 60 * 60),
+        ],
+        order=draft,
+        extra_payload={
+            "order_public_id": draft.public_id,
+            "story_source": draft.story_source,
+            "ip": get_client_ip(request),
+        },
+    )
+    if not limit_decision.allowed:
+        db.commit()
+        return render_story_template(
+            request,
+            draft,
+            latest_voice,
+            error=limit_decision.message,
+            status_code=429,
+        )
+
+    db.commit()
+
     try:
         stored = save_voice_file(voice_file)
     except ValueError as exc:
-        return templates.TemplateResponse(
-            "questionnaire/story.html",
-            {
-                "request": request,
-                "page_title": "Анкета — история",
-                "draft": draft,
-                "latest_voice": latest_voice,
-                "latest_voice_size": format_size(latest_voice.size_bytes) if latest_voice else None,
-                "latest_voice_status_label": humanize_transcription_status(
-                    latest_voice.transcription_status if latest_voice else None
-                ),
-                "saved": False,
-                "voice_uploaded": False,
-                "transcribed": False,
-                "transcription_failed": False,
-                "transcription_error": None,
-                "error": str(exc),
-            },
+        return render_story_template(
+            request,
+            draft,
+            latest_voice,
+            error=str(exc),
             status_code=400,
         )
 
@@ -624,6 +665,27 @@ async def questionnaire_voice_retranscribe(
             url=f"{request.url_for('questionnaire_story')}?transcription_failed=1",
             status_code=303,
         )
+
+    limit_decision = enforce_rate_limit(
+        db,
+        request=request,
+        action="questionnaire_voice_retranscribe",
+        user_message=f"Перезапускать расшифровку можно не более {settings.VOICE_RETRANSCRIBE_LIMIT_PER_ORDER_PER_HOUR} раз в час для одного заказа.",
+        rules=[
+            RateLimitRule("order", draft.public_id, settings.VOICE_RETRANSCRIBE_LIMIT_PER_ORDER_PER_HOUR, 60 * 60),
+        ],
+        order=draft,
+        extra_payload={"order_public_id": draft.public_id, "voice_input_id": latest_voice.public_id},
+    )
+    if not limit_decision.allowed:
+        db.commit()
+        request.session["voice_transcription_error"] = limit_decision.message
+        return RedirectResponse(
+            url=f"{request.url_for('questionnaire_story')}?transcription_failed=1",
+            status_code=303,
+        )
+
+    db.commit()
 
     success = await run_transcription_for_voice(db, request, draft, latest_voice)
 
@@ -1203,6 +1265,48 @@ async def questionnaire_access_submit(
             },
             status_code=400,
         )
+
+    limit_decision = enforce_rate_limit(
+        db,
+        request=request,
+        action="questionnaire_magic_link_send",
+        user_message="Ссылка для входа уже отправлялась слишком часто. Подождите немного и попробуйте снова.",
+        rules=[
+            RateLimitRule("order", draft.public_id, settings.QUESTIONNAIRE_MAGIC_LINK_ORDER_LIMIT_PER_HOUR, 60 * 60),
+            RateLimitRule("email", email, settings.MAGIC_LINK_EMAIL_LIMIT_PER_HOUR, 60 * 60),
+            RateLimitRule("ip", get_client_ip(request), settings.MAGIC_LINK_IP_LIMIT_PER_HOUR, 60 * 60),
+        ],
+        order=draft,
+        extra_payload={
+            "order_public_id": draft.public_id,
+            "email": email,
+            "ip": get_client_ip(request),
+        },
+    )
+    if not limit_decision.allowed:
+        db.commit()
+        pricing = build_order_pricing_preview(db, draft)
+        return templates.TemplateResponse(
+            "questionnaire/access.html",
+            {
+                "request": request,
+                "page_title": "Анкета — доступ к кабинету",
+                "draft": draft,
+                "saved": False,
+                "sent": False,
+                "stub_mode": settings.MAGIC_LINK_STUB_MODE,
+                "stub_login_url": None,
+                "price_rub": int(pricing["final_price_rub"]),
+                "base_price_rub": int(pricing["base_price_rub"]),
+                "discount_rub": int(pricing["discount_rub"]),
+                "has_discount": bool(pricing["has_discount"]),
+                "error": limit_decision.message,
+                "form_email": email,
+            },
+            status_code=429,
+        )
+
+    db.commit()
 
     user = db.query(User).filter(User.email == email).first()
     if user is None:
