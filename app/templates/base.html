@@ -30,7 +30,7 @@
 </head>
 {% set path = request.url.path %}
 {% set is_marketing_screen = path in ['/', '/portfolio', '/how-it-works', '/reviews'] %}
-{% set is_legal_screen = path in ['/offer', '/policy', '/faq'] %}
+{% set is_legal_screen = path in ['/offer', '/policy', '/faq', '/support'] %}
 {% set is_questionnaire_screen = path.startswith('/questionnaire') %}
 <body class="theme-dark-premium{% if path == '/' %} page-home{% endif %}{% if is_marketing_screen %} page-marketing-screen{% endif %}{% if is_legal_screen %} page-legal-screen{% endif %}{% if is_questionnaire_screen %} page-questionnaire{% endif %}{% if body_class %} {{ body_class }}{% endif %}">
   <div class="page-bg page-bg-dark"></div>
@@ -70,6 +70,7 @@
         <a class="footer-legal-btn {% if path == '/offer' %}is-active{% endif %}" href="/offer">Оферта</a>
         <a class="footer-legal-btn {% if path == '/policy' %}is-active{% endif %}" href="/policy">Политика</a>
         <a class="footer-legal-btn {% if path == '/faq' %}is-active{% endif %}" href="/faq">FAQ</a>
+        <a class="footer-legal-btn {% if path == '/support' %}is-active{% endif %}" href="/support">Support</a>
       </div>
     </div>
   </footer>
