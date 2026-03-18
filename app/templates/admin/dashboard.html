@@ -93,6 +93,7 @@
       <div class="metric-card"><span>Ошибки песен сегодня</span><strong>{{ song_errors_today }}</strong></div>
       <div class="metric-card"><span>Все ошибки генерации</span><strong>{{ failed_song_jobs }}</strong></div>
       <div class="metric-card"><span>Ожидающие оплаты</span><strong>{{ pending_payments }}</strong></div>
+      <div class="metric-card"><span>Блокировки и подозрительные действия сегодня</span><strong>{{ blocked_security_events_today }}</strong></div>
     </div>
 
     <div class="form-card" style="margin-top: 20px;">
@@ -165,6 +166,29 @@
           <p class="muted">Проблемных платежей сейчас нет.</p>
         {% endif %}
       </div>
+    </div>
+
+    <div class="form-card" style="margin-top: 20px;">
+      <h2 class="form-title">Последние блокировки и подозрительные действия</h2>
+      {% if recent_security_events %}
+        <div class="admin-events">
+          {% for item in recent_security_events %}
+            {% set event = item.event %}
+            <div class="admin-event">
+              <div class="admin-event-head"><strong>{{ item.action_label }}</strong><span>{{ event.created_at }}</span></div>
+              <p style="margin: 0 0 8px;"><strong>Статус:</strong> {{ item.status_label }}</p>
+              <p style="margin: 0 0 8px;"><strong>Scope:</strong> {{ item.scope_label }}</p>
+              <p style="margin: 0 0 8px;"><strong>IP:</strong> {{ item.ip }}</p>
+              {% if item.limit and item.recent_count %}<p style="margin: 0 0 8px;"><strong>Лимит:</strong> {{ item.recent_count }} / {{ item.limit }} за {{ item.window_seconds }} сек.</p>{% endif %}
+              <div class="form-actions" style="margin-top: 12px;">
+                {% if event.order %}<a href="/admin/orders/{{ event.order.public_id }}" class="btn btn-secondary">Открыть заказ</a>{% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="muted">Блокировок и подозрительных действий пока нет.</p>
+      {% endif %}
     </div>
 
     {% if order_cards %}
