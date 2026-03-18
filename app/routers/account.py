@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from datetime import timedelta
 
 from fastapi import APIRouter, Depends, Form, Request
@@ -9,30 +8,21 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.db import get_db
-from app.core.security import generate_magic_token, hash_magic_token, utcnow
+from app.core.security import (
+    generate_magic_token,
+    get_session_user,
+    hash_magic_token,
+    is_valid_email,
+    normalize_email,
+    utcnow,
+)
 from app.core.templates import templates
 from app.models import MagicLoginToken, Order, SongGeneration, User
 from app.services.email_service import EmailServiceError, send_magic_link_email
 
 router = APIRouter(prefix="/account", tags=["account"])
 
-EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 RUNNING_SONG_STATUSES = {"queued", "processing"}
-
-
-def normalize_email(value: str) -> str:
-    return value.strip().lower()
-
-
-def is_valid_email(value: str) -> bool:
-    return bool(EMAIL_RE.match(value.strip()))
-
-
-def get_session_user(request: Request, db: Session) -> User | None:
-    user_id = request.session.get("account_user_id")
-    if not user_id:
-        return None
-    return db.query(User).filter(User.id == int(user_id)).first()
 
 
 def humanize_payment_status(status: str | None) -> str:
