@@ -10,9 +10,11 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.db import get_db
+from app.core.security import utcnow
 from app.core.templates import templates
 from app.models import LyricsVersion, Order, OrderEvent, OrderPayment, SongGeneration, User
-from app.core.security import utcnow
+from app.services.email_service import EmailServiceError
+from app.services.payment_workflow import resend_payment_success_email, sync_payment_with_remote
 from app.services.song_workflow import (
     RUNNING_SONG_STATUSES,
     create_song_job,
@@ -22,8 +24,6 @@ from app.services.song_workflow import (
     resend_song_ready_email,
     sync_song_job_state,
 )
-from app.services.email_service import EmailServiceError
-from app.services.payment_workflow import resend_payment_success_email, sync_payment_with_remote
 from app.services.suno_service import SunoServiceError
 from app.services.yookassa_service import YooKassaError
 
@@ -50,8 +50,38 @@ SONG_STATUS_OPTIONS = [
     ("canceled", "canceled"),
 ]
 
+FILTER_ALL = "all"
+STORY_SOURCE_OPTIONS = [
+    (FILTER_ALL, "Любой источник"),
+    ("text", "Текст"),
+    ("voice", "Голос"),
+]
+LYRICS_MODE_OPTIONS = [
+    (FILTER_ALL, "Любой режим"),
+    ("generate", "Генерация"),
+    ("custom", "Свой текст"),
+]
+PAYMENT_STATUS_FILTER_OPTIONS = [
+    (FILTER_ALL, "Любой статус оплаты"),
+    ("pending", "pending"),
+    ("waiting_for_capture", "waiting_for_capture"),
+    ("succeeded", "succeeded"),
+    ("canceled", "canceled"),
+    ("missing", "Без платежа"),
+]
+SONG_STATUS_FILTER_OPTIONS = [(FILTER_ALL, "Любой статус песни"), *SONG_STATUS_OPTIONS, ("missing", "Без задачи")]
+ORDER_STATUS_FILTER_OPTIONS = [(FILTER_ALL, "Любой статус заказа"), *ORDER_STATUS_OPTIONS]
+
 VALID_ORDER_STATUSES = {value for value, _label in ORDER_STATUS_OPTIONS}
 VALID_SONG_STATUSES = {value for value, _label in SONG_STATUS_OPTIONS}
+FUNNEL_STAGES = [
+    ("Черновики", ["draft"]),
+    ("Ждут оплату", ["awaiting_payment", "payment_pending", "payment_canceled"]),
+    ("Оплачены", ["paid"]),
+    ("Песня в работе", ["song_pending"]),
+    ("Песня готова", ["song_ready"]),
+    ("Ошибка", ["song_failed"]),
+]
 
 
 def normalize_multiline_urls(value: str | None) -> list[str]:
@@ -77,7 +107,6 @@ def build_manual_result_tracks(urls: list[str]) -> list[dict]:
             "source": "admin_manual",
         })
     return tracks
-
 
 
 def has_admin_access(request: Request) -> bool:
@@ -107,18 +136,13 @@ def get_latest_payment(order: Order) -> OrderPayment | None:
     return sorted(order.payments, key=lambda item: item.id or 0, reverse=True)[0]
 
 
-def get_sorted_lyrics_versions(order: Order) -> list[LyricsVersion]:
-    if not order.lyrics_versions:
-        return []
-    return sorted(order.lyrics_versions, key=lambda item: item.id or 0)
-
-
-def get_selected_lyrics_version(order: Order) -> LyricsVersion | None:
-    versions = get_sorted_lyrics_versions(order)
-    for version in versions:
-        if version.is_selected:
-            return version
-    return versions[-1] if versions else None
+def get_lyrics_versions(db: Session, order_id: int) -> list[LyricsVersion]:
+    return (
+        db.query(LyricsVersion)
+        .filter(LyricsVersion.order_id == order_id)
+        .order_by(LyricsVersion.is_selected.desc(), LyricsVersion.id.asc())
+        .all()
+    )
 
 
 def humanize_payment_status(status: str | None) -> str:
@@ -157,40 +181,36 @@ def build_order_card(order: Order) -> dict:
         "can_run_song": can_run_song(order),
         "can_resend_payment_email": can_resend_payment_email(order),
         "can_resend_song_ready_email": can_resend_song_ready_email(order),
+        "amount_rub": latest_payment.final_amount_rub if latest_payment else None,
     }
+
+
+def build_funnel_counts(db: Session) -> list[dict[str, int | str]]:
+    rows = db.query(Order.status, func.count(Order.id)).group_by(Order.status).all()
+    counts_map = {status: count for status, count in rows}
+    return [
+        {"label": label, "count": sum(int(counts_map.get(status, 0) or 0) for status in statuses)}
+        for label, statuses in FUNNEL_STAGES
+    ]
 
 
 @router.get("/login", response_class=HTMLResponse)
 async def admin_login_page(request: Request):
     if has_admin_access(request):
         return RedirectResponse(url="/admin/", status_code=303)
-
-    return templates.TemplateResponse(
-        "admin/login.html",
-        {
-            "request": request,
-            "page_title": "Вход в админку",
-            "error": None,
-        },
-    )
+    return templates.TemplateResponse("admin/login.html", {"request": request, "page_title": "Вход в админку", "error": None})
 
 
 @router.post("/login", response_class=HTMLResponse)
 async def admin_login_submit(request: Request, token: str = Form(...)):
     if not settings.ADMIN_TOKEN:
         return RedirectResponse(url="/admin/", status_code=303)
-
     if token.strip() != settings.ADMIN_TOKEN:
         return templates.TemplateResponse(
             "admin/login.html",
-            {
-                "request": request,
-                "page_title": "Вход в админку",
-                "error": "Неверный токен.",
-            },
+            {"request": request, "page_title": "Вход в админку", "error": "Неверный токен."},
             status_code=400,
         )
-
     request.session["admin_access"] = True
     return RedirectResponse(url="/admin/", status_code=303)
 
@@ -202,79 +222,61 @@ async def admin_logout(request: Request):
 
 
 @router.get("/", response_class=HTMLResponse)
-async def admin_dashboard(request: Request, q: str | None = None, db: Session = Depends(get_db)):
+async def admin_dashboard(
+    request: Request,
+    q: str | None = None,
+    order_status: str = FILTER_ALL,
+    payment_status: str = FILTER_ALL,
+    song_status: str = FILTER_ALL,
+    story_source: str = FILTER_ALL,
+    lyrics_mode: str = FILTER_ALL,
+    db: Session = Depends(get_db),
+):
     if not has_admin_access(request):
         return RedirectResponse(url="/admin/login", status_code=303)
 
     query_text = (q or "").strip()
+    order_status = (order_status or FILTER_ALL).strip() or FILTER_ALL
+    payment_status = (payment_status or FILTER_ALL).strip() or FILTER_ALL
+    song_status = (song_status or FILTER_ALL).strip() or FILTER_ALL
+    story_source = (story_source or FILTER_ALL).strip() or FILTER_ALL
+    lyrics_mode = (lyrics_mode or FILTER_ALL).strip() or FILTER_ALL
+
     day_start_utc, day_end_utc = get_today_range_utc()
 
-    new_users_today = (
-        db.query(func.count(User.id))
-        .filter(User.created_at >= day_start_utc, User.created_at < day_end_utc)
-        .scalar()
-        or 0
-    )
+    new_users_today = db.query(func.count(User.id)).filter(User.created_at >= day_start_utc, User.created_at < day_end_utc).scalar() or 0
     total_users = db.query(func.count(User.id)).scalar() or 0
-    orders_today = (
-        db.query(func.count(Order.id))
-        .filter(Order.created_at >= day_start_utc, Order.created_at < day_end_utc)
-        .scalar()
-        or 0
-    )
-    total_paid_orders = (
-        db.query(func.count(func.distinct(OrderPayment.order_id)))
-        .filter(OrderPayment.status == "succeeded")
-        .scalar()
-        or 0
-    )
-    failed_song_jobs = (
-        db.query(func.count(SongGeneration.id))
-        .filter(SongGeneration.status == "failed")
-        .scalar()
-        or 0
-    )
-    pending_payments = (
-        db.query(func.count(OrderPayment.id))
-        .filter(OrderPayment.status.in_(["pending", "waiting_for_capture"]))
-        .scalar()
-        or 0
-    )
+    orders_today = db.query(func.count(Order.id)).filter(Order.created_at >= day_start_utc, Order.created_at < day_end_utc).scalar() or 0
+    successful_payments_today = db.query(func.count(OrderPayment.id)).filter(OrderPayment.status == "succeeded", OrderPayment.paid_at >= day_start_utc, OrderPayment.paid_at < day_end_utc).scalar() or 0
+    songs_ready_today = db.query(func.count(SongGeneration.id)).filter(SongGeneration.status == "succeeded", SongGeneration.finished_at >= day_start_utc, SongGeneration.finished_at < day_end_utc).scalar() or 0
+    song_errors_today = db.query(func.count(SongGeneration.id)).filter(SongGeneration.status == "failed", SongGeneration.updated_at >= day_start_utc, SongGeneration.updated_at < day_end_utc).scalar() or 0
+    pending_payments = db.query(func.count(OrderPayment.id)).filter(OrderPayment.status.in_(["pending", "waiting_for_capture"])).scalar() or 0
+    failed_song_jobs = db.query(func.count(SongGeneration.id)).filter(SongGeneration.status == "failed").scalar() or 0
 
     orders_query = db.query(Order).outerjoin(User, Order.user_id == User.id)
-
     if query_text:
         pattern = f"%{query_text}%"
-        orders_query = orders_query.filter(
-            or_(
-                Order.order_number.ilike(pattern),
-                Order.public_id.ilike(pattern),
-                User.email.ilike(pattern),
-            )
-        )
+        orders_query = orders_query.filter(or_(Order.order_number.ilike(pattern), Order.public_id.ilike(pattern), Order.session_id.ilike(pattern), User.email.ilike(pattern)))
+    if order_status != FILTER_ALL:
+        orders_query = orders_query.filter(Order.status == order_status)
+    if payment_status == "missing":
+        orders_query = orders_query.filter(~Order.payments.any())
+    elif payment_status != FILTER_ALL:
+        orders_query = orders_query.filter(Order.payments.any(OrderPayment.status == payment_status))
+    if song_status == "missing":
+        orders_query = orders_query.filter(~Order.song_generations.any())
+    elif song_status != FILTER_ALL:
+        orders_query = orders_query.filter(Order.song_generations.any(SongGeneration.status == song_status))
+    if story_source != FILTER_ALL:
+        orders_query = orders_query.filter(Order.story_source == story_source)
+    if lyrics_mode != FILTER_ALL:
+        orders_query = orders_query.filter(Order.lyrics_mode == lyrics_mode)
 
     orders = orders_query.order_by(Order.id.desc()).limit(50).all()
-
-    order_status_counts = (
-        db.query(Order.status, func.count(Order.id))
-        .group_by(Order.status)
-        .order_by(func.count(Order.id).desc())
-        .all()
-    )
-    payment_status_counts = (
-        db.query(OrderPayment.status, func.count(OrderPayment.id))
-        .group_by(OrderPayment.status)
-        .order_by(func.count(OrderPayment.id).desc())
-        .all()
-    )
-    song_status_counts = (
-        db.query(SongGeneration.status, func.count(SongGeneration.id))
-        .group_by(SongGeneration.status)
-        .order_by(func.count(SongGeneration.id).desc())
-        .all()
-    )
-
-    order_cards = [build_order_card(order) for order in orders]
+    order_status_counts = db.query(Order.status, func.count(Order.id)).group_by(Order.status).order_by(func.count(Order.id).desc()).all()
+    payment_status_counts = db.query(OrderPayment.status, func.count(OrderPayment.id)).group_by(OrderPayment.status).order_by(func.count(OrderPayment.id).desc()).all()
+    song_status_counts = db.query(SongGeneration.status, func.count(SongGeneration.id)).group_by(SongGeneration.status).order_by(func.count(SongGeneration.id).desc()).all()
+    recent_failed_songs = db.query(SongGeneration).filter(SongGeneration.status == "failed").order_by(SongGeneration.updated_at.desc(), SongGeneration.id.desc()).limit(10).all()
 
     return templates.TemplateResponse(
         "admin/dashboard.html",
@@ -283,17 +285,31 @@ async def admin_dashboard(request: Request, q: str | None = None, db: Session = 
             "page_title": "Админка",
             "flash": pop_admin_flash(request),
             "q": query_text,
+            "order_status": order_status,
+            "payment_status": payment_status,
+            "song_status": song_status,
+            "story_source": story_source,
+            "lyrics_mode": lyrics_mode,
             "admin_token_enabled": bool(settings.ADMIN_TOKEN),
             "new_users_today": new_users_today,
             "total_users": total_users,
             "orders_today": orders_today,
-            "total_paid_orders": total_paid_orders,
+            "successful_payments_today": successful_payments_today,
+            "songs_ready_today": songs_ready_today,
+            "song_errors_today": song_errors_today,
             "failed_song_jobs": failed_song_jobs,
             "pending_payments": pending_payments,
             "order_status_counts": order_status_counts,
             "payment_status_counts": payment_status_counts,
             "song_status_counts": song_status_counts,
-            "order_cards": order_cards,
+            "order_cards": [build_order_card(order) for order in orders],
+            "funnel_counts": build_funnel_counts(db),
+            "recent_failed_songs": recent_failed_songs,
+            "order_status_filter_options": ORDER_STATUS_FILTER_OPTIONS,
+            "payment_status_filter_options": PAYMENT_STATUS_FILTER_OPTIONS,
+            "song_status_filter_options": SONG_STATUS_FILTER_OPTIONS,
+            "story_source_options": STORY_SOURCE_OPTIONS,
+            "lyrics_mode_options": LYRICS_MODE_OPTIONS,
         },
     )
 
@@ -302,7 +318,6 @@ async def admin_dashboard(request: Request, q: str | None = None, db: Session = 
 async def admin_order_detail(order_public_id: str, request: Request, db: Session = Depends(get_db)):
     if not has_admin_access(request):
         return RedirectResponse(url="/admin/login", status_code=303)
-
     order = db.query(Order).filter(Order.public_id == order_public_id).first()
     if order is None:
         set_admin_flash(request, "error", "Заказ не найден.")
@@ -310,15 +325,9 @@ async def admin_order_detail(order_public_id: str, request: Request, db: Session
 
     latest_payment = get_latest_payment(order)
     latest_song = get_latest_song(order)
-    lyrics_versions = get_sorted_lyrics_versions(order)
-    selected_lyrics_version = get_selected_lyrics_version(order)
-    events = (
-        db.query(OrderEvent)
-        .filter(OrderEvent.order_id == order.id)
-        .order_by(OrderEvent.id.desc())
-        .limit(30)
-        .all()
-    )
+    lyrics_versions = get_lyrics_versions(db, order.id)
+    selected_version = next((item for item in lyrics_versions if item.is_selected), None)
+    events = db.query(OrderEvent).filter(OrderEvent.order_id == order.id).order_by(OrderEvent.id.desc()).limit(30).all()
 
     return templates.TemplateResponse(
         "admin/order_detail.html",
@@ -331,7 +340,7 @@ async def admin_order_detail(order_public_id: str, request: Request, db: Session
             "latest_payment": latest_payment,
             "latest_song": latest_song,
             "lyrics_versions": lyrics_versions,
-            "selected_lyrics_version": selected_lyrics_version,
+            "selected_version": selected_version,
             "payment_status_label": humanize_payment_status(latest_payment.status if latest_payment else None),
             "song_status_label": humanize_song_status(latest_song.status if latest_song else None),
             "can_run_song": can_run_song(order),
@@ -348,7 +357,6 @@ async def admin_order_detail(order_public_id: str, request: Request, db: Session
 async def admin_order_payment_sync(order_public_id: str, request: Request, db: Session = Depends(get_db)):
     if not has_admin_access(request):
         return RedirectResponse(url="/admin/login", status_code=303)
-
     order = db.query(Order).filter(Order.public_id == order_public_id).first()
     if order is None:
         set_admin_flash(request, "error", "Заказ не найден.")
@@ -360,12 +368,7 @@ async def admin_order_payment_sync(order_public_id: str, request: Request, db: S
         return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
 
     try:
-        sync_payment_with_remote(
-            db,
-            latest_payment,
-            trigger="admin_manual_sync",
-            event_name="admin_payment_status_synced",
-        )
+        sync_payment_with_remote(db, latest_payment, trigger="admin_manual_sync", event_name="admin_payment_status_synced")
         db.commit()
     except YooKassaError as exc:
         db.rollback()
@@ -380,7 +383,6 @@ async def admin_order_payment_sync(order_public_id: str, request: Request, db: S
 async def admin_order_song_run(order_public_id: str, request: Request, db: Session = Depends(get_db)):
     if not has_admin_access(request):
         return RedirectResponse(url="/admin/login", status_code=303)
-
     order = db.query(Order).filter(Order.public_id == order_public_id).first()
     if order is None:
         set_admin_flash(request, "error", "Заказ не найден.")
@@ -403,7 +405,6 @@ async def admin_order_song_run(order_public_id: str, request: Request, db: Sessi
 async def admin_order_song_sync(order_public_id: str, request: Request, db: Session = Depends(get_db)):
     if not has_admin_access(request):
         return RedirectResponse(url="/admin/login", status_code=303)
-
     order = db.query(Order).filter(Order.public_id == order_public_id).first()
     if order is None:
         set_admin_flash(request, "error", "Заказ не найден.")
@@ -413,7 +414,6 @@ async def admin_order_song_sync(order_public_id: str, request: Request, db: Sess
     if latest_song is None or not latest_song.external_job_id:
         set_admin_flash(request, "warning", "У заказа нет задачи генерации для синхронизации.")
         return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
-
     if latest_song.status not in RUNNING_SONG_STATUSES:
         set_admin_flash(request, "warning", "Статус песни уже финальный. Синхронизация не нужна.")
         return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
@@ -433,20 +433,13 @@ async def admin_order_song_sync(order_public_id: str, request: Request, db: Sess
         set_admin_flash(request, "error", latest_song.error_message or "Генерация завершилась ошибкой.")
     else:
         set_admin_flash(request, "success", "Статус песни обновлён. Генерация ещё продолжается.")
-
     return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
 
 
 @router.post("/orders/{order_public_id}/status-update")
-async def admin_order_status_update(
-    order_public_id: str,
-    request: Request,
-    status: str = Form(...),
-    db: Session = Depends(get_db),
-):
+async def admin_order_status_update(order_public_id: str, request: Request, status: str = Form(...), db: Session = Depends(get_db)):
     if not has_admin_access(request):
         return RedirectResponse(url="/admin/login", status_code=303)
-
     order = db.query(Order).filter(Order.public_id == order_public_id).first()
     if order is None:
         set_admin_flash(request, "error", "Заказ не найден.")
@@ -456,26 +449,14 @@ async def admin_order_status_update(
     if target_status not in VALID_ORDER_STATUSES:
         set_admin_flash(request, "error", "Недопустимый статус заказа.")
         return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
-
     previous_status = order.status
     if previous_status == target_status:
         set_admin_flash(request, "warning", "Статус заказа уже такой.")
         return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
 
     order.status = target_status
-    db.add(
-        OrderEvent(
-            order=order,
-            event_type="admin_order_status_changed",
-            payload={
-                "status_from": previous_status,
-                "status_to": target_status,
-                "trigger": "admin_manual_status_change",
-            },
-        )
-    )
+    db.add(OrderEvent(order=order, event_type="admin_order_status_changed", payload={"status_from": previous_status, "status_to": target_status, "trigger": "admin_manual_status_change"}))
     db.commit()
-
     set_admin_flash(request, "success", f"Статус заказа изменён: {previous_status} → {target_status}.")
     return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
 
@@ -491,12 +472,10 @@ async def admin_order_song_status_update(
 ):
     if not has_admin_access(request):
         return RedirectResponse(url="/admin/login", status_code=303)
-
     order = db.query(Order).filter(Order.public_id == order_public_id).first()
     if order is None:
         set_admin_flash(request, "error", "Заказ не найден.")
         return RedirectResponse(url="/admin/", status_code=303)
-
     song = get_latest_song(order)
     if song is None:
         set_admin_flash(request, "warning", "У заказа нет задачи песни для ручного обновления.")
@@ -509,10 +488,8 @@ async def admin_order_song_status_update(
 
     urls = normalize_multiline_urls(audio_urls)
     manual_error = (error_message or "").strip()
-
     previous_status = song.status
     previous_order_status = order.status
-
     song.status = target_status
 
     if target_status in {"queued", "processing"}:
@@ -520,10 +497,7 @@ async def admin_order_song_status_update(
             song.started_at = utcnow()
         song.finished_at = None
         order.status = "song_pending"
-        if manual_error:
-            song.error_message = manual_error
-        elif target_status != "failed":
-            song.error_message = None
+        song.error_message = manual_error or None
     elif target_status == "succeeded":
         if song.started_at is None:
             song.started_at = utcnow()
@@ -536,7 +510,7 @@ async def admin_order_song_status_update(
         song.finished_at = utcnow()
         order.status = "song_failed"
         song.error_message = manual_error or song.error_message or "Статус вручную переведён в failed оператором."
-    else:  # canceled
+    else:
         if song.started_at is None:
             song.started_at = utcnow()
         song.finished_at = utcnow()
@@ -546,42 +520,28 @@ async def admin_order_song_status_update(
     if urls:
         song.audio_url = urls[0]
         song.result_tracks = build_manual_result_tracks(urls)
-    elif target_status == "succeeded" and song.audio_url:
-        if not song.result_tracks:
-            song.result_tracks = build_manual_result_tracks([song.audio_url])
+    elif target_status == "succeeded" and song.audio_url and not song.result_tracks:
+        song.result_tracks = build_manual_result_tracks([song.audio_url])
 
-    db.add(
-        OrderEvent(
-            order=order,
-            event_type="admin_song_status_changed",
-            payload={
-                "song_job_id": song.public_id,
-                "status_from": previous_status,
-                "status_to": target_status,
-                "order_status_from": previous_order_status,
-                "order_status_to": order.status,
-                "audio_url_count": len(urls),
-                "has_error_message": bool(song.error_message),
-                "trigger": "admin_manual_status_change",
-            },
-        )
-    )
+    db.add(OrderEvent(order=order, event_type="admin_song_status_changed", payload={
+        "song_job_id": song.public_id,
+        "status_from": previous_status,
+        "status_to": target_status,
+        "order_status_from": previous_order_status,
+        "order_status_to": order.status,
+        "audio_url_count": len(urls),
+        "has_error_message": bool(song.error_message),
+        "trigger": "admin_manual_status_change",
+    }))
     db.commit()
-
     set_admin_flash(request, "success", f"Статус песни изменён: {previous_status} → {target_status}.")
     return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
 
 
 @router.post("/orders/{order_public_id}/final-lyrics-update")
-async def admin_order_final_lyrics_update(
-    order_public_id: str,
-    request: Request,
-    final_lyrics_text: str = Form(default=""),
-    db: Session = Depends(get_db),
-):
+async def admin_order_final_lyrics_update(order_public_id: str, request: Request, final_lyrics_text: str = Form(""), db: Session = Depends(get_db)):
     if not has_admin_access(request):
         return RedirectResponse(url="/admin/login", status_code=303)
-
     order = db.query(Order).filter(Order.public_id == order_public_id).first()
     if order is None:
         set_admin_flash(request, "error", "Заказ не найден.")
@@ -589,39 +549,60 @@ async def admin_order_final_lyrics_update(
 
     value = (final_lyrics_text or "").strip()
     if not value:
-        set_admin_flash(request, "error", "Финальный текст не может быть пустым.")
+        set_admin_flash(request, "warning", "Финальный текст не может быть пустым.")
         return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
 
-    previous_value = (order.final_lyrics_text or "").strip()
-    if previous_value == value:
-        set_admin_flash(request, "warning", "Финальный текст уже такой.")
+    previous_text = (order.final_lyrics_text or "").strip()
+    if previous_text == value:
+        set_admin_flash(request, "warning", "Финальный текст не изменился.")
         return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
 
     order.final_lyrics_text = value
-
-    selected_version = get_selected_lyrics_version(order)
-    synced_selected_version = False
+    selected_version = next((item for item in get_lyrics_versions(db, order.id) if item.is_selected), None)
     if selected_version is not None:
         selected_version.edited_lyrics_text = value
-        synced_selected_version = True
 
-    db.add(
-        OrderEvent(
-            order=order,
-            event_type="admin_final_lyrics_updated",
-            payload={
-                "previous_length": len(previous_value),
-                "new_length": len(value),
-                "lyrics_mode": order.lyrics_mode,
-                "selected_version_public_id": selected_version.public_id if selected_version else None,
-                "selected_version_synced": synced_selected_version,
-                "trigger": "admin_manual_edit",
-            },
-        )
-    )
+    db.add(OrderEvent(order=order, event_type="admin_final_lyrics_updated", payload={
+        "selected_version_id": selected_version.public_id if selected_version else None,
+        "text_length": len(value),
+        "trigger": "admin_manual_lyrics_update",
+    }))
     db.commit()
+    set_admin_flash(request, "success", "Финальный текст сохранён.")
+    return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
 
-    set_admin_flash(request, "success", "Финальный текст сохранён. Следующий запуск песни возьмёт уже новую версию.")
+
+@router.post("/orders/{order_public_id}/lyrics-select")
+async def admin_order_lyrics_select(order_public_id: str, request: Request, version_public_id: str = Form(...), db: Session = Depends(get_db)):
+    if not has_admin_access(request):
+        return RedirectResponse(url="/admin/login", status_code=303)
+    order = db.query(Order).filter(Order.public_id == order_public_id).first()
+    if order is None:
+        set_admin_flash(request, "error", "Заказ не найден.")
+        return RedirectResponse(url="/admin/", status_code=303)
+
+    versions = get_lyrics_versions(db, order.id)
+    selected_version = next((item for item in versions if item.public_id == version_public_id), None)
+    if selected_version is None:
+        set_admin_flash(request, "error", "Версия текста не найдена.")
+        return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
+
+    for version in versions:
+        version.is_selected = version.public_id == selected_version.public_id
+
+    final_text = (selected_version.edited_lyrics_text or selected_version.lyrics_text or "").strip()
+    if final_text:
+        order.final_lyrics_text = final_text
+
+    db.add(OrderEvent(order=order, event_type="admin_lyrics_version_selected", payload={
+        "version_id": selected_version.public_id,
+        "variant": selected_version.angle_label,
+        "provider": selected_version.provider,
+        "has_edited_text": bool(selected_version.edited_lyrics_text),
+        "trigger": "admin_version_pick",
+    }))
+    db.commit()
+    set_admin_flash(request, "success", f"Выбрана версия текста: {selected_version.angle_label}.")
     return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
 
 
@@ -629,7 +610,6 @@ async def admin_order_final_lyrics_update(
 async def admin_order_payment_email_resend(order_public_id: str, request: Request, db: Session = Depends(get_db)):
     if not has_admin_access(request):
         return RedirectResponse(url="/admin/login", status_code=303)
-
     order = db.query(Order).filter(Order.public_id == order_public_id).first()
     if order is None:
         set_admin_flash(request, "error", "Заказ не найден.")
@@ -656,7 +636,6 @@ async def admin_order_payment_email_resend(order_public_id: str, request: Reques
 async def admin_order_song_ready_email_resend(order_public_id: str, request: Request, db: Session = Depends(get_db)):
     if not has_admin_access(request):
         return RedirectResponse(url="/admin/login", status_code=303)
-
     order = db.query(Order).filter(Order.public_id == order_public_id).first()
     if order is None:
         set_admin_flash(request, "error", "Заказ не найден.")
