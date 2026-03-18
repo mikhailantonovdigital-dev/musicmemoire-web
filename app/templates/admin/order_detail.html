@@ -8,18 +8,13 @@
         <p class="eyebrow">Админка</p>
         <h1>{{ order.order_number }}</h1>
       </div>
-
       <div class="form-actions">
         <a href="/admin/" class="btn btn-secondary">Назад</a>
-        {% if admin_token_enabled %}
-          <a href="/admin/logout" class="btn btn-secondary">Выйти</a>
-        {% endif %}
+        {% if admin_token_enabled %}<a href="/admin/logout" class="btn btn-secondary">Выйти</a>{% endif %}
       </div>
     </div>
 
-    {% if flash %}
-      <div class="notice notice-{{ flash.kind }}">{{ flash.text }}</div>
-    {% endif %}
+    {% if flash %}<div class="notice notice-{{ flash.kind }}">{{ flash.text }}</div>{% endif %}
 
     <div class="step-meta">
       <span>Статус заказа: <strong>{{ order.status }}</strong></span>
@@ -32,31 +27,20 @@
     <div class="admin-detail-grid">
       <div class="form-card">
         <h2 class="form-title">Оплата</h2>
-
         {% if latest_payment %}
           <p><strong>Статус:</strong> {{ payment_status_label }}</p>
-          <p><strong>Сумма:</strong> {{ latest_payment.amount_value }} {{ latest_payment.currency }}</p>
-          <p><strong>ЮKassa ID:</strong> {{ latest_payment.yookassa_payment_id or "—" }}</p>
+          <p><strong>Итоговая сумма:</strong> {{ latest_payment.final_amount_rub }} ₽</p>
+          <p><strong>Базовая цена:</strong> {{ latest_payment.base_amount_rub }} ₽</p>
+          <p><strong>Скидка:</strong> {% if latest_payment.has_discount %}-{{ latest_payment.discount_amount_rub }} ₽{% else %}—{% endif %}</p>
           <p><strong>Внутренний payment ID:</strong> {{ latest_payment.public_id }}</p>
+          <p><strong>ЮKassa ID:</strong> {{ latest_payment.yookassa_payment_id or "—" }}</p>
           <p><strong>Idempotence key:</strong> {{ latest_payment.idempotence_key or "—" }}</p>
-          <p><strong>Return URL:</strong> {{ latest_payment.return_url or "—" }}</p>
           <p><strong>Оплачено в:</strong> {{ latest_payment.paid_at or "—" }}</p>
-
           <div class="form-actions">
-            <form method="post" action="/admin/orders/{{ order.public_id }}/payment-sync">
-              <button type="submit" class="btn btn-primary">Обновить статус оплаты</button>
-            </form>
-            {% if can_resend_payment_email %}
-              <form method="post" action="/admin/orders/{{ order.public_id }}/payment-email-resend">
-                <button type="submit" class="btn btn-secondary">Переотправить письмо об оплате</button>
-              </form>
-            {% endif %}
+            <form method="post" action="/admin/orders/{{ order.public_id }}/payment-sync"><button type="submit" class="btn btn-primary">Обновить статус оплаты</button></form>
+            {% if can_resend_payment_email %}<form method="post" action="/admin/orders/{{ order.public_id }}/payment-email-resend"><button type="submit" class="btn btn-secondary">Переотправить письмо об оплате</button></form>{% endif %}
           </div>
-
-          {% if latest_payment.confirmation_url %}
-            <p><strong>Ссылка на оплату:</strong></p>
-            <p class="helper-text">{{ latest_payment.confirmation_url }}</p>
-          {% endif %}
+          {% if latest_payment.confirmation_url %}<p><strong>Ссылка на оплату:</strong></p><p class="helper-text">{{ latest_payment.confirmation_url }}</p>{% endif %}
         {% else %}
           <p class="muted">Платёж ещё не создавался.</p>
         {% endif %}
@@ -66,41 +50,28 @@
           <form method="post" action="/admin/orders/{{ order.public_id }}/status-update">
             <label class="label" for="manual-order-status">Новый статус заказа</label>
             <select id="manual-order-status" name="status" class="input">
-              {% for value, label in order_status_options %}
-                <option value="{{ value }}" {% if order.status == value %}selected{% endif %}>{{ label }}</option>
-              {% endfor %}
+              {% for value, label in order_status_options %}<option value="{{ value }}" {% if order.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
             </select>
-            <div class="form-actions" style="margin-top: 12px;">
-              <button type="submit" class="btn btn-secondary">Сменить статус заказа вручную</button>
-            </div>
+            <div class="form-actions" style="margin-top: 12px;"><button type="submit" class="btn btn-secondary">Сменить статус заказа вручную</button></div>
           </form>
         </div>
       </div>
 
       <div class="form-card">
         <h2 class="form-title">Песня</h2>
-
         {% if latest_song %}
           <p><strong>Статус:</strong> {{ song_status_label }}</p>
           <p><strong>Попытка:</strong> {{ latest_song.attempt_no }}</p>
           <p><strong>Внешний task id:</strong> {{ latest_song.external_job_id or "—" }}</p>
-
-          {% if latest_song.error_message %}
-            <div class="notice notice-error">{{ latest_song.error_message }}</div>
-          {% endif %}
-
+          {% if latest_song.error_message %}<div class="notice notice-error">{{ latest_song.error_message }}</div>{% endif %}
           {% if latest_song.audio_variants %}
             <div style="display: grid; gap: 12px; margin-top: 12px;">
               {% for track in latest_song.audio_variants %}
                 {% set playable_url = track.audio_url or track.stream_audio_url %}
                 <div class="panel-card" style="padding: 14px; background: #fafafa; border: 1px solid #ececec;">
                   <p style="margin: 0 0 8px;"><strong>Вариант {{ loop.index }}</strong></p>
-                  {% if playable_url %}
-                    <audio class="audio-player" controls preload="none" src="{{ playable_url }}"></audio>
-                  {% endif %}
-                  {% if track.audio_url %}
-                    <p class="helper-text" style="margin-top: 8px;">{{ track.audio_url }}</p>
-                  {% endif %}
+                  {% if playable_url %}<audio class="audio-player" controls preload="none" src="{{ playable_url }}"></audio>{% endif %}
+                  {% if track.audio_url %}<p class="helper-text" style="margin-top: 8px;">{{ track.audio_url }}</p>{% endif %}
                 </div>
               {% endfor %}
             </div>
@@ -115,28 +86,10 @@
         <div class="form-actions">
           {% if can_run_song %}
             <form method="post" action="/admin/orders/{{ order.public_id }}/song-run">
-              <button type="submit" class="btn btn-primary">
-                {% if latest_song and latest_song.status == "failed" %}
-                  Перезапустить генерацию
-                {% elif latest_song %}
-                  Запустить ещё раз
-                {% else %}
-                  Запустить генерацию
-                {% endif %}
-              </button>
+              <button type="submit" class="btn btn-primary">{% if latest_song and latest_song.status == "failed" %}Перезапустить генерацию{% elif latest_song %}Запустить ещё раз{% else %}Запустить генерацию{% endif %}</button>
             </form>
-
-            {% if latest_song and latest_song.status in ["queued", "processing"] %}
-              <form method="post" action="/admin/orders/{{ order.public_id }}/song-sync">
-                <button type="submit" class="btn btn-secondary">Обновить статус песни</button>
-              </form>
-            {% endif %}
-
-            {% if can_resend_song_ready_email %}
-              <form method="post" action="/admin/orders/{{ order.public_id }}/song-ready-email-resend">
-                <button type="submit" class="btn btn-secondary">Переотправить письмо о готовой песне</button>
-              </form>
-            {% endif %}
+            {% if latest_song and latest_song.status in ["queued", "processing"] %}<form method="post" action="/admin/orders/{{ order.public_id }}/song-sync"><button type="submit" class="btn btn-secondary">Обновить статус песни</button></form>{% endif %}
+            {% if can_resend_song_ready_email %}<form method="post" action="/admin/orders/{{ order.public_id }}/song-ready-email-resend"><button type="submit" class="btn btn-secondary">Переотправить письмо о готовой песне</button></form>{% endif %}
           {% else %}
             <span class="btn btn-secondary">Сначала нужна оплата</span>
           {% endif %}
@@ -148,21 +101,14 @@
             <form method="post" action="/admin/orders/{{ order.public_id }}/song-status-update">
               <label class="label" for="manual-song-status">Новый статус песни</label>
               <select id="manual-song-status" name="song_status" class="input">
-                {% for value, label in song_status_options %}
-                  <option value="{{ value }}" {% if latest_song.status == value %}selected{% endif %}>{{ label }}</option>
-                {% endfor %}
+                {% for value, label in song_status_options %}<option value="{{ value }}" {% if latest_song.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
               </select>
-
               <label class="label" for="manual-audio-urls" style="margin-top: 12px;">Ссылки на mp3, по одной в строке</label>
               <textarea id="manual-audio-urls" name="audio_urls" class="textarea" rows="4" placeholder="https://.../variant-1.mp3&#10;https://.../variant-2.mp3">{% if latest_song.audio_variants %}{% for track in latest_song.audio_variants %}{{ track.audio_url or track.stream_audio_url }}{% if not loop.last %}
 {% endif %}{% endfor %}{% elif latest_song.audio_url %}{{ latest_song.audio_url }}{% endif %}</textarea>
-
               <label class="label" for="manual-song-error" style="margin-top: 12px;">Комментарий / ошибка</label>
               <textarea id="manual-song-error" name="error_message" class="textarea" rows="3" placeholder="Например: финальный статус выставлен оператором после проверки API.">{{ latest_song.error_message or "" }}</textarea>
-
-              <div class="form-actions" style="margin-top: 12px;">
-                <button type="submit" class="btn btn-secondary">Сменить статус песни вручную</button>
-              </div>
+              <div class="form-actions" style="margin-top: 12px;"><button type="submit" class="btn btn-secondary">Сменить статус песни вручную</button></div>
             </form>
           </div>
         {% endif %}
@@ -172,11 +118,8 @@
     <div class="form-card" style="margin-top: 20px;">
       <h2 class="form-title">Финальный текст</h2>
       <form method="post" action="/admin/orders/{{ order.public_id }}/final-lyrics-update">
-        <textarea name="final_lyrics_text" class="textarea" rows="14">{{ order.final_lyrics_text or "" }}</textarea>
-        <p class="helper-text" style="margin-top: 10px;">Изменения повлияют на следующий запуск генерации песни. Уже запущенная попытка возьмёт свой сохранённый snapshot текста.</p>
-        <div class="form-actions" style="margin-top: 12px;">
-          <button type="submit" class="btn btn-primary">Сохранить финальный текст</button>
-        </div>
+        <textarea class="textarea" name="final_lyrics_text" rows="16">{{ order.final_lyrics_text or "" }}</textarea>
+        <div class="form-actions" style="margin-top: 12px;"><button type="submit" class="btn btn-primary">Сохранить финальный текст</button></div>
       </form>
     </div>
 
@@ -186,70 +129,45 @@
         <div style="display: grid; gap: 16px;">
           {% for version in lyrics_versions %}
             <div class="panel-card" style="padding: 16px; border: 1px solid #ececec; background: #fafafa;">
-              <div class="step-meta" style="margin-bottom: 12px;">
-                <span>Версия {{ loop.index }}</span>
-                <span>Угол: <strong>{{ version.angle_label }}</strong></span>
-                <span>Модель: <strong>{{ version.model_name }}</strong></span>
-                <span>Выбрана: <strong>{{ "Да" if version.is_selected else "Нет" }}</strong></span>
+              <div class="lyrics-card-head" style="margin-bottom: 12px;">
+                <div>
+                  <h3 style="margin: 0;">{{ version.angle_label }}</h3>
+                  <p class="lyrics-angle">Модель: {{ version.model_name }}</p>
+                  <p class="lyrics-angle">ID: {{ version.public_id }}</p>
+                </div>
+                <span class="variant-chip">{% if version.is_selected %}Выбрана{% else %}Версия{% endif %}</span>
               </div>
-
-              {% if version.prompt_text %}
-                <p style="margin-bottom: 8px;"><strong>Prompt</strong></p>
-                <textarea class="textarea textarea-readonly" readonly rows="5">{{ version.prompt_text }}</textarea>
-              {% endif %}
-
-              <p style="margin: 12px 0 8px;"><strong>Исходный текст версии</strong></p>
+              <details><summary style="cursor: pointer; margin-bottom: 10px;">Показать prompt</summary><pre class="admin-pre">{{ version.prompt_text }}</pre></details>
+              <p style="margin: 12px 0 6px;"><strong>Исходный текст</strong></p>
               <textarea class="textarea textarea-readonly" readonly rows="10">{{ version.lyrics_text }}</textarea>
-
               {% if version.edited_lyrics_text %}
-                <p style="margin: 12px 0 8px;"><strong>Отредактированная версия</strong></p>
+                <p style="margin: 12px 0 6px;"><strong>Отредактированный текст</strong></p>
                 <textarea class="textarea textarea-readonly" readonly rows="10">{{ version.edited_lyrics_text }}</textarea>
               {% endif %}
-
-              {% if selected_lyrics_version and selected_lyrics_version.public_id == version.public_id %}
-                <p class="helper-text" style="margin-top: 10px;">Эта версия сейчас синхронизируется с финальным текстом заказа.</p>
-              {% endif %}
+              <div class="form-actions" style="margin-top: 12px;">
+                <form method="post" action="/admin/orders/{{ order.public_id }}/lyrics-select">
+                  <input type="hidden" name="version_public_id" value="{{ version.public_id }}" />
+                  <button type="submit" class="btn btn-secondary">{% if version.is_selected %}Обновить финальный текст из этой версии{% else %}Выбрать эту версию{% endif %}</button>
+                </form>
+              </div>
             </div>
           {% endfor %}
         </div>
       </div>
     {% endif %}
 
-    {% if order.story_text %}
-      <div class="form-card" style="margin-top: 20px;">
-        <h2 class="form-title">История пользователя</h2>
-        <textarea class="textarea textarea-readonly" readonly>{{ order.story_text }}</textarea>
-      </div>
-    {% endif %}
-
-    {% if order.transcript_text %}
-      <div class="form-card" style="margin-top: 20px;">
-        <h2 class="form-title">Расшифровка голосового</h2>
-        <textarea class="textarea textarea-readonly" readonly>{{ order.transcript_text }}</textarea>
-      </div>
-    {% endif %}
-
-    {% if order.custom_lyrics_text %}
-      <div class="form-card" style="margin-top: 20px;">
-        <h2 class="form-title">Свой текст пользователя</h2>
-        <textarea class="textarea textarea-readonly" readonly>{{ order.custom_lyrics_text }}</textarea>
-      </div>
-    {% endif %}
+    {% if order.story_text %}<div class="form-card" style="margin-top: 20px;"><h2 class="form-title">История пользователя</h2><textarea class="textarea textarea-readonly" readonly>{{ order.story_text }}</textarea></div>{% endif %}
+    {% if order.transcript_text %}<div class="form-card" style="margin-top: 20px;"><h2 class="form-title">Расшифровка голосового</h2><textarea class="textarea textarea-readonly" readonly>{{ order.transcript_text }}</textarea></div>{% endif %}
+    {% if order.custom_lyrics_text %}<div class="form-card" style="margin-top: 20px;"><h2 class="form-title">Свой текст пользователя</h2><textarea class="textarea textarea-readonly" readonly>{{ order.custom_lyrics_text }}</textarea></div>{% endif %}
 
     <div class="form-card" style="margin-top: 20px;">
       <h2 class="form-title">Последние события</h2>
-
       {% if events %}
         <div class="admin-events">
           {% for event in events %}
             <div class="admin-event">
-              <div class="admin-event-head">
-                <strong>{{ event.event_type }}</strong>
-                <span>{{ event.created_at }}</span>
-              </div>
-              {% if event.payload %}
-                <pre class="admin-pre">{{ event.payload | tojson(indent=2) }}</pre>
-              {% endif %}
+              <div class="admin-event-head"><strong>{{ event.event_type }}</strong><span>{{ event.created_at }}</span></div>
+              {% if event.payload %}<pre class="admin-pre">{{ event.payload | tojson(indent=2) }}</pre>{% endif %}
             </div>
           {% endfor %}
         </div>
