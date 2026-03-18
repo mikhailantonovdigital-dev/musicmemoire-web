@@ -10,8 +10,8 @@ class Settings(BaseSettings):
 
     APP_ENV: str = "development"
     APP_NAME: str = "Magic Music"
-    APP_DOMAIN: str = "http://127.0.0.1:8000"
-    BASE_URL: str = "http://127.0.0.1:8000"
+    APP_DOMAIN: str = "https://magic-music.ru"
+    BASE_URL: str = "https://magic-music.ru"
     SESSION_SECRET: str = "change-me"
 
     DATABASE_URL: str = "sqlite:///./dev.db"
