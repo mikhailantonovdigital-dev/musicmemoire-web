@@ -37,6 +37,9 @@
           <p><strong>Статус:</strong> {{ payment_status_label }}</p>
           <p><strong>Сумма:</strong> {{ latest_payment.amount_value }} {{ latest_payment.currency }}</p>
           <p><strong>ЮKassa ID:</strong> {{ latest_payment.yookassa_payment_id or "—" }}</p>
+          <p><strong>Внутренний payment ID:</strong> {{ latest_payment.public_id }}</p>
+          <p><strong>Idempotence key:</strong> {{ latest_payment.idempotence_key or "—" }}</p>
+          <p><strong>Return URL:</strong> {{ latest_payment.return_url or "—" }}</p>
           <p><strong>Оплачено в:</strong> {{ latest_payment.paid_at or "—" }}</p>
 
           <div class="form-actions">
@@ -46,6 +49,7 @@
           </div>
 
           {% if latest_payment.confirmation_url %}
+            <p><strong>Ссылка на оплату:</strong></p>
             <p class="helper-text">{{ latest_payment.confirmation_url }}</p>
           {% endif %}
         {% else %}
