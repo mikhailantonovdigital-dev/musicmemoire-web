@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse, Response
 from fastapi.templating import Jinja2Templates
 
 from app.core.config import settings
@@ -507,9 +507,42 @@ async def offer_page(request: Request):
     return render_legal_page(request, "offer")
 
 
-@router.get("/policy", response_class=HTMLResponse)
-async def policy_page(request: Request):
-    return render_legal_page(request, "policy")
+@router.get("/robots.txt", response_class=PlainTextResponse)
+async def robots_txt():
+    base_url = settings.BASE_URL.rstrip("/")
+    return PlainTextResponse(
+        "\n".join(
+            [
+                "User-agent: *",
+                "Allow: /",
+                "",
+                f"Sitemap: {base_url}/sitemap.xml",
+            ]
+        )
+    )
+
+
+@router.get("/sitemap.xml")
+async def sitemap_xml():
+    base_url = settings.BASE_URL.rstrip("/")
+    urls = [
+        f"{base_url}/",
+        f"{base_url}/portfolio",
+        f"{base_url}/how-it-works",
+        f"{base_url}/reviews",
+        f"{base_url}/offer",
+        f"{base_url}/policy",
+    ]
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+        + "".join(
+            f"<url><loc>{url}</loc></url>"
+            for url in urls
+        )
+        + "</urlset>"
+    )
+    return Response(content=xml, media_type="application/xml")
 
 
 @router.get("/health")
