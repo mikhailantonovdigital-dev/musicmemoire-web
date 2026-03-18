@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: musicmemoire-web
+    name: magic-music-web
     env: python
     plan: starter
     buildCommand: "pip install -r requirements.txt"
