@@ -41,6 +41,17 @@ def get_checkout_order(request: Request, db: Session, order_public_id: str) -> O
     return None
 
 
+def get_checkout_payment(request: Request, db: Session, payment_public_id: str) -> OrderPayment | None:
+    payment = db.query(OrderPayment).filter(OrderPayment.public_id == payment_public_id).first()
+    if payment is None:
+        return None
+
+    if get_checkout_order(request, db, payment.order.public_id) is None:
+        return None
+
+    return payment
+
+
 def humanize_payment_status(status: str | None) -> str:
     mapping = {
         "pending": "Ожидает оплаты",
@@ -138,6 +149,7 @@ async def checkout_start(order_public_id: str, request: Request, db: Session = D
             payment_public_id=payment.public_id,
             amount_rub=settings.PRICE_RUB,
             return_url=return_url,
+            customer_email=order.user.email if order.user and order.user.email else None,
         )
     except YooKassaError as exc:
         db.add(
@@ -204,19 +216,38 @@ async def checkout_start(order_public_id: str, request: Request, db: Session = D
 
 @router.get("/status", response_class=HTMLResponse)
 async def checkout_status(payment: str, request: Request, db: Session = Depends(get_db)):
-    payment_obj = db.query(OrderPayment).filter(OrderPayment.public_id == payment).first()
+    payment_obj = get_checkout_payment(request, db, payment)
     if payment_obj is None:
         raise HTTPException(status_code=404, detail="Платёж не найден.")
 
     status_sync_error = None
     if payment_obj.yookassa_payment_id and payment_obj.status not in FINAL_PAYMENT_STATUSES:
         try:
-            sync_payment_with_remote(db, payment_obj)
+            sync_payment_with_remote(
+                db,
+                payment_obj,
+                event_name="payment_status_synced_from_status_page",
+            )
             db.commit()
         except YooKassaError as exc:
             status_sync_error = str(exc)
             db.rollback()
-            payment_obj = db.query(OrderPayment).filter(OrderPayment.public_id == payment).first()
+
+            payment_obj = get_checkout_payment(request, db, payment)
+            if payment_obj is not None:
+                db.add(
+                    OrderEvent(
+                        order=payment_obj.order,
+                        event_type="payment_status_sync_failed",
+                        payload={
+                            "payment_public_id": payment_obj.public_id,
+                            "yookassa_payment_id": payment_obj.yookassa_payment_id,
+                            "error": status_sync_error,
+                        },
+                    )
+                )
+                db.commit()
+                payment_obj = get_checkout_payment(request, db, payment)
 
     return templates.TemplateResponse(
         "checkout/status.html",
@@ -242,6 +273,7 @@ async def checkout_yookassa_webhook(request: Request, db: Session = Depends(get_
     event = payload.get("event")
     obj = payload.get("object") or {}
     payment_id = obj.get("id")
+    webhook_status = obj.get("status")
 
     if not event or not payment_id:
         raise HTTPException(status_code=400, detail="Некорректное уведомление ЮKassa.")
@@ -253,9 +285,37 @@ async def checkout_yookassa_webhook(request: Request, db: Session = Depends(get_
     try:
         remote = fetch_payment(payment_id)
     except YooKassaError as exc:
+        db.add(
+            OrderEvent(
+                order=payment.order,
+                event_type="payment_webhook_sync_failed",
+                payload={
+                    "payment_public_id": payment.public_id,
+                    "yookassa_payment_id": payment.yookassa_payment_id,
+                    "event": event,
+                    "webhook_status": webhook_status,
+                    "error": str(exc),
+                },
+            )
+        )
+        db.commit()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    if remote.id != payment_id or remote.status != obj.get("status"):
+    if remote.id != payment_id or remote.status != webhook_status:
+        db.add(
+            OrderEvent(
+                order=payment.order,
+                event_type="payment_webhook_rejected",
+                payload={
+                    "payment_public_id": payment.public_id,
+                    "yookassa_payment_id": payment.yookassa_payment_id,
+                    "event": event,
+                    "webhook_status": webhook_status,
+                    "remote_status": remote.status,
+                },
+            )
+        )
+        db.commit()
         raise HTTPException(status_code=400, detail="Не удалось подтвердить статус платежа.")
 
     payment.status = remote.status
@@ -279,6 +339,7 @@ async def checkout_yookassa_webhook(request: Request, db: Session = Depends(get_
                 "payment_public_id": payment.public_id,
                 "yookassa_payment_id": payment.yookassa_payment_id,
                 "event": event,
+                "webhook_status": webhook_status,
                 "status": remote.status,
             },
         )
