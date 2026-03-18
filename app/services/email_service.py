@@ -50,11 +50,20 @@ def _deliver_email(*, recipient_email: str, subject: str, text_body: str, html_b
     try:
         if smtp_port == 465:
             context = ssl.create_default_context()
-            with smtplib.SMTP_SSL(smtp_host, smtp_port, context=context) as server:
+            with smtplib.SMTP_SSL(
+                smtp_host,
+                smtp_port,
+                timeout=settings.SMTP_TIMEOUT_SECONDS,
+                context=context,
+            ) as server:
                 server.login(smtp_user, smtp_password)
                 server.send_message(msg)
         else:
-            with smtplib.SMTP(smtp_host, smtp_port) as server:
+            with smtplib.SMTP(
+                smtp_host,
+                smtp_port,
+                timeout=settings.SMTP_TIMEOUT_SECONDS,
+            ) as server:
                 server.ehlo()
                 server.starttls(context=ssl.create_default_context())
                 server.ehlo()
