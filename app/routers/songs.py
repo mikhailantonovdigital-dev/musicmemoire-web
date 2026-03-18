@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -11,12 +11,13 @@ from app.core.templates import templates
 from app.models import Order, OrderEvent, SongGeneration
 from app.services.song_workflow import (
     RUNNING_SONG_STATUSES,
+    create_song_job,
     get_latest_song,
     humanize_song_status,
-    mark_song_sync_failed,
+    process_song_callback,
     sync_song_job_state,
 )
-from app.services.suno_service import SunoServiceError, start_song_generation
+from app.services.suno_service import SunoServiceError
 
 router = APIRouter(prefix="/songs", tags=["songs"])
 
@@ -49,72 +50,30 @@ def get_song_job(request: Request, db: Session, job_public_id: str) -> SongGener
     return job
 
 
-def has_successful_payment(order: Order) -> bool:
-    return any(payment.status == "succeeded" for payment in order.payments)
+@router.post("/callback/suno")
+async def suno_callback(request: Request, db: Session = Depends(get_db)):
+    expected_token = (settings.SUNO_CALLBACK_TOKEN or "").strip()
+    actual_token = (request.query_params.get("token") or "").strip()
+    if expected_token and actual_token != expected_token:
+        raise HTTPException(status_code=403, detail="Некорректный callback token.")
 
+    payload = await request.json()
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="Ожидался JSON-объект.")
 
-def can_start_song(order: Order) -> bool:
-    return has_successful_payment(order)
-
-
-def create_song_job(db: Session, order: Order) -> SongGeneration:
-    latest_song = get_latest_song(order)
-    if latest_song and latest_song.status in RUNNING_SONG_STATUSES:
-        return latest_song
-
-    lyrics_text = (order.final_lyrics_text or "").strip()
-    if not lyrics_text:
-        raise SunoServiceError("Сначала нужен финальный текст песни.")
-
-    if order.user_id is None:
-        raise SunoServiceError("Сначала нужно привязать заказ к email и кабинету.")
-
-    if not can_start_song(order):
-        raise SunoServiceError("Генерация песни станет доступна после оплаты.")
-
-    attempt_no = (latest_song.attempt_no + 1) if latest_song else 1
-
-    song = SongGeneration(
-        order_id=order.id,
-        user_id=order.user_id,
-        provider="suno",
-        status="queued",
-        attempt_no=attempt_no,
-        lyrics_text_snapshot=lyrics_text,
-    )
-    db.add(song)
-    db.flush()
-
-    result = start_song_generation(
-        order_number=order.order_number,
-        lyrics_text=lyrics_text,
-        song_style=order.song_style,
-        song_style_custom=order.song_style_custom,
-        singer_gender=order.singer_gender,
-    )
-
-    song.external_job_id = result.external_job_id
-    song.status = result.status
-    song.started_at = utcnow()
-    song.raw_payload = result.raw
-    song.error_message = None
-    order.status = "song_pending"
-
-    db.add(
-        OrderEvent(
-            order=order,
-            event_type="song_generation_started",
-            payload={
-                "song_job_id": song.public_id,
-                "attempt_no": song.attempt_no,
-                "provider": song.provider,
-                "external_job_id": song.external_job_id,
-            },
-        )
-    )
+    song = process_song_callback(db, payload)
     db.commit()
-    db.refresh(song)
-    return song
+
+    if song is None:
+        return JSONResponse({"status": "ignored"})
+
+    return JSONResponse(
+        {
+            "status": "ok",
+            "song_job_id": song.public_id,
+            "song_status": song.status,
+        }
+    )
 
 
 @router.post("/start/{order_public_id}")
@@ -125,7 +84,10 @@ async def song_start(order_public_id: str, request: Request, db: Session = Depen
 
     try:
         song = create_song_job(db, order)
+        db.commit()
+        db.refresh(song)
     except SunoServiceError as exc:
+        db.rollback()
         latest_song = get_latest_song(order)
         return templates.TemplateResponse(
             "songs/status.html",
@@ -144,10 +106,7 @@ async def song_start(order_public_id: str, request: Request, db: Session = Depen
             status_code=400,
         )
 
-    return RedirectResponse(
-        url=f"/songs/status?job={song.public_id}",
-        status_code=303,
-    )
+    return RedirectResponse(url=f"/songs/status?job={song.public_id}", status_code=303)
 
 
 @router.get("/status", response_class=HTMLResponse)
@@ -164,11 +123,19 @@ async def song_status(job: str, request: Request, db: Session = Depends(get_db))
             db.refresh(song)
         except SunoServiceError as exc:
             error = str(exc)
-            mark_song_sync_failed(
-                db,
-                song,
-                error_text=str(exc),
-                event_type="song_generation_failed",
+            song.status = "failed"
+            song.error_message = str(exc)
+            song.finished_at = utcnow()
+            song.order.status = "song_failed"
+            db.add(
+                OrderEvent(
+                    order=song.order,
+                    event_type="song_generation_failed",
+                    payload={
+                        "song_job_id": song.public_id,
+                        "error": str(exc),
+                    },
+                )
             )
             db.commit()
             db.refresh(song)
@@ -201,7 +168,10 @@ async def song_retry(job_public_id: str, request: Request, db: Session = Depends
 
     try:
         new_song = create_song_job(db, song.order)
+        db.commit()
+        db.refresh(new_song)
     except SunoServiceError as exc:
+        db.rollback()
         return templates.TemplateResponse(
             "songs/status.html",
             {
