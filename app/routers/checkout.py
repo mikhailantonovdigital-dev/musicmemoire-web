@@ -14,6 +14,7 @@ from app.services.yookassa_service import YooKassaError, create_redirect_payment
 
 router = APIRouter(prefix="/checkout", tags=["checkout"])
 templates = Jinja2Templates(directory="app/templates")
+templates.env.globals["settings"] = settings
 
 FINAL_PAYMENT_STATUSES = {"succeeded", "canceled"}
 PENDING_PAYMENT_STATUSES = {"pending", "waiting_for_capture"}
