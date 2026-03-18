@@ -5,19 +5,16 @@ from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.db import get_db
 from app.core.security import utcnow
+from app.core.templates import templates
 from app.models import Order, OrderEvent, OrderPayment, SongGeneration, User
 from app.services.suno_service import SunoServiceError, start_song_generation
 from app.services.yookassa_service import YooKassaError, fetch_payment
-
-templates = Jinja2Templates(directory="app/templates")
-templates.env.globals["settings"] = settings
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
