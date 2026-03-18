@@ -26,6 +26,11 @@
       <div class="notice notice-warning">
         Генерация завершилась ошибкой.
       </div>
+      {% if fallback_ready_song %}
+        <div class="notice" style="margin-top: 12px;">
+          Но у вас уже есть предыдущий готовый результат из попытки {{ fallback_ready_song.attempt_no }} — он доступен ниже.
+        </div>
+      {% endif %}
     {% endif %}
 
     {% if error %}
@@ -69,8 +74,36 @@
             </div>
           {% endfor %}
         </div>
+      {% elif fallback_ready_song and fallback_ready_song.audio_variants %}
+        <div style="display: grid; gap: 16px;">
+          {% for track in fallback_ready_song.audio_variants %}
+            {% set playable_url = track.audio_url or track.stream_audio_url %}
+            <div class="panel-card" style="padding: 16px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08);">
+              <p class="eyebrow" style="margin-bottom: 8px;">Готовый вариант {{ loop.index }}</p>
+              <p class="muted" style="margin: 0 0 8px;">Попытка {{ fallback_ready_song.attempt_no }}</p>
+              {% if playable_url %}
+                <audio class="audio-player" controls preload="none" src="{{ playable_url }}"></audio>
+              {% else %}
+                <p class="muted">Аудио для этого варианта ещё не выдано.</p>
+              {% endif %}
+              <div class="form-actions" style="margin-top: 12px;">
+                {% if track.audio_url %}
+                  <a href="{{ track.audio_url }}" class="btn btn-secondary" target="_blank" rel="noopener">Скачать mp3</a>
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% elif fallback_ready_song and fallback_ready_song.audio_url %}
+        <div class="panel-card" style="padding: 16px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08);">
+          <p class="muted" style="margin: 0 0 8px;">Готовый результат из попытки {{ fallback_ready_song.attempt_no }}</p>
+          <audio class="audio-player" controls preload="none" src="{{ fallback_ready_song.audio_url }}"></audio>
+          <div class="form-actions" style="margin-top: 12px;">
+            <a href="{{ fallback_ready_song.audio_url }}" class="btn btn-secondary" target="_blank" rel="noopener">Скачать mp3</a>
+          </div>
+        </div>
       {% elif is_ready and suno_stub_mode %}
-        <p class="muted">Тестовый режим завершён успешно. Для боевого результата выключите SUNO_STUB_MODE.</p>
+        <p class="muted">Тестовый режим завершён успешно. Для боевого результата нужен реальный аудиофайл.</p>
       {% elif is_running %}
         <p class="muted">Подожди немного. Мы проверим статус ещё раз автоматически.</p>
       {% else %}
@@ -87,6 +120,9 @@
         <form method="post" action="/songs/retry/{{ song.public_id }}">
           <button type="submit" class="btn btn-primary">Повторить генерацию</button>
         </form>
+        {% if fallback_ready_song %}
+          <a href="/songs/status?job={{ fallback_ready_song.public_id }}" class="btn btn-secondary">Открыть прошлый готовый результат</a>
+        {% endif %}
       {% endif %}
     </div>
   </div>
