@@ -23,7 +23,6 @@
         <span>Режим: <strong>{{ "Свой текст" if order.lyrics_mode == "custom" else "2 версии бесплатно" }}</strong></span>
         <span>Источник: <strong>{{ "Голос" if order.story_source == "voice" else "Текст" }}</strong></span>
         <span>Генерация: <strong>{{ song_status_label }}</strong></span>
-        <span>Сумма: <strong>{{ current_amount_rub }} ₽</strong></span>
       </div>
 
       {% if welcome %}
@@ -60,24 +59,14 @@
                 <span class="detail-label">Генерация</span>
                 <strong class="detail-value">{{ song_status_label }}</strong>
               </div>
-              <div class="detail-list-item">
-                <span class="detail-label">Сумма</span>
-                <strong class="detail-value">{{ current_amount_rub }} ₽</strong>
-              </div>
-              {% if has_discount %}
-                <div class="detail-list-item">
-                  <span class="detail-label">Базовая цена</span>
-                  <strong class="detail-value">{{ base_amount_rub }} ₽</strong>
-                </div>
-                <div class="detail-list-item">
-                  <span class="detail-label">Скидка</span>
-                  <strong class="detail-value">-{{ discount_amount_rub }} ₽</strong>
-                </div>
-              {% endif %}
               {% if latest_song %}
                 <div class="detail-list-item">
                   <span class="detail-label">Попытка</span>
                   <strong class="detail-value">{{ latest_song.attempt_no }}</strong>
+                </div>
+                <div class="detail-list-item">
+                  <span class="detail-label">Вариантов</span>
+                  <strong class="detail-value">{{ latest_song.audio_variants|length if latest_song.audio_variants else (2 if song_is_ready else '—') }}</strong>
                 </div>
               {% endif %}
             </div>
@@ -85,20 +74,20 @@
 
           <div class="panel-card panel-card-dark">
             <div class="mini-label">Параметры песни</div>
-
+          
             <div class="detail-list">
               <div class="detail-list-item">
                 <span class="detail-label">Стиль</span>
                 <strong class="detail-value">{{ song_style_label }}</strong>
               </div>
-
+          
               {% if song_style_details %}
                 <div class="detail-list-item">
                   <span class="detail-label">Уточнение по стилю</span>
                   <strong class="detail-value">{{ song_style_details }}</strong>
                 </div>
               {% endif %}
-
+          
               <div class="detail-list-item">
                 <span class="detail-label">Исполнение</span>
                 <strong class="detail-value">{{ singer_label }}</strong>
@@ -109,11 +98,26 @@
           <div class="panel-card panel-card-dark">
             <div class="mini-label">Песня</div>
 
-            {% if latest_song and latest_song.audio_url %}
-              <audio class="audio-player" controls preload="none" src="{{ latest_song.audio_url }}"></audio>
+            {% if latest_song and latest_song.audio_variants %}
+              <div style="display: grid; gap: 14px;">
+                {% for track in latest_song.audio_variants %}
+                  {% set playable_url = track.audio_url or track.stream_audio_url %}
+                  <div style="padding: 14px; border: 1px solid rgba(255,255,255,.08); border-radius: 18px; background: rgba(255,255,255,.03);">
+                    <p style="margin: 0 0 8px;"><strong>Вариант {{ loop.index }}</strong></p>
+                    {% if playable_url %}
+                      <audio class="audio-player" controls preload="none" src="{{ playable_url }}"></audio>
+                    {% endif %}
+                    <div class="form-actions" style="margin-top: 12px;">
+                      {% if track.audio_url %}
+                        <a href="{{ track.audio_url }}" class="btn btn-secondary" target="_blank" rel="noopener">Скачать mp3</a>
+                      {% endif %}
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
             {% elif latest_song and song_is_ready and suno_stub_mode %}
               <p class="muted" style="margin: 0;">
-                Заглушка генерации отработала успешно. Реальный аудиофайл подключим следующим этапом.
+                Тестовый режим завершён. Для боевого результата выключите SUNO_STUB_MODE.
               </p>
             {% elif latest_song and song_is_running %}
               <p class="muted" style="margin: 0;">
