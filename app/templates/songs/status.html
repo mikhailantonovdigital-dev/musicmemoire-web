@@ -30,6 +30,9 @@
 
     {% if error %}
       <div class="notice notice-error">{{ error }}</div>
+      {% if is_running %}
+        <div class="notice">Статус временно не удалось обновить. Задача не помечена как ошибочная, попробуйте проверить ещё раз чуть позже.</div>
+      {% endif %}
     {% endif %}
 
     {% if song and song.error_message and not error %}
@@ -89,7 +92,7 @@
   </div>
 </section>
 
-{% if is_running and song %}
+{% if auto_refresh_enabled and song %}
 <script>
   setTimeout(function () {
     window.location.href = "/songs/status?job={{ song.public_id }}";
