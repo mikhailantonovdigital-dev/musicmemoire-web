@@ -26,11 +26,11 @@
   <link rel="icon" type="image/png" href="/static/img/favicon.png?v=4" />
   <link rel="shortcut icon" href="/static/img/favicon.png?v=4" />
   <link rel="apple-touch-icon" href="/static/img/favicon.png?v=4" />
-  <link rel="stylesheet" href="/static/css/styles.css?v=12665a" />
+  <link rel="stylesheet" href="/static/css/styles.css?v=12666a" />
 </head>
 {% set path = request.url.path %}
 {% set is_marketing_screen = path in ['/', '/portfolio', '/how-it-works', '/reviews'] %}
-{% set is_legal_screen = path in ['/offer', '/policy'] %}
+{% set is_legal_screen = path in ['/offer', '/policy', '/faq'] %}
 {% set is_questionnaire_screen = path.startswith('/questionnaire') %}
 <body class="theme-dark-premium{% if path == '/' %} page-home{% endif %}{% if is_marketing_screen %} page-marketing-screen{% endif %}{% if is_legal_screen %} page-legal-screen{% endif %}{% if is_questionnaire_screen %} page-questionnaire{% endif %}{% if body_class %} {{ body_class }}{% endif %}">
   <div class="page-bg page-bg-dark"></div>
@@ -69,10 +69,11 @@
       <div class="footer-legal-links">
         <a class="footer-legal-btn {% if path == '/offer' %}is-active{% endif %}" href="/offer">Оферта</a>
         <a class="footer-legal-btn {% if path == '/policy' %}is-active{% endif %}" href="/policy">Политика</a>
+        <a class="footer-legal-btn {% if path == '/faq' %}is-active{% endif %}" href="/faq">FAQ</a>
       </div>
     </div>
   </footer>
 
-  <script src="/static/js/app.js?v=12665a"></script>
+  <script src="/static/js/app.js?v=12666a"></script>
 </body>
 </html>
