@@ -13,6 +13,10 @@
       </div>
     </div>
 
+    {% if show_support_card %}
+      {% include "partials/support_card.html" with context %}
+    {% endif %}
+
     <div class="legal-layout">
       <aside class="legal-side-card">
         <div class="legal-side-kicker">Содержание</div>
