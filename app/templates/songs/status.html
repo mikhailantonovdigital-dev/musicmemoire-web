@@ -55,7 +55,8 @@
       {% if song and song.audio_variants %}
         <div style="display: grid; gap: 16px;">
           {% for track in song.audio_variants %}
-            {% set playable_url = track.audio_url or track.stream_audio_url %}
+            {% set playable_url = request.url_for('song_track_file', job_public_id=song.public_id, track_index=loop.index0) %}
+            {% set download_url = request.url_for('song_track_file', job_public_id=song.public_id, track_index=loop.index0) ~ '?download=1' %}
             <div class="panel-card" style="padding: 16px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08);">
               <p class="eyebrow" style="margin-bottom: 8px;">Вариант {{ loop.index }}</p>
               {% if track.title %}
@@ -67,17 +68,26 @@
                 <p class="muted">Аудио для этого варианта ещё не выдано.</p>
               {% endif %}
               <div class="form-actions" style="margin-top: 12px;">
-                {% if track.audio_url %}
-                  <a href="{{ track.audio_url }}" class="btn btn-secondary" target="_blank" rel="noopener">Скачать mp3</a>
+                {% if track.audio_url or track.stream_audio_url %}
+                  <a href="{{ download_url }}" class="btn btn-secondary">Скачать mp3</a>
                 {% endif %}
               </div>
             </div>
           {% endfor %}
         </div>
+      {% elif song and song.audio_url %}
+        <div class="panel-card" style="padding: 16px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08);">
+          <p class="muted" style="margin: 0 0 8px;">Готовый результат из попытки {{ song.attempt_no }}</p>
+          <audio class="audio-player" controls preload="none" src="{{ request.url_for('song_track_file', job_public_id=song.public_id, track_index=0) }}"></audio>
+          <div class="form-actions" style="margin-top: 12px;">
+            <a href="{{ request.url_for('song_track_file', job_public_id=song.public_id, track_index=0) }}?download=1" class="btn btn-secondary">Скачать mp3</a>
+          </div>
+        </div>
       {% elif fallback_ready_song and fallback_ready_song.audio_variants %}
         <div style="display: grid; gap: 16px;">
           {% for track in fallback_ready_song.audio_variants %}
-            {% set playable_url = track.audio_url or track.stream_audio_url %}
+            {% set playable_url = request.url_for('song_track_file', job_public_id=fallback_ready_song.public_id, track_index=loop.index0) %}
+            {% set download_url = request.url_for('song_track_file', job_public_id=fallback_ready_song.public_id, track_index=loop.index0) ~ '?download=1' %}
             <div class="panel-card" style="padding: 16px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08);">
               <p class="eyebrow" style="margin-bottom: 8px;">Готовый вариант {{ loop.index }}</p>
               <p class="muted" style="margin: 0 0 8px;">Попытка {{ fallback_ready_song.attempt_no }}</p>
@@ -87,8 +97,8 @@
                 <p class="muted">Аудио для этого варианта ещё не выдано.</p>
               {% endif %}
               <div class="form-actions" style="margin-top: 12px;">
-                {% if track.audio_url %}
-                  <a href="{{ track.audio_url }}" class="btn btn-secondary" target="_blank" rel="noopener">Скачать mp3</a>
+                {% if track.audio_url or track.stream_audio_url %}
+                  <a href="{{ download_url }}" class="btn btn-secondary">Скачать mp3</a>
                 {% endif %}
               </div>
             </div>
@@ -97,9 +107,9 @@
       {% elif fallback_ready_song and fallback_ready_song.audio_url %}
         <div class="panel-card" style="padding: 16px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08);">
           <p class="muted" style="margin: 0 0 8px;">Готовый результат из попытки {{ fallback_ready_song.attempt_no }}</p>
-          <audio class="audio-player" controls preload="none" src="{{ fallback_ready_song.audio_url }}"></audio>
+          <audio class="audio-player" controls preload="none" src="{{ request.url_for('song_track_file', job_public_id=fallback_ready_song.public_id, track_index=0) }}"></audio>
           <div class="form-actions" style="margin-top: 12px;">
-            <a href="{{ fallback_ready_song.audio_url }}" class="btn btn-secondary" target="_blank" rel="noopener">Скачать mp3</a>
+            <a href="{{ request.url_for('song_track_file', job_public_id=fallback_ready_song.public_id, track_index=0) }}?download=1" class="btn btn-secondary">Скачать mp3</a>
           </div>
         </div>
       {% elif is_ready and suno_stub_mode %}
