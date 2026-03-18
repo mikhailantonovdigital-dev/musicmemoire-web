@@ -9,6 +9,7 @@ from app.core.config import settings
 from app.core.db import get_db
 from app.core.security import utcnow
 from app.models import Order, OrderEvent, SongGeneration, User
+from app.services.email_service import EmailServiceError, send_song_ready_email
 from app.services.suno_service import SunoServiceError, start_song_generation, sync_song_generation
 
 router = APIRouter(prefix="/songs", tags=["songs"])
@@ -61,6 +62,57 @@ def humanize_song_status(status: str | None) -> str:
         "canceled": "Отменено",
     }
     return mapping.get(status or "", "—")
+
+
+def has_order_event(db: Session, order: Order, event_type: str) -> bool:
+    return (
+        db.query(OrderEvent.id)
+        .filter(OrderEvent.order_id == order.id, OrderEvent.event_type == event_type)
+        .first()
+        is not None
+    )
+
+
+def maybe_send_song_ready_email(db: Session, song: SongGeneration) -> None:
+    order = song.order
+    if order.user is None or not order.user.email:
+        return
+
+    if has_order_event(db, order, "song_ready_email_sent"):
+        return
+
+    order_url = f"{settings.BASE_URL.rstrip('/')}/account/orders/{order.public_id}"
+
+    try:
+        send_song_ready_email(
+            recipient_email=order.user.email,
+            order_number=order.order_number,
+            order_url=order_url,
+            audio_url=song.audio_url,
+        )
+        db.add(
+            OrderEvent(
+                order=order,
+                event_type="song_ready_email_sent",
+                payload={
+                    "song_job_id": song.public_id,
+                    "email": order.user.email,
+                    "audio_url": song.audio_url,
+                },
+            )
+        )
+    except EmailServiceError as exc:
+        db.add(
+            OrderEvent(
+                order=order,
+                event_type="song_ready_email_failed",
+                payload={
+                    "song_job_id": song.public_id,
+                    "email": order.user.email,
+                    "error": str(exc),
+                },
+            )
+        )
 
 
 def get_latest_song(order: Order) -> SongGeneration | None:
@@ -157,6 +209,7 @@ def sync_song_job_state(db: Session, song: SongGeneration) -> SongGeneration:
         if song.finished_at is None:
             song.finished_at = utcnow()
         song.order.status = "song_ready"
+        maybe_send_song_ready_email(db, song)
     elif result.status == "failed":
         if song.finished_at is None:
             song.finished_at = utcnow()
