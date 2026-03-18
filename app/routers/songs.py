@@ -12,6 +12,7 @@ from app.models import Order, OrderEvent, SongGeneration
 from app.services.song_workflow import (
     RUNNING_SONG_STATUSES,
     create_song_job,
+    get_latest_ready_song,
     get_latest_song,
     humanize_song_status,
     process_song_callback,
@@ -146,6 +147,11 @@ async def song_status(job: str, request: Request, db: Session = Depends(get_db))
             db.commit()
             db.refresh(song)
 
+    latest_ready_song = get_latest_ready_song(song.order)
+    fallback_ready_song = None
+    if latest_ready_song is not None and latest_ready_song.public_id != song.public_id:
+        fallback_ready_song = latest_ready_song
+
     return templates.TemplateResponse(
         "songs/status.html",
         {
@@ -153,7 +159,9 @@ async def song_status(job: str, request: Request, db: Session = Depends(get_db))
             "page_title": "Генерация песни",
             "order": song.order,
             "song": song,
+            "fallback_ready_song": fallback_ready_song,
             "song_status_label": humanize_song_status(song.status),
+            "fallback_song_status_label": humanize_song_status(fallback_ready_song.status if fallback_ready_song else None),
             "is_ready": song.status == "succeeded",
             "is_running": song.status in RUNNING_SONG_STATUSES,
             "is_failed": song.status == "failed",
