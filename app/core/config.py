@@ -22,10 +22,13 @@ class Settings(BaseSettings):
     AUDIO_TRANSCRIBE_LANGUAGE: str = "ru"
 
     SUNO_API_KEY: str | None = None
-    SUNO_MODEL: str | None = None
+    SUNO_API_BASE_URL: str = "https://api.sunoapi.org"
+    SUNO_MODEL: str = "V5"
     SUNO_STUB_MODE: bool = True
     SUNO_STUB_DELAY_SECONDS: int = 12
     SUNO_STUB_AUDIO_URL: str | None = None
+    SUNO_REQUEST_TIMEOUT_SECONDS: int = 60
+    SUNO_CALLBACK_TOKEN: str | None = None
 
     YOOKASSA_SHOP_ID: str | None = None
     YOOKASSA_SECRET_KEY: str | None = None
