@@ -171,8 +171,49 @@
 
     <div class="form-card" style="margin-top: 20px;">
       <h2 class="form-title">Финальный текст</h2>
-      <textarea class="textarea textarea-readonly" readonly>{{ order.final_lyrics_text or "" }}</textarea>
+      <form method="post" action="/admin/orders/{{ order.public_id }}/final-lyrics-update">
+        <textarea name="final_lyrics_text" class="textarea" rows="14">{{ order.final_lyrics_text or "" }}</textarea>
+        <p class="helper-text" style="margin-top: 10px;">Изменения повлияют на следующий запуск генерации песни. Уже запущенная попытка возьмёт свой сохранённый snapshot текста.</p>
+        <div class="form-actions" style="margin-top: 12px;">
+          <button type="submit" class="btn btn-primary">Сохранить финальный текст</button>
+        </div>
+      </form>
     </div>
+
+    {% if lyrics_versions %}
+      <div class="form-card" style="margin-top: 20px;">
+        <h2 class="form-title">Сохранённые версии текста</h2>
+        <div style="display: grid; gap: 16px;">
+          {% for version in lyrics_versions %}
+            <div class="panel-card" style="padding: 16px; border: 1px solid #ececec; background: #fafafa;">
+              <div class="step-meta" style="margin-bottom: 12px;">
+                <span>Версия {{ loop.index }}</span>
+                <span>Угол: <strong>{{ version.angle_label }}</strong></span>
+                <span>Модель: <strong>{{ version.model_name }}</strong></span>
+                <span>Выбрана: <strong>{{ "Да" if version.is_selected else "Нет" }}</strong></span>
+              </div>
+
+              {% if version.prompt_text %}
+                <p style="margin-bottom: 8px;"><strong>Prompt</strong></p>
+                <textarea class="textarea textarea-readonly" readonly rows="5">{{ version.prompt_text }}</textarea>
+              {% endif %}
+
+              <p style="margin: 12px 0 8px;"><strong>Исходный текст версии</strong></p>
+              <textarea class="textarea textarea-readonly" readonly rows="10">{{ version.lyrics_text }}</textarea>
+
+              {% if version.edited_lyrics_text %}
+                <p style="margin: 12px 0 8px;"><strong>Отредактированная версия</strong></p>
+                <textarea class="textarea textarea-readonly" readonly rows="10">{{ version.edited_lyrics_text }}</textarea>
+              {% endif %}
+
+              {% if selected_lyrics_version and selected_lyrics_version.public_id == version.public_id %}
+                <p class="helper-text" style="margin-top: 10px;">Эта версия сейчас синхронизируется с финальным текстом заказа.</p>
+              {% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
 
     {% if order.story_text %}
       <div class="form-card" style="margin-top: 20px;">
