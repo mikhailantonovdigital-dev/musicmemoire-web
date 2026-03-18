@@ -2,19 +2,17 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.db import get_db
 from app.core.security import utcnow
+from app.core.templates import templates
 from app.models import Order, OrderEvent, SongGeneration, User
 from app.services.email_service import EmailServiceError, send_song_ready_email
 from app.services.suno_service import SunoServiceError, start_song_generation, sync_song_generation
 
 router = APIRouter(prefix="/songs", tags=["songs"])
-templates = Jinja2Templates(directory="app/templates")
-templates.env.globals["settings"] = settings
 
 RUNNING_SONG_STATUSES = {"queued", "processing"}
 
