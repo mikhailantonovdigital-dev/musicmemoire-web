@@ -9,6 +9,7 @@ from app.core.db import get_db
 from app.core.security import get_session_user, utcnow
 from app.core.templates import templates
 from app.models import Order, OrderEvent, OrderPayment, SongGeneration
+from app.models.order_payment import build_order_pricing_preview
 from app.services.email_service import EmailServiceError, send_payment_success_email
 from app.services.suno_service import SunoServiceError, start_song_generation
 from app.services.yookassa_service import YooKassaError, create_redirect_payment, fetch_payment
@@ -84,6 +85,15 @@ def has_order_event(db: Session, order: Order, event_type: str) -> bool:
     )
 
 
+def build_payment_template_context(payment: OrderPayment) -> dict[str, int | bool]:
+    return {
+        "price_rub": payment.final_amount_rub,
+        "base_price_rub": payment.base_amount_rub,
+        "discount_rub": payment.discount_amount_rub,
+        "has_discount": payment.has_discount,
+    }
+
+
 def maybe_send_payment_success_email(db: Session, order: Order, payment: OrderPayment) -> None:
     if order.user is None or not order.user.email:
         return
@@ -98,7 +108,7 @@ def maybe_send_payment_success_email(db: Session, order: Order, payment: OrderPa
             recipient_email=order.user.email,
             order_number=order.order_number,
             order_url=order_url,
-            price_rub=settings.PRICE_RUB,
+            price_rub=payment.final_amount_rub,
         )
         db.add(
             OrderEvent(
@@ -317,12 +327,17 @@ async def checkout_start(order_public_id: str, request: Request, db: Session = D
     if latest_payment and latest_payment.status == "succeeded":
         return RedirectResponse(url=f"/checkout/status?payment={latest_payment.public_id}", status_code=303)
 
+    pricing = build_order_pricing_preview(db, order)
+
     payment = OrderPayment(
         order_id=order.id,
         user_id=order.user_id,
         provider="yookassa",
         status="pending",
-        amount_value=f"{settings.PRICE_RUB:.2f}",
+        amount_value=pricing["final_amount_value"],
+        base_amount_value=pricing["base_amount_value"],
+        discount_amount_value=pricing["discount_amount_value"],
+        final_amount_value=pricing["final_amount_value"],
         currency="RUB",
     )
     db.add(payment)
@@ -337,7 +352,7 @@ async def checkout_start(order_public_id: str, request: Request, db: Session = D
             order_public_id=order.public_id,
             user_public_id=order.user.public_id if order.user else None,
             payment_public_id=payment.public_id,
-            amount_rub=settings.PRICE_RUB,
+            amount_rub=payment.final_amount_rub,
             return_url=return_url,
             customer_email=order.user.email if order.user and order.user.email else None,
         )
@@ -368,7 +383,7 @@ async def checkout_start(order_public_id: str, request: Request, db: Session = D
                 "is_canceled": False,
                 "error": str(exc),
                 "metrica_counter_id": settings.METRICA_COUNTER_ID,
-                "price_rub": settings.PRICE_RUB,
+                **build_payment_template_context(payment),
             },
             status_code=400,
         )
@@ -396,6 +411,9 @@ async def checkout_start(order_public_id: str, request: Request, db: Session = D
                 "yookassa_payment_id": payment.yookassa_payment_id,
                 "status": payment.status,
                 "amount_value": payment.amount_value,
+                "base_amount_value": payment.base_amount_value,
+                "discount_amount_value": payment.discount_amount_value,
+                "final_amount_value": payment.final_amount_value,
             },
         )
     )
@@ -472,7 +490,7 @@ async def checkout_status(payment: str, request: Request, db: Session = Depends(
             "is_canceled": payment_obj.status == "canceled",
             "error": status_sync_error,
             "metrica_counter_id": settings.METRICA_COUNTER_ID,
-            "price_rub": settings.PRICE_RUB,
+            **build_payment_template_context(payment_obj),
         },
     )
 
