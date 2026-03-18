@@ -69,6 +69,45 @@ def maybe_send_payment_success_email(db: Session, order: Order, payment: OrderPa
             )
         )
 
+def resend_payment_success_email(db: Session, order: Order, payment: OrderPayment) -> None:
+    if order.user is None or not order.user.email:
+        raise EmailServiceError("У заказа нет email для отправки письма.")
+
+    order_url = f"{settings.BASE_URL.rstrip('/')}/account/orders/{order.public_id}"
+
+    try:
+        send_payment_success_email(
+            recipient_email=order.user.email,
+            order_number=order.order_number,
+            order_url=order_url,
+            price_rub=payment.final_amount_rub,
+        )
+        db.add(
+            OrderEvent(
+                order=order,
+                event_type="payment_success_email_resent",
+                payload={
+                    "payment_public_id": payment.public_id,
+                    "email": order.user.email,
+                    "trigger": "admin_manual_resend",
+                },
+            )
+        )
+    except EmailServiceError as exc:
+        db.add(
+            OrderEvent(
+                order=order,
+                event_type="payment_success_email_resend_failed",
+                payload={
+                    "payment_public_id": payment.public_id,
+                    "email": order.user.email,
+                    "trigger": "admin_manual_resend",
+                    "error": str(exc),
+                },
+            )
+        )
+        raise
+
 
 def maybe_start_song_generation_after_payment(
     db: Session,
