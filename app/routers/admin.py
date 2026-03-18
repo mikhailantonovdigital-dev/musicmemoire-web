@@ -17,6 +17,7 @@ from app.services.suno_service import SunoServiceError, start_song_generation
 from app.services.yookassa_service import YooKassaError, fetch_payment
 
 templates = Jinja2Templates(directory="app/templates")
+templates.env.globals["settings"] = settings
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
