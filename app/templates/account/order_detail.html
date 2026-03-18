@@ -25,6 +25,18 @@
         <span>Генерация: <strong>{{ song_status_label }}</strong></span>
       </div>
 
+      {% if welcome %}
+        <div class="notice notice-success" style="margin-top: 18px;">
+          {% if welcome_delivery == "email" %}
+            Кабинет создан. Ссылку для входа мы отправили на почту, а этот заказ уже открыт сразу здесь.
+          {% elif welcome_delivery == "stub" %}
+            Кабинет создан. Письмо сейчас в stub-режиме, но заказ уже открыт в кабинете.
+          {% else %}
+            Кабинет создан, и заказ уже привязан к вашему профилю.
+          {% endif %}
+        </div>
+      {% endif %}
+
       <div class="detail-shell">
         <div class="detail-main">
           <div class="panel-card panel-card-dark">
@@ -103,19 +115,25 @@
             {% endif %}
 
             <div class="form-actions action-stack">
+              {% if can_pay_order %}
+                <form method="post" action="/checkout/start/{{ order.public_id }}">
+                  <button type="submit" class="btn btn-primary">{{ payment_cta_label }}</button>
+                </form>
+              {% endif %}
+
               {% if latest_song and song_is_running %}
-                <a href="/songs/status?job={{ latest_song.public_id }}" class="btn btn-primary">Открыть статус</a>
+                <a href="/songs/status?job={{ latest_song.public_id }}" class="btn btn-secondary">Открыть статус</a>
               {% elif latest_song and song_is_failed %}
                 <form method="post" action="/songs/retry/{{ latest_song.public_id }}">
-                  <button type="submit" class="btn btn-primary">Повторить генерацию</button>
+                  <button type="submit" class="btn btn-secondary">Повторить генерацию</button>
                 </form>
               {% elif latest_song and song_is_ready %}
-                <a href="/songs/status?job={{ latest_song.public_id }}" class="btn btn-primary">Открыть результат</a>
+                <a href="/songs/status?job={{ latest_song.public_id }}" class="btn btn-secondary">Открыть результат</a>
               {% elif can_start_song %}
                 <form method="post" action="/songs/start/{{ order.public_id }}">
-                  <button type="submit" class="btn btn-primary">Сгенерировать песню</button>
+                  <button type="submit" class="btn btn-secondary">Сгенерировать песню</button>
                 </form>
-              {% else %}
+              {% elif not can_pay_order %}
                 <span class="btn btn-secondary">Генерация после оплаты</span>
               {% endif %}
             </div>
