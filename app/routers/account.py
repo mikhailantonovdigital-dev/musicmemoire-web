@@ -15,6 +15,7 @@ from app.models import MagicLoginToken, Order, SongGeneration, User
 from app.services.email_service import EmailServiceError, send_magic_link_email
 
 templates = Jinja2Templates(directory="app/templates")
+templates.env.globals["settings"] = settings
 
 router = APIRouter(prefix="/account", tags=["account"])
 
