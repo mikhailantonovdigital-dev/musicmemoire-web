@@ -7,15 +7,30 @@
       <p class="eyebrow">Оплата</p>
       <h1>Заказ {{ order.order_number }}</h1>
       <p class="section-lead">
-        Здесь видно, прошла ли оплата через ЮKassa, и что делать дальше по заказу.
+        Здесь видно, прошла ли оплата через ЮKassa, и что происходит с запуском генерации песни.
       </p>
 
       <div class="step-meta">
         <span>Сумма: <strong>{{ price_rub }} ₽</strong></span>
         <span>Статус оплаты: <strong>{{ payment_status_label }}</strong></span>
+        {% if is_success %}
+          <span>Песня: <strong>{{ song_status_label }}</strong></span>
+        {% endif %}
       </div>
 
-      {% if is_success %}
+      {% if is_success and latest_song and latest_song.status in ["queued", "processing"] %}
+        <div class="notice notice-success">
+          Оплата прошла успешно. Генерация песни уже запущена автоматически.
+        </div>
+      {% elif is_success and latest_song and latest_song.status == "succeeded" %}
+        <div class="notice notice-success">
+          Оплата прошла успешно. Песня уже готова.
+        </div>
+      {% elif is_success and latest_song and latest_song.status == "failed" %}
+        <div class="notice notice-warning">
+          Оплата прошла успешно, но генерация песни завершилась ошибкой.
+        </div>
+      {% elif is_success %}
         <div class="notice notice-success">
           Оплата прошла успешно. Заказ сохранён в кабинете.
         </div>
@@ -30,7 +45,7 @@
         </div>
       {% endif %}
 
-      {% if error or is_canceled %}
+      {% if error or is_canceled or (latest_song and latest_song.status == "failed") %}
         <div style="margin-top: 20px;">
           {% include "partials/support_card.html" with context %}
         </div>
@@ -38,6 +53,10 @@
 
       {% if error %}
         <div class="notice notice-error">{{ error }}</div>
+      {% endif %}
+
+      {% if latest_song and latest_song.error_message %}
+        <div class="notice notice-error">{{ latest_song.error_message }}</div>
       {% endif %}
 
       <div class="payment-layout">
@@ -60,13 +79,28 @@
               <strong class="detail-value">{{ price_rub }} ₽</strong>
             </div>
             <div class="detail-list-item">
-              <span class="detail-label">Статус</span>
+              <span class="detail-label">Статус оплаты</span>
               <strong class="detail-value">{{ payment_status_label }}</strong>
             </div>
+            {% if is_success %}
+              <div class="detail-list-item">
+                <span class="detail-label">Статус песни</span>
+                <strong class="detail-value">{{ song_status_label }}</strong>
+              </div>
+            {% endif %}
           </div>
 
           <div class="form-actions action-stack">
-            {% if is_success %}
+            {% if is_success and latest_song and latest_song.status in ["queued", "processing"] %}
+              <a href="/songs/status?job={{ latest_song.public_id }}" class="btn btn-primary">Открыть статус генерации</a>
+              <a href="/account/orders/{{ order.public_id }}" class="btn btn-secondary">Открыть заказ</a>
+            {% elif is_success and latest_song and latest_song.status == "succeeded" %}
+              <a href="/songs/status?job={{ latest_song.public_id }}" class="btn btn-primary">Открыть результат</a>
+              <a href="/account/orders/{{ order.public_id }}" class="btn btn-secondary">Открыть заказ</a>
+            {% elif is_success and latest_song and latest_song.status == "failed" %}
+              <a href="/account/orders/{{ order.public_id }}" class="btn btn-primary">Открыть заказ</a>
+              <a href="/support" class="btn btn-secondary">Поддержка</a>
+            {% elif is_success %}
               <a href="/account/login" class="btn btn-secondary">Войти в кабинет</a>
               <a href="/account/orders/{{ order.public_id }}" class="btn btn-primary">Открыть заказ</a>
             {% elif is_pending %}
