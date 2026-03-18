@@ -145,19 +145,23 @@
           {% if latest_ready_song and latest_ready_song.audio_variants %}
             <div style="display: grid; gap: 12px; margin-top: 12px;">
               {% for track in latest_ready_song.audio_variants %}
-                {% set playable_url = track.audio_url or track.stream_audio_url %}
+                {% set playable_url = request.url_for('song_track_file', job_public_id=latest_ready_song.public_id, track_index=loop.index0) %}
+                {% set download_url = request.url_for('song_track_file', job_public_id=latest_ready_song.public_id, track_index=loop.index0) ~ '?download=1' %}
                 <div class="panel-card" style="padding: 14px; background: #fafafa; border: 1px solid #ececec;">
                   <p style="margin: 0 0 8px;"><strong>Готовый вариант {{ loop.index }}</strong></p>
                   <p class="helper-text" style="margin: 0 0 8px;">Попытка {{ latest_ready_song.attempt_no }}</p>
                   {% if playable_url %}<audio class="audio-player" controls preload="none" src="{{ playable_url }}"></audio>{% endif %}
-                  {% if track.audio_url %}<p class="helper-text" style="margin-top: 8px;">{{ track.audio_url }}</p>{% endif %}
+                  {% if track.audio_url %}<p class="helper-text" style="margin-top: 8px;">Источник: {{ track.audio_url }}</p>{% endif %}
+                  {% if track.stored_relative_path %}<p class="helper-text" style="margin-top: 6px;">Локальная копия сохранена.</p>{% endif %}
+                  <p style="margin-top: 10px;"><a href="{{ download_url }}" class="btn btn-secondary">Скачать mp3</a></p>
                 </div>
               {% endfor %}
             </div>
           {% elif latest_ready_song and latest_ready_song.audio_url %}
             <p class="helper-text">Готовый результат из попытки {{ latest_ready_song.attempt_no }}</p>
-            <audio class="audio-player" controls preload="none" src="{{ latest_ready_song.audio_url }}"></audio>
-            <p class="helper-text">{{ latest_ready_song.audio_url }}</p>
+            <audio class="audio-player" controls preload="none" src="{{ request.url_for('song_track_file', job_public_id=latest_ready_song.public_id, track_index=0) }}"></audio>
+            <p class="helper-text">Источник: {{ latest_ready_song.audio_url }}</p>
+            <p style="margin-top: 10px;"><a href="{{ request.url_for('song_track_file', job_public_id=latest_ready_song.public_id, track_index=0) }}?download=1" class="btn btn-secondary">Скачать mp3</a></p>
           {% endif %}
         {% else %}
           <p class="muted">Генерация песни ещё не запускалась.</p>
@@ -221,17 +225,21 @@
               {% if attempt.audio_variants %}
                 <div style="display: grid; gap: 10px; margin-bottom: 12px;">
                   {% for track in attempt.audio_variants %}
-                    {% set playable_url = track.audio_url or track.stream_audio_url %}
+                    {% set playable_url = request.url_for('song_track_file', job_public_id=attempt.public_id, track_index=loop.index0) %}
+                    {% set download_url = request.url_for('song_track_file', job_public_id=attempt.public_id, track_index=loop.index0) ~ '?download=1' %}
                     <div class="panel-card" style="padding: 12px; background: #fff; border: 1px solid #ececec;">
                       <p style="margin: 0 0 8px;"><strong>Вариант {{ loop.index }}</strong></p>
                       {% if playable_url %}<audio class="audio-player" controls preload="none" src="{{ playable_url }}"></audio>{% endif %}
-                      {% if track.audio_url %}<p class="helper-text" style="margin-top: 8px;">{{ track.audio_url }}</p>{% endif %}
+                      {% if track.audio_url %}<p class="helper-text" style="margin-top: 8px;">Источник: {{ track.audio_url }}</p>{% endif %}
+                  {% if track.stored_relative_path %}<p class="helper-text" style="margin-top: 6px;">Локальная копия сохранена.</p>{% endif %}
+                  <p style="margin-top: 10px;"><a href="{{ download_url }}" class="btn btn-secondary">Скачать mp3</a></p>
                     </div>
                   {% endfor %}
                 </div>
               {% elif attempt.audio_url %}
-                <audio class="audio-player" controls preload="none" src="{{ attempt.audio_url }}"></audio>
-                <p class="helper-text">{{ attempt.audio_url }}</p>
+                <audio class="audio-player" controls preload="none" src="{{ request.url_for('song_track_file', job_public_id=attempt.public_id, track_index=0) }}"></audio>
+                <p class="helper-text">Источник: {{ attempt.audio_url }}</p>
+                <p style="margin-top: 10px;"><a href="{{ request.url_for('song_track_file', job_public_id=attempt.public_id, track_index=0) }}?download=1" class="btn btn-secondary">Скачать mp3</a></p>
               {% endif %}
 
               <details style="margin-top: 12px;">
