@@ -18,6 +18,7 @@ from app.core.security import (
 )
 from app.core.templates import templates
 from app.models import MagicLoginToken, Order, SongGeneration, User
+from app.models.order_payment import build_order_pricing_preview
 from app.services.email_service import EmailServiceError, send_magic_link_email
 
 router = APIRouter(prefix="/account", tags=["account"])
@@ -102,11 +103,32 @@ def can_pay_order(order: Order) -> bool:
     return bool((order.final_lyrics_text or "").strip()) and not has_successful_payment(order)
 
 
-def get_payment_cta_label(order: Order) -> str:
+def get_order_pricing_context(db: Session, order: Order) -> dict[str, int | bool]:
+    latest_payment = get_latest_payment(order)
+    if latest_payment is not None:
+        return {
+            "current_amount_rub": latest_payment.final_amount_rub,
+            "base_amount_rub": latest_payment.base_amount_rub,
+            "discount_amount_rub": latest_payment.discount_amount_rub,
+            "has_discount": latest_payment.has_discount,
+        }
+
+    preview = build_order_pricing_preview(db, order)
+    return {
+        "current_amount_rub": int(preview["final_price_rub"]),
+        "base_amount_rub": int(preview["base_price_rub"]),
+        "discount_amount_rub": int(preview["discount_rub"]),
+        "has_discount": bool(preview["has_discount"]),
+    }
+
+
+def get_payment_cta_label(db: Session, order: Order) -> str:
     latest_payment = get_latest_payment(order)
     if latest_payment and latest_payment.status in {"pending", "waiting_for_capture"}:
         return "Продолжить оплату"
-    return f"Оплатить {settings.PRICE_RUB} ₽"
+
+    pricing = get_order_pricing_context(db, order)
+    return f"Оплатить {pricing['current_amount_rub']} ₽"
 
 
 def can_start_song(order: Order) -> bool:
@@ -262,6 +284,8 @@ async def account_dashboard(request: Request, db: Session = Depends(get_db)):
         latest_song = get_latest_song(order)
         song_profile = build_song_profile(order)
 
+        pricing = get_order_pricing_context(db, order)
+
         order_cards.append(
             {
                 "order": order,
@@ -273,11 +297,12 @@ async def account_dashboard(request: Request, db: Session = Depends(get_db)):
                 "song_style_details": song_profile["style_details"],
                 "singer_label": song_profile["singer_label"],
                 "can_pay_order": can_pay_order(order),
-                "payment_cta_label": get_payment_cta_label(order),
+                "payment_cta_label": get_payment_cta_label(db, order),
                 "can_start_song": can_start_song(order),
                 "song_is_running": latest_song is not None and latest_song.status in RUNNING_SONG_STATUSES,
                 "song_is_ready": latest_song is not None and latest_song.status == "succeeded",
                 "song_is_failed": latest_song is not None and latest_song.status == "failed",
+                **pricing,
             }
         )
 
@@ -319,6 +344,7 @@ async def account_order_detail(
     latest_payment = get_latest_payment(order)
     latest_song = get_latest_song(order)
     song_profile = build_song_profile(order)
+    pricing = get_order_pricing_context(db, order)
 
     welcome = request.query_params.get("welcome") == "1"
     delivery = (request.query_params.get("delivery") or "").strip().lower()
@@ -338,7 +364,8 @@ async def account_order_detail(
             "song_style_details": song_profile["style_details"],
             "singer_label": song_profile["singer_label"],
             "can_pay_order": can_pay_order(order),
-            "payment_cta_label": get_payment_cta_label(order),
+            "payment_cta_label": get_payment_cta_label(db, order),
+            **pricing,
             "can_start_song": can_start_song(order),
             "song_is_running": latest_song is not None and latest_song.status in RUNNING_SONG_STATUSES,
             "song_is_ready": latest_song is not None and latest_song.status == "succeeded",
