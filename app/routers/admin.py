@@ -15,15 +15,19 @@ from app.core.templates import templates
 from app.models import Order, OrderEvent, OrderPayment, SongGeneration, User
 from app.models.order_payment import build_order_pricing_preview
 from app.services.payment_workflow import sync_payment_with_remote
+from app.services.song_workflow import (
+    RUNNING_SONG_STATUSES,
+    get_latest_song,
+    humanize_song_status,
+    mark_song_sync_failed,
+    sync_song_job_state,
+)
 from app.services.suno_service import SunoServiceError, start_song_generation
 from app.services.yookassa_service import YooKassaError
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 BERLIN_TZ = ZoneInfo("Europe/Berlin")
-RUNNING_SONG_STATUSES = {"queued", "processing"}
-
-
 def has_admin_access(request: Request) -> bool:
     if not settings.ADMIN_TOKEN:
         return True
@@ -51,11 +55,6 @@ def get_latest_payment(order: Order) -> OrderPayment | None:
     return sorted(order.payments, key=lambda item: item.id or 0, reverse=True)[0]
 
 
-def get_latest_song(order: Order) -> SongGeneration | None:
-    if not order.song_generations:
-        return None
-    return sorted(order.song_generations, key=lambda item: item.id or 0, reverse=True)[0]
-
 
 def humanize_payment_status(status: str | None) -> str:
     mapping = {
@@ -66,16 +65,6 @@ def humanize_payment_status(status: str | None) -> str:
     }
     return mapping.get(status or "", "Не начата")
 
-
-def humanize_song_status(status: str | None) -> str:
-    mapping = {
-        "queued": "В очереди",
-        "processing": "Генерируется",
-        "succeeded": "Готово",
-        "failed": "Ошибка",
-        "canceled": "Отменено",
-    }
-    return mapping.get(status or "", "Не запускалась")
 
 
 def has_successful_payment(order: Order) -> bool:
@@ -395,6 +384,94 @@ async def admin_order_payment_sync(
     if latest_payment.status == "succeeded":
         success_text = "Статус оплаты обновлён. Заказ переведён в paid, письмо и автозапуск песни обработаны."
     set_admin_flash(request, "success", success_text)
+    return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
+
+
+@router.post("/orders/{order_public_id}/song-sync")
+async def admin_order_song_sync(
+    order_public_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    if not has_admin_access(request):
+        return RedirectResponse(url="/admin/login", status_code=303)
+
+    order = db.query(Order).filter(Order.public_id == order_public_id).first()
+    if order is None:
+        set_admin_flash(request, "error", "Заказ не найден.")
+        return RedirectResponse(url="/admin/", status_code=303)
+
+    latest_song = get_latest_song(order)
+    if latest_song is None:
+        set_admin_flash(request, "warning", "У заказа ещё нет задачи генерации песни.")
+        return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
+
+    previous_status = latest_song.status
+    if previous_status not in RUNNING_SONG_STATUSES:
+        db.add(
+            OrderEvent(
+                order=order,
+                event_type="admin_song_status_synced",
+                payload={
+                    "song_job_id": latest_song.public_id,
+                    "status_from": previous_status,
+                    "status_to": latest_song.status,
+                    "changed": False,
+                },
+            )
+        )
+        db.commit()
+        set_admin_flash(request, "success", "Статус песни уже финальный. Обновление не требовалось.")
+        return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
+
+    try:
+        latest_song = sync_song_job_state(db, latest_song)
+        db.add(
+            OrderEvent(
+                order=order,
+                event_type="admin_song_status_synced",
+                payload={
+                    "song_job_id": latest_song.public_id,
+                    "status_from": previous_status,
+                    "status_to": latest_song.status,
+                    "changed": previous_status != latest_song.status,
+                },
+            )
+        )
+        db.commit()
+    except SunoServiceError as exc:
+        mark_song_sync_failed(
+            db,
+            latest_song,
+            error_text=str(exc),
+            event_type="admin_song_generation_sync_failed",
+        )
+        db.add(
+            OrderEvent(
+                order=order,
+                event_type="admin_song_status_synced",
+                payload={
+                    "song_job_id": latest_song.public_id,
+                    "status_from": previous_status,
+                    "status_to": "failed",
+                    "changed": previous_status != "failed",
+                    "error": str(exc),
+                },
+            )
+        )
+        db.commit()
+        set_admin_flash(request, "error", f"Не удалось обновить статус песни: {exc}")
+        return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
+
+    if latest_song.status == "succeeded":
+        set_admin_flash(request, "success", "Статус песни обновлён. Песня готова, письмо обработано.")
+    elif latest_song.status == "failed":
+        set_admin_flash(request, "warning", "Статус песни обновлён. Задача завершилась с ошибкой.")
+    elif latest_song.status == previous_status:
+        set_admin_flash(request, "success", "Статус песни обновлён. Изменений пока нет.")
+    else:
+        set_admin_flash(request, "success", "Статус песни обновлён.")
+
     return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
 
 
