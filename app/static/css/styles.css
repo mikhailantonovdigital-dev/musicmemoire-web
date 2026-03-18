@@ -5522,11 +5522,56 @@ strong,
 }
 
 .song-style-grid {
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .singer-gender-grid {
   grid-template-columns: repeat(2, 1fr);
+}
+
+.song-style-card {
+  min-height: 100%;
+}
+
+.song-style-card-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.song-style-card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  border: 1px solid rgba(160, 181, 220, 0.18);
+  background: rgba(123, 130, 255, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  font-size: 20px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.questionnaire-shell .song-style-card .radio-card-title {
+  margin-bottom: 0;
+}
+
+.questionnaire-shell .song-style-card .radio-card-text {
+  color: #93a4c2;
+  padding-left: 54px;
+}
+
+@supports selector(:has(*)) {
+  .questionnaire-shell .song-style-card:has(input:checked) .song-style-card-icon {
+    border-color: rgba(132, 154, 255, 0.30);
+    background: rgba(123, 130, 255, 0.18);
+    box-shadow:
+      0 0 0 1px rgba(132, 154, 255, 0.10),
+      0 10px 24px rgba(7, 14, 28, 0.18);
+  }
 }
 
 .custom-style-wrap {
@@ -5537,6 +5582,10 @@ strong,
   .song-style-grid,
   .singer-gender-grid {
     grid-template-columns: 1fr;
+  }
+
+  .questionnaire-shell .song-style-card .radio-card-text {
+    padding-left: 54px;
   }
 
   .final-lyrics-block {
