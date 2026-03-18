@@ -8,7 +8,6 @@
         <p class="eyebrow">Админка</p>
         <h1>Панель управления</h1>
       </div>
-
       <div class="form-actions">
         {% if admin_token_enabled %}
           <a href="/admin/logout" class="btn btn-secondary">Выйти</a>
@@ -18,7 +17,7 @@
 
     {% if not admin_token_enabled %}
       <div class="notice notice-warning">
-        ADMIN_TOKEN не задан. Сейчас админка открыта без защиты. На боевом сервисе обязательно добавь токен в Render env.
+        ADMIN_TOKEN не задан. Сейчас админка открыта без защиты. На боевом сервисе обязательно добавьте токен в Render env.
       </div>
     {% endif %}
 
@@ -27,86 +26,131 @@
     {% endif %}
 
     <form class="form-card admin-search-form" method="get" action="/admin/">
-      <label class="form-label" for="q">Поиск по номеру заказа или email</label>
+      <h2 class="form-title">Поиск и фильтры</h2>
+      <label class="form-label" for="q">Поиск по номеру заказа, public id, session id или email</label>
       <div class="admin-search-row">
-        <input
-          id="q"
-          name="q"
-          type="text"
-          class="text-input"
-          placeholder="Например: MM-260313 или client@example.com"
-          value="{{ q }}"
-        />
+        <input id="q" name="q" type="text" class="text-input" placeholder="Например: MM-260313, session id или client@example.com" value="{{ q }}" />
         <button type="submit" class="btn btn-primary">Найти</button>
-        {% if q %}
+        {% if q or order_status != 'all' or payment_status != 'all' or song_status != 'all' or story_source != 'all' or lyrics_mode != 'all' %}
           <a href="/admin/" class="btn btn-secondary">Сбросить</a>
         {% endif %}
+      </div>
+
+      <div class="admin-status-grid" style="margin-top: 16px;">
+        <div>
+          <label class="label" for="order_status">Статус заказа</label>
+          <select id="order_status" name="order_status" class="input">
+            {% for value, label in order_status_filter_options %}
+              <option value="{{ value }}" {% if order_status == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="label" for="payment_status">Статус оплаты</label>
+          <select id="payment_status" name="payment_status" class="input">
+            {% for value, label in payment_status_filter_options %}
+              <option value="{{ value }}" {% if payment_status == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="label" for="song_status">Статус песни</label>
+          <select id="song_status" name="song_status" class="input">
+            {% for value, label in song_status_filter_options %}
+              <option value="{{ value }}" {% if song_status == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="label" for="story_source">Источник истории</label>
+          <select id="story_source" name="story_source" class="input">
+            {% for value, label in story_source_options %}
+              <option value="{{ value }}" {% if story_source == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="label" for="lyrics_mode">Режим текста</label>
+          <select id="lyrics_mode" name="lyrics_mode" class="input">
+            {% for value, label in lyrics_mode_options %}
+              <option value="{{ value }}" {% if lyrics_mode == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="form-actions" style="margin-top: 16px;">
+        <button type="submit" class="btn btn-primary">Применить фильтры</button>
       </div>
     </form>
 
     <div class="grid">
-      <div class="metric-card">
-        <span>Новые пользователи сегодня</span>
-        <strong>{{ new_users_today }}</strong>
-      </div>
-      <div class="metric-card">
-        <span>Уникальные пользователи за всё время</span>
-        <strong>{{ total_users }}</strong>
-      </div>
-      <div class="metric-card">
-        <span>Заказы сегодня</span>
-        <strong>{{ orders_today }}</strong>
-      </div>
-      <div class="metric-card">
-        <span>Оплаченные за всё время</span>
-        <strong>{{ total_paid_orders }}</strong>
-      </div>
-      <div class="metric-card">
-        <span>Ошибки генерации песен</span>
-        <strong>{{ failed_song_jobs }}</strong>
-      </div>
-      <div class="metric-card">
-        <span>Ожидающие оплаты</span>
-        <strong>{{ pending_payments }}</strong>
+      <div class="metric-card"><span>Новые пользователи сегодня</span><strong>{{ new_users_today }}</strong></div>
+      <div class="metric-card"><span>Уникальные пользователи за всё время</span><strong>{{ total_users }}</strong></div>
+      <div class="metric-card"><span>Заказы сегодня</span><strong>{{ orders_today }}</strong></div>
+      <div class="metric-card"><span>Успешные оплаты сегодня</span><strong>{{ successful_payments_today }}</strong></div>
+      <div class="metric-card"><span>Готовые песни сегодня</span><strong>{{ songs_ready_today }}</strong></div>
+      <div class="metric-card"><span>Ошибки песен сегодня</span><strong>{{ song_errors_today }}</strong></div>
+      <div class="metric-card"><span>Все ошибки генерации</span><strong>{{ failed_song_jobs }}</strong></div>
+      <div class="metric-card"><span>Ожидающие оплаты</span><strong>{{ pending_payments }}</strong></div>
+    </div>
+
+    <div class="form-card" style="margin-top: 20px;">
+      <h2 class="form-title">Воронка заказов</h2>
+      <div class="grid">
+        {% for item in funnel_counts %}
+          <div class="metric-card"><span>{{ item.label }}</span><strong>{{ item.count }}</strong></div>
+        {% endfor %}
       </div>
     </div>
 
-    <div class="admin-status-grid">
+    <div class="admin-status-grid" style="margin-top: 20px;">
       <div class="form-card">
         <h2 class="form-title">Статусы заказов</h2>
         <div class="step-meta">
-          {% for status, count in order_status_counts %}
-            <span>{{ status }} · <strong>{{ count }}</strong></span>
-          {% endfor %}
+          {% for status, count in order_status_counts %}<span>{{ status }} · <strong>{{ count }}</strong></span>{% endfor %}
         </div>
       </div>
-
       <div class="form-card">
         <h2 class="form-title">Статусы оплат</h2>
         <div class="step-meta">
-          {% for status, count in payment_status_counts %}
-            <span>{{ status }} · <strong>{{ count }}</strong></span>
-          {% endfor %}
+          {% for status, count in payment_status_counts %}<span>{{ status }} · <strong>{{ count }}</strong></span>{% endfor %}
         </div>
       </div>
-
       <div class="form-card">
         <h2 class="form-title">Статусы генерации песен</h2>
         <div class="step-meta">
-          {% for status, count in song_status_counts %}
-            <span>{{ status }} · <strong>{{ count }}</strong></span>
-          {% endfor %}
+          {% for status, count in song_status_counts %}<span>{{ status }} · <strong>{{ count }}</strong></span>{% endfor %}
         </div>
+      </div>
+    </div>
+
+    <div class="admin-status-grid" style="margin-top: 20px;">
+      <div class="form-card">
+        <h2 class="form-title">Последние ошибки генерации</h2>
+        {% if recent_failed_songs %}
+          <div class="admin-events">
+            {% for song in recent_failed_songs %}
+              <div class="admin-event">
+                <div class="admin-event-head"><strong>{{ song.order.order_number if song.order else song.public_id }}</strong><span>{{ song.updated_at }}</span></div>
+                <p style="margin: 0 0 8px;"><strong>Статус:</strong> {{ song.status }}</p>
+                <p style="margin: 0 0 8px;"><strong>Попытка:</strong> {{ song.attempt_no }}</p>
+                {% if song.error_message %}<div class="notice notice-error" style="margin-top: 8px;">{{ song.error_message }}</div>{% endif %}
+                {% if song.order %}<div class="form-actions" style="margin-top: 12px;"><a href="/admin/orders/{{ song.order.public_id }}" class="btn btn-secondary">Открыть заказ</a></div>{% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="muted">Ошибок генерации пока нет.</p>
+        {% endif %}
       </div>
     </div>
 
     {% if order_cards %}
-      <div class="admin-orders-list">
+      <div class="admin-orders-list" style="margin-top: 20px;">
         {% for card in order_cards %}
           {% set order = card.order %}
-          {% set latest_payment = card.latest_payment %}
           {% set latest_song = card.latest_song %}
-
           <article class="lyrics-card">
             <div class="lyrics-card-head">
               <div>
@@ -115,34 +159,26 @@
                 <p class="lyrics-angle">Статус заказа: {{ order.status }}</p>
                 <p class="lyrics-angle">Оплата: {{ card.payment_status_label }}</p>
                 <p class="lyrics-angle">Песня: {{ card.song_status_label }}</p>
+                <p class="lyrics-angle">Источник: {{ "Голос" if order.story_source == "voice" else "Текст" }}</p>
+                <p class="lyrics-angle">Режим: {{ "Свой текст" if order.lyrics_mode == "custom" else "Генерация" }}</p>
+                <p class="lyrics-angle">Сумма: {{ card.amount_rub ~ " ₽" if card.amount_rub is not none else "—" }}</p>
               </div>
               <span class="variant-chip">Заказ</span>
             </div>
-
-            <div class="preview-box">
-              {{ (order.final_lyrics_text or "Финальный текст пока не сохранён.")[:400] }}{% if order.final_lyrics_text and order.final_lyrics_text|length > 400 %}…{% endif %}
-            </div>
-
+            <div class="preview-box">{{ (order.final_lyrics_text or "Финальный текст пока не сохранён.")[:400] }}{% if order.final_lyrics_text and order.final_lyrics_text|length > 400 %}…{% endif %}</div>
             <div class="form-actions">
               <a href="/admin/orders/{{ order.public_id }}" class="btn btn-secondary">Открыть</a>
-
               {% if latest_song and latest_song.status == "failed" %}
-                <form method="post" action="/admin/orders/{{ order.public_id }}/song-run">
-                  <button type="submit" class="btn btn-primary">Повторить песню</button>
-                </form>
+                <form method="post" action="/admin/orders/{{ order.public_id }}/song-run"><button type="submit" class="btn btn-primary">Повторить песню</button></form>
               {% elif not latest_song and card.can_run_song %}
-                <form method="post" action="/admin/orders/{{ order.public_id }}/song-run">
-                  <button type="submit" class="btn btn-primary">Запустить песню</button>
-                </form>
+                <form method="post" action="/admin/orders/{{ order.public_id }}/song-run"><button type="submit" class="btn btn-primary">Запустить песню</button></form>
               {% endif %}
             </div>
           </article>
         {% endfor %}
       </div>
     {% else %}
-      <div class="notice">
-        По текущему фильтру ничего не найдено.
-      </div>
+      <div class="notice" style="margin-top: 20px;">По текущему фильтру ничего не найдено.</div>
     {% endif %}
   </div>
 </section>
