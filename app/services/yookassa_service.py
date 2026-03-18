@@ -96,6 +96,43 @@ def _parse_payment(data: dict) -> YooKassaPaymentInfo:
 def _format_amount_rub(amount_rub: int) -> str:
     return str(Decimal(amount_rub).quantize(Decimal("0.00")))
 
+def _build_receipt(*, amount_rub: int, customer_email: str | None) -> dict | None:
+    email = (customer_email or settings.YOOKASSA_RECEIPT_EMAIL or "").strip()
+    if not email:
+        return None
+
+    item = {
+        "description": "Персональная песня Magic Music",
+        "quantity": "1.00",
+        "amount": {
+            "value": _format_amount_rub(amount_rub),
+            "currency": "RUB",
+        },
+        "payment_mode": "full_payment",
+        "payment_subject": "service",
+    }
+
+    vat_code = (settings.YOOKASSA_VAT_CODE or "").strip()
+    if vat_code:
+        if not vat_code.isdigit():
+            raise YooKassaError("YOOKASSA_VAT_CODE должен быть числом.")
+        item["vat_code"] = int(vat_code)
+
+    receipt = {
+        "customer": {
+            "email": email,
+        },
+        "items": [item],
+    }
+
+    tax_system_code = (settings.YOOKASSA_TAX_SYSTEM_CODE or "").strip()
+    if tax_system_code:
+        if not tax_system_code.isdigit():
+            raise YooKassaError("YOOKASSA_TAX_SYSTEM_CODE должен быть числом.")
+        receipt["tax_system_code"] = int(tax_system_code)
+
+    return receipt
+
 
 def create_redirect_payment(
     *,
@@ -105,6 +142,7 @@ def create_redirect_payment(
     payment_public_id: str,
     amount_rub: int,
     return_url: str,
+    customer_email: str | None = None,
 ) -> YooKassaCreateResult:
     idempotence_key = str(uuid4())
 
@@ -126,6 +164,10 @@ def create_redirect_payment(
             "user_public_id": user_public_id or "",
         },
     }
+
+    receipt = _build_receipt(amount_rub=amount_rub, customer_email=customer_email)
+    if receipt:
+        payload["receipt"] = receipt
 
     data = _request_json(
         "POST",
