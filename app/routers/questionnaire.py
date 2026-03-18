@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from datetime import timedelta
 from pathlib import Path
 from uuid import uuid4
@@ -11,7 +10,14 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.db import get_db
-from app.core.security import generate_magic_token, hash_magic_token, utcnow
+from app.core.security import (
+    generate_magic_token,
+    get_session_user,
+    hash_magic_token,
+    is_valid_email,
+    normalize_email,
+    utcnow,
+)
 from app.core.storage import save_voice_file
 from app.core.templates import templates
 from app.models import LyricsVersion, MagicLoginToken, Order, OrderEvent, User, VoiceInput
@@ -33,15 +39,7 @@ ALLOWED_LYRICS_MODES = {"generate", "custom"}
 ALLOWED_SONG_STYLES = {"pop", "rap", "rock", "chanson", "indie", "multi", "custom"}
 ALLOWED_SINGER_GENDERS = {"male", "female"}
 LYRICS_GENERATION_DAILY_LIMIT = 3
-EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
-
-def normalize_email(value: str) -> str:
-    return value.strip().lower()
-
-
-def is_valid_email(value: str) -> bool:
-    return bool(EMAIL_RE.match(value.strip()))
 
 def style_requires_custom_text(song_style: str) -> bool:
     return song_style in {"multi", "custom"}
@@ -53,12 +51,6 @@ def ensure_visitor_session(request: Request) -> str:
         visitor_id = str(uuid4())
         request.session["visitor_id"] = visitor_id
     return visitor_id
-
-def get_session_user(request: Request, db: Session) -> User | None:
-    user_id = request.session.get("account_user_id")
-    if not user_id:
-        return None
-    return db.query(User).filter(User.id == int(user_id)).first()
 
 
 def get_current_draft(db: Session, request: Request) -> Order | None:
