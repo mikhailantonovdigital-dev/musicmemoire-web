@@ -163,6 +163,7 @@ def get_latest_voice_input(db: Session, order_id: int) -> VoiceInput | None:
 
 def has_admin_access(request: Request) -> bool:
     if not settings.ADMIN_TOKEN:
+        request.session["admin_access"] = True
         return True
     return bool(request.session.get("admin_access"))
 
