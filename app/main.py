@@ -12,6 +12,7 @@ from app.routers import public, questionnaire, account, admin, songs, checkout
 
 
 templates = Jinja2Templates(directory="app/templates")
+templates.env.globals["settings"] = settings
 
 
 @asynccontextmanager
