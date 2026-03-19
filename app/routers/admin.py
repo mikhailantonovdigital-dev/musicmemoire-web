@@ -13,7 +13,7 @@ from app.core.db import get_db
 from app.core.security import utcnow
 from app.core.storage import StorageError, ensure_voice_input_local_path
 from app.core.templates import templates
-from app.models import BackgroundJob, LyricsVersion, Order, OrderEvent, OrderPayment, SecurityEvent, SongGeneration, SupportMessage, SupportThread, User, VoiceInput
+from app.models import BackgroundJob, EmailLog, LyricsVersion, Order, OrderEvent, OrderPayment, SecurityEvent, SongGeneration, SupportMessage, SupportThread, User, VoiceInput
 from app.models.order_payment import build_order_pricing_preview
 from app.services.payment_workflow import resend_payment_success_email, sync_payment_with_remote
 from app.services.song_workflow import (
@@ -24,11 +24,14 @@ from app.services.song_workflow import (
     get_song_attempts,
     has_successful_payment,
     humanize_song_status,
+    maybe_send_song_failed_email,
+    resend_song_failed_email,
     resend_song_ready_email,
     sync_song_job_state,
 )
 from app.services.suno_service import SunoServiceError
 from app.services.background_jobs import BackgroundJobError, get_job_label, enqueue_background_job, find_active_job_for_order
+from app.services.email_log_service import humanize_email_status, humanize_email_type
 from app.tasks import run_admin_lyrics_regeneration_task, run_song_start_task, run_voice_transcription_task
 from app.services.yookassa_service import YooKassaError
 
@@ -76,11 +79,6 @@ PAYMENT_STATUS_FILTER_OPTIONS = [
 ]
 SONG_STATUS_FILTER_OPTIONS = [(FILTER_ALL, "Любой статус песни"), *SONG_STATUS_OPTIONS, ("missing", "Без задачи")]
 ORDER_STATUS_FILTER_OPTIONS = [(FILTER_ALL, "Любой статус заказа"), *ORDER_STATUS_OPTIONS]
-
-VALID_ORDER_STATUSES = {value for value, _label in ORDER_STATUS_OPTIONS}
-VALID_SONG_STATUSES = {value for value, _label in SONG_STATUS_OPTIONS}
-VALID_SUPPORT_STATUSES = {value for value, _label in SUPPORT_STATUS_OPTIONS if value != FILTER_ALL}
-
 SUPPORT_STATUS_OPTIONS = [
     (FILTER_ALL, "Любой статус обращения"),
     ("new", "new"),
@@ -88,7 +86,9 @@ SUPPORT_STATUS_OPTIONS = [
     ("pending", "pending"),
     ("closed", "closed"),
 ]
-
+VALID_ORDER_STATUSES = {value for value, _label in ORDER_STATUS_OPTIONS}
+VALID_SONG_STATUSES = {value for value, _label in SONG_STATUS_OPTIONS}
+VALID_SUPPORT_STATUSES = {value for value, _label in SUPPORT_STATUS_OPTIONS if value != FILTER_ALL}
 FUNNEL_STAGES = [
     ("Черновики", ["draft"]),
     ("Ждут оплату", ["awaiting_payment", "payment_pending", "payment_canceled"]),
@@ -252,6 +252,11 @@ def can_resend_song_ready_email(order: Order) -> bool:
     return bool(latest_song and latest_song.status == "succeeded" and order.user and order.user.email)
 
 
+def can_resend_song_failed_email(order: Order) -> bool:
+    latest_song = get_latest_song(order)
+    return bool(latest_song and latest_song.status == "failed" and order.user and order.user.email)
+
+
 def humanize_security_action(action: str | None) -> str:
     mapping = {
         "account_magic_link_send": "Ссылка для входа в кабинет",
@@ -352,6 +357,31 @@ def get_recent_background_jobs_for_order(db: Session, order_id: int, limit: int 
         .limit(limit)
         .all()
     )
+
+def build_email_log_card(log: EmailLog) -> dict:
+    payload = log.payload if isinstance(log.payload, dict) else {}
+    return {
+        "log": log,
+        "type_label": humanize_email_type(log.email_type),
+        "status_label": humanize_email_status(log.status),
+        "order_number": log.order.order_number if log.order else "—",
+        "context_id": payload.get("payment_public_id") or payload.get("song_job_id") or payload.get("source") or "—",
+    }
+
+
+def get_recent_email_logs(db: Session, limit: int = 20) -> list[EmailLog]:
+    return db.query(EmailLog).order_by(EmailLog.id.desc()).limit(limit).all()
+
+
+def get_recent_email_logs_for_order(db: Session, order_id: int, limit: int = 20) -> list[EmailLog]:
+    return (
+        db.query(EmailLog)
+        .filter(EmailLog.order_id == order_id)
+        .order_by(EmailLog.id.desc())
+        .limit(limit)
+        .all()
+    )
+
 
 def build_security_event_card(event: SecurityEvent) -> dict:
     payload = event.payload if isinstance(event.payload, dict) else {}
@@ -489,6 +519,8 @@ async def admin_dashboard(
     queued_background_jobs = db.query(func.count(BackgroundJob.id)).filter(BackgroundJob.status.in_(["queued", "started"])).scalar() or 0
     failed_background_jobs_today = db.query(func.count(BackgroundJob.id)).filter(BackgroundJob.status == "failed", BackgroundJob.finished_at >= day_start_utc, BackgroundJob.finished_at < day_end_utc).scalar() or 0
     open_support_threads = db.query(func.count(SupportThread.id)).filter(SupportThread.status.in_(["new", "open", "pending"])).scalar() or 0
+    sent_emails_today = db.query(func.count(EmailLog.id)).filter(EmailLog.status.in_(["sent", "stub"]), EmailLog.created_at >= day_start_utc, EmailLog.created_at < day_end_utc).scalar() or 0
+    failed_emails_today = db.query(func.count(EmailLog.id)).filter(EmailLog.status == "failed", EmailLog.created_at >= day_start_utc, EmailLog.created_at < day_end_utc).scalar() or 0
 
     orders_query = db.query(Order).outerjoin(User, Order.user_id == User.id)
     if query_text:
@@ -519,6 +551,7 @@ async def admin_dashboard(
     recent_security_events = db.query(SecurityEvent).filter(SecurityEvent.status.in_(["blocked", "suspicious"])).order_by(SecurityEvent.id.desc()).limit(12).all()
     recent_background_jobs = get_recent_background_jobs(db, limit=12)
     recent_support_threads = get_recent_support_threads(db, limit=12)
+    recent_email_logs = get_recent_email_logs(db, limit=12)
 
     return templates.TemplateResponse(
         "admin/dashboard.html",
@@ -545,6 +578,8 @@ async def admin_dashboard(
             "queued_background_jobs": queued_background_jobs,
             "failed_background_jobs_today": failed_background_jobs_today,
             "open_support_threads": open_support_threads,
+            "sent_emails_today": sent_emails_today,
+            "failed_emails_today": failed_emails_today,
             "order_status_counts": order_status_counts,
             "payment_status_counts": payment_status_counts,
             "song_status_counts": song_status_counts,
@@ -555,6 +590,7 @@ async def admin_dashboard(
             "recent_security_events": [build_security_event_card(item) for item in recent_security_events],
             "recent_background_jobs": [build_background_job_card(item) for item in recent_background_jobs],
             "recent_support_threads": [build_support_thread_card(item) for item in recent_support_threads],
+            "recent_email_logs": [build_email_log_card(item) for item in recent_email_logs],
             "humanize_security_action": humanize_security_action,
             "order_status_filter_options": ORDER_STATUS_FILTER_OPTIONS,
             "payment_status_filter_options": PAYMENT_STATUS_FILTER_OPTIONS,
@@ -589,6 +625,7 @@ async def admin_order_detail(order_public_id: str, request: Request, db: Session
     security_events = get_recent_security_events_for_order(db, order.id, limit=20)
     background_jobs = get_recent_background_jobs_for_order(db, order.id, limit=20)
     support_threads = get_support_threads_for_order(db, order.id)
+    email_logs = get_recent_email_logs_for_order(db, order.id, limit=30)
 
     return templates.TemplateResponse(
         "admin/order_detail.html",
@@ -615,12 +652,16 @@ async def admin_order_detail(order_public_id: str, request: Request, db: Session
             "can_run_song": can_run_song(order),
             "can_resend_payment_email": can_resend_payment_email(order),
             "can_resend_song_ready_email": can_resend_song_ready_email(order),
+            "can_resend_song_failed_email": can_resend_song_failed_email(order),
             "order_status_options": ORDER_STATUS_OPTIONS,
             "song_status_options": SONG_STATUS_OPTIONS,
             "events": events,
             "security_events": [build_security_event_card(item) for item in security_events],
             "background_jobs": [build_background_job_card(item) for item in background_jobs],
             "support_threads": [build_support_thread_card(item) for item in support_threads],
+            "email_logs": [build_email_log_card(item) for item in email_logs],
+            "humanize_email_type": humanize_email_type,
+            "humanize_email_status": humanize_email_status,
             "humanize_payment_status": humanize_payment_status,
             "humanize_security_action": humanize_security_action,
         },
@@ -819,6 +860,7 @@ async def admin_order_song_status_update(
         song.finished_at = utcnow()
         order.status = "song_failed"
         song.error_message = manual_error or song.error_message or "Статус вручную переведён в failed оператором."
+        maybe_send_song_failed_email(db, song)
     else:
         if song.started_at is None:
             song.started_at = utcnow()
@@ -1159,6 +1201,32 @@ async def admin_order_song_ready_email_resend(order_public_id: str, request: Req
         return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
 
     set_admin_flash(request, "success", "Переотправка письма о готовой песне поставлена в очередь.")
+    return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
+
+
+@router.post("/orders/{order_public_id}/song-failed-email-resend")
+async def admin_order_song_failed_email_resend(order_public_id: str, request: Request, db: Session = Depends(get_db)):
+    if not has_admin_access(request):
+        return RedirectResponse(url="/admin/login", status_code=303)
+    order = db.query(Order).filter(Order.public_id == order_public_id).first()
+    if order is None:
+        set_admin_flash(request, "error", "Заказ не найден.")
+        return RedirectResponse(url="/admin/", status_code=303)
+
+    latest_song = get_latest_song(order)
+    if latest_song is None or latest_song.status != "failed":
+        set_admin_flash(request, "warning", "Письмо об ошибке можно отправить только для заказа с ошибкой песни.")
+        return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
+
+    try:
+        resend_song_failed_email(db, latest_song)
+        db.commit()
+    except RuntimeError as exc:
+        db.rollback()
+        set_admin_flash(request, "error", str(exc))
+        return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
+
+    set_admin_flash(request, "success", "Переотправка письма об ошибке поставлена в очередь.")
     return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
 
 
