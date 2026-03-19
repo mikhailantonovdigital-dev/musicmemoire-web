@@ -640,38 +640,15 @@ async def questionnaire_voice_upload(
     db.commit()
     db.refresh(voice_input)
 
-    force_sync_transcription = not object_storage_enabled() and not settings.BACKGROUND_JOBS_SYNC_MODE
+    transcription_ok = await run_transcription_for_voice(db, request, draft, voice_input)
+    db.refresh(draft)
+    db.refresh(voice_input)
 
-    try:
-        enqueue_background_job(
-            db,
-            order=draft,
-            job_type="voice_transcription",
-            func=run_voice_transcription_task,
-            payload={
-                "order_public_id": draft.public_id,
-                "voice_public_id": voice_input.public_id,
-                "apply_to_order": True,
-                "started_event_type": "voice_transcription_started",
-                "success_event_type": "voice_transcription_done",
-                "failure_event_type": "voice_transcription_failed",
-                "trigger": "questionnaire_voice_upload",
-            },
-            force_sync=force_sync_transcription,
-        )
-        db.commit()
-    except BackgroundJobError as exc:
-        db.rollback()
-        return render_story_template(
-            request,
-            draft,
-            latest_voice,
-            error=f"Не удалось поставить расшифровку в очередь: {exc}",
-            status_code=500,
-        )
+    if transcription_ok:
+        redirect_url = f"{request.url_for('questionnaire_story')}?voice_uploaded=1&transcribed=1"
+    else:
+        redirect_url = f"{request.url_for('questionnaire_story')}?voice_uploaded=1&transcription_failed=1"
 
-    redirect_suffix = "transcription_done=1" if force_sync_transcription else "voice_uploaded=1&transcription_queued=1"
-    redirect_url = f"{request.url_for('questionnaire_story')}?{redirect_suffix}"
     return RedirectResponse(url=redirect_url, status_code=303)
 
 
