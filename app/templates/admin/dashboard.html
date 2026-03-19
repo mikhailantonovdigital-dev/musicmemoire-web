@@ -94,6 +94,8 @@
       <div class="metric-card"><span>Все ошибки генерации</span><strong>{{ failed_song_jobs }}</strong></div>
       <div class="metric-card"><span>Ожидающие оплаты</span><strong>{{ pending_payments }}</strong></div>
       <div class="metric-card"><span>Блокировки и подозрительные действия сегодня</span><strong>{{ blocked_security_events_today }}</strong></div>
+      <div class="metric-card"><span>Фоновые задачи в работе</span><strong>{{ queued_background_jobs }}</strong></div>
+      <div class="metric-card"><span>Ошибки фоновых задач сегодня</span><strong>{{ failed_background_jobs_today }}</strong></div>
     </div>
 
     <div class="form-card" style="margin-top: 20px;">
@@ -166,6 +168,28 @@
           <p class="muted">Проблемных платежей сейчас нет.</p>
         {% endif %}
       </div>
+    </div>
+
+    <div class="form-card" style="margin-top: 20px;">
+      <h2 class="form-title">Последние фоновые задачи</h2>
+      {% if recent_background_jobs %}
+        <div class="admin-events">
+          {% for item in recent_background_jobs %}
+            {% set job = item.job %}
+            <div class="admin-event">
+              <div class="admin-event-head"><strong>{{ item.job_label }}</strong><span>{{ job.created_at }}</span></div>
+              <p style="margin: 0 0 8px;"><strong>Статус:</strong> {{ item.status_label }}</p>
+              <p style="margin: 0 0 8px;"><strong>Очередь:</strong> {{ job.queue_name }}</p>
+              {% if job.error_message %}<div class="notice notice-error" style="margin-top: 8px;">{{ job.error_message }}</div>{% endif %}
+              <div class="form-actions" style="margin-top: 12px;">
+                {% if job.order %}<a href="/admin/orders/{{ job.order.public_id }}" class="btn btn-secondary">Открыть заказ</a>{% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="muted">Фоновых задач пока нет.</p>
+      {% endif %}
     </div>
 
     <div class="form-card" style="margin-top: 20px;">
