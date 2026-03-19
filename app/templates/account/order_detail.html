@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="questionnaire-stage account-order-stage">
+<section class="questionnaire-stage account-order-stage account-order-stage-spacious">
   <div class="container narrow">
-    <div class="questionnaire-shell account-order-shell">
+    <div class="questionnaire-shell account-order-shell account-order-shell-premium">
       <div class="questionnaire-stage-head account-order-head">
         <p class="eyebrow">Заказ</p>
         <h1 class="account-order-number">{{ order.order_number }}</h1>
@@ -22,7 +22,7 @@
         {% endif %}
       </div>
 
-      <div class="account-song-meta-card panel-card panel-card-dark">
+      <div class="account-song-meta-card panel-card">
         <div class="mini-label">Параметры песни</div>
         <div class="detail-list account-song-meta-list">
           <div class="detail-list-item">
@@ -42,7 +42,7 @@
         </div>
       </div>
 
-      <div class="panel-card panel-card-dark account-song-card">
+      <div class="panel-card account-song-card">
         <div class="mini-label">Песня</div>
 
         {% if playback_song and playback_song.audio_variants %}
@@ -78,7 +78,9 @@
             <h2>Готовим песню</h2>
             <p>Генерация уже запущена. Как только песня будет готова, она появится здесь автоматически.</p>
           </div>
-          {% if latest_song and song_is_failed and latest_song.error_message %}
+          {% if song_sync_error %}
+            <div class="notice notice-warning" style="margin-top: 16px;">Не удалось обновить статус генерации: {{ song_sync_error }}</div>
+          {% elif latest_song and song_is_failed and latest_song.error_message %}
             <div class="notice notice-warning" style="margin-top: 16px;">{{ latest_song.error_message }}</div>
           {% endif %}
         {% endif %}
@@ -87,7 +89,7 @@
   </div>
 </section>
 
-{% if latest_song and not playback_song and not suno_stub_mode %}
+{% if latest_song and song_is_running and not playback_song and not suno_stub_mode and not song_sync_error %}
 <script>
   setTimeout(function () {
     window.location.reload();
