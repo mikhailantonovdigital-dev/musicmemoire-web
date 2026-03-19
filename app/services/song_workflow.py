@@ -7,7 +7,12 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.security import utcnow
-from app.core.storage import StorageError, cache_remote_song_file, resolve_storage_path
+from app.core.storage import (
+    StorageError,
+    cache_remote_song_file,
+    ensure_local_cache_from_object_storage,
+    resolve_storage_path,
+)
 from app.models import BackgroundJob, Order, OrderEvent, SongGeneration
 from app.services.background_jobs import BackgroundJobError, enqueue_background_job, find_active_job_for_order
 from app.services.suno_service import (
@@ -221,6 +226,29 @@ def ensure_song_track_cached(db: Session, song: SongGeneration, track_index: int
     if existing_path is not None:
         return track
 
+    object_storage_backend = (track.get("object_storage_backend") or "").strip()
+    object_storage_key = (track.get("object_storage_key") or "").strip()
+    relative_path = (track.get("stored_relative_path") or "").strip()
+    if object_storage_backend == "s3" and object_storage_key and relative_path:
+        local_path = ensure_local_cache_from_object_storage(
+            storage_key=object_storage_key,
+            relative_path=relative_path,
+            max_bytes=settings.MAX_SONG_FILE_MB * 1024 * 1024,
+        )
+        restored_track = dict(track)
+        restored_track["index"] = track_index
+        restored_track["stored_content_type"] = (
+            restored_track.get("stored_content_type") or "audio/mpeg"
+        )
+        restored_track["stored_original_filename"] = (
+            restored_track.get("stored_original_filename")
+            or local_path.name
+        )
+        tracks = get_song_track_entries(song)
+        tracks[track_index] = restored_track
+        song.result_tracks = tracks
+        return restored_track
+
     source_url = (track.get("audio_url") or track.get("stream_audio_url") or "").strip()
     if not source_url.startswith(("http://", "https://")):
         return track
@@ -243,6 +271,9 @@ def ensure_song_track_cached(db: Session, song: SongGeneration, track_index: int
     updated_track["stored_size_bytes"] = stored.size_bytes
     updated_track["stored_original_filename"] = stored.original_filename
     updated_track["stored_at"] = utcnow().isoformat()
+    updated_track["object_storage_backend"] = stored.storage_backend
+    updated_track["object_storage_bucket"] = stored.storage_bucket
+    updated_track["object_storage_key"] = stored.storage_key
     tracks[track_index] = updated_track
     song.result_tracks = tracks
 
@@ -260,6 +291,8 @@ def ensure_song_track_cached(db: Session, song: SongGeneration, track_index: int
                 "source": source,
                 "stored_relative_path": stored.relative_path,
                 "stored_size_bytes": stored.size_bytes,
+                "object_storage_backend": stored.storage_backend,
+                "object_storage_key": stored.storage_key,
             },
         )
     )
