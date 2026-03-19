@@ -97,6 +97,10 @@ class Order(Base):
         String(16),
         nullable=True,
     )
+    song_mood: Mapped[str | None] = mapped_column(
+        String(32),
+        nullable=True,
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

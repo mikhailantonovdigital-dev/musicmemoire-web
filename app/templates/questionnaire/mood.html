@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="section questionnaire-stage">
+  <div class="container narrow">
+    <div class="questionnaire-shell">
+      <div class="questionnaire-stack">
+        <p class="eyebrow">
+          {% if draft.lyrics_mode == "custom" %}
+            Шаг 4 из 6
+          {% else %}
+            Шаг 6 из 8
+          {% endif %}
+        </p>
+        <h1>Какое настроение должно быть у песни?</h1>
+
+        <div class="consultant-box">
+          <strong>Комментарий консультанта</strong>
+          <p>
+            Это настроение пойдёт в промт генерации и сильно влияет на атмосферу, подачу и общий вайб финальной песни.
+          </p>
+        </div>
+
+        {% if error %}
+          <div class="notice notice-error">{{ error }}</div>
+        {% endif %}
+
+        <form class="form-card" method="post" action="/questionnaire/mood">
+          <div class="radio-grid song-style-grid">
+            <label class="radio-card song-style-card">
+              <input type="radio" name="song_mood" value="romantic" {% if (form_song_mood or draft.song_mood or '') == 'romantic' %}checked{% endif %} />
+              <span class="song-style-card-head">
+                <span class="song-style-card-icon" aria-hidden="true">💖</span>
+                <span class="radio-card-title">Романтичное</span>
+              </span>
+              <span class="radio-card-text">Нежно, тепло и по-настоящему про чувства.</span>
+            </label>
+
+            <label class="radio-card song-style-card">
+              <input type="radio" name="song_mood" value="uplifting" {% if (form_song_mood or draft.song_mood or '') == 'uplifting' %}checked{% endif %} />
+              <span class="song-style-card-head">
+                <span class="song-style-card-icon" aria-hidden="true">☀️</span>
+                <span class="radio-card-title">Воодушевляющее</span>
+              </span>
+              <span class="radio-card-text">Светло, бодро и с ощущением подъёма.</span>
+            </label>
+
+            <label class="radio-card song-style-card">
+              <input type="radio" name="song_mood" value="nostalgic" {% if (form_song_mood or draft.song_mood or '') == 'nostalgic' %}checked{% endif %} />
+              <span class="song-style-card-head">
+                <span class="song-style-card-icon" aria-hidden="true">🌙</span>
+                <span class="radio-card-title">Ностальгичное</span>
+              </span>
+              <span class="radio-card-text">Трогательно, с воспоминаниями и мягкой грустью.</span>
+            </label>
+
+            <label class="radio-card song-style-card">
+              <input type="radio" name="song_mood" value="dramatic" {% if (form_song_mood or draft.song_mood or '') == 'dramatic' %}checked{% endif %} />
+              <span class="song-style-card-head">
+                <span class="song-style-card-icon" aria-hidden="true">🔥</span>
+                <span class="radio-card-title">Драматичное</span>
+              </span>
+              <span class="radio-card-text">Сильные эмоции, напряжение и кинематографичный размах.</span>
+            </label>
+
+            <label class="radio-card song-style-card">
+              <input type="radio" name="song_mood" value="party" {% if (form_song_mood or draft.song_mood or '') == 'party' %}checked{% endif %} />
+              <span class="song-style-card-head">
+                <span class="song-style-card-icon" aria-hidden="true">🥳</span>
+                <span class="radio-card-title">Праздничное</span>
+              </span>
+              <span class="radio-card-text">Ярко, весело и по-настоящему хитово.</span>
+            </label>
+          </div>
+
+          <div class="form-actions">
+            <a href="/questionnaire/style" class="btn btn-secondary">Назад</a>
+            <button type="submit" class="btn btn-primary">Продолжить</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
