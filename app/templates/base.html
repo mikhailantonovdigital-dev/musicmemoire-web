@@ -26,14 +26,15 @@
   <link rel="icon" type="image/png" href="/static/img/favicon.png?v=4" />
   <link rel="shortcut icon" href="/static/img/favicon.png?v=4" />
   <link rel="apple-touch-icon" href="/static/img/favicon.png?v=4" />
-  <link rel="stylesheet" href="/static/css/styles.css?v=12669a" />
+  <link rel="stylesheet" href="/static/css/styles.css?v=12670a" />
 </head>
 {% set path = request.url.path %}
 {% set is_marketing_screen = path in ['/', '/portfolio', '/how-it-works', '/reviews'] %}
 {% set is_legal_screen = path in ['/offer', '/policy', '/faq', '/support'] %}
 {% set is_questionnaire_screen = path.startswith('/questionnaire') %}
-{% set uses_marketing_chrome = is_marketing_screen or is_questionnaire_screen %}
-<body class="theme-dark-premium{% if path == '/' %} page-home{% endif %}{% if is_marketing_screen %} page-marketing-screen{% endif %}{% if is_legal_screen %} page-legal-screen{% endif %}{% if is_questionnaire_screen %} page-questionnaire{% endif %}{% if body_class %} {{ body_class }}{% endif %}">
+{% set is_checkout_screen = path.startswith('/checkout') %}
+{% set uses_marketing_chrome = is_marketing_screen or is_questionnaire_screen or is_checkout_screen %}
+<body class="theme-dark-premium{% if path == '/' %} page-home{% endif %}{% if is_marketing_screen %} page-marketing-screen{% endif %}{% if is_legal_screen %} page-legal-screen{% endif %}{% if is_questionnaire_screen %} page-questionnaire{% endif %}{% if is_checkout_screen %} page-checkout-screen{% endif %}{% if body_class %} {{ body_class }}{% endif %}">
   <div class="page-bg page-bg-dark"></div>
   <div class="page-noise"></div>
 
