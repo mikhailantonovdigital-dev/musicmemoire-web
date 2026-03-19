@@ -17,8 +17,7 @@
         <div class="consultant-box">
           <strong>Комментарий консультанта</strong>
           <p>
-            Выбери тот вариант, в котором ты легче представляешь готовую песню. Это не строгая настройка,
-            а понятный ориентир для генерации: более тёплое и уверенное звучание или более мягкая и лиричная подача.
+            Выбери тот вариант, в котором ты легче представляешь готовую песню. Итоговую песню будет исполнять тот, кого ты выбираешь в этом шаге (мужчина или женщина)
           </p>
         </div>
 
@@ -30,13 +29,13 @@
           <div class="radio-grid singer-gender-grid">
             <label class="radio-card">
               <input type="radio" name="singer_gender" value="male" {% if (form_singer_gender or draft.singer_gender or '') == 'male' %}checked{% endif %} />
-              <span class="radio-card-title">Мужской голос</span>
+              <span class="radio-card-title">Мужской вокал</span>
               <span class="radio-card-text">Подойдёт, если хочется более уверенного, тёплого и собранного звучания.</span>
             </label>
 
             <label class="radio-card">
               <input type="radio" name="singer_gender" value="female" {% if (form_singer_gender or draft.singer_gender or '') == 'female' %}checked{% endif %} />
-              <span class="radio-card-title">Женский голос</span>
+              <span class="radio-card-title">Женский вокал</span>
               <span class="radio-card-text">Подойдёт, если хочется более нежного, светлого и эмоционального звучания.</span>
             </label>
           </div>
