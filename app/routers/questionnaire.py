@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import timedelta
-from pathlib import Path
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
@@ -18,7 +17,7 @@ from app.core.security import (
     normalize_email,
     utcnow,
 )
-from app.core.storage import save_voice_file
+from app.core.storage import StorageError, ensure_voice_input_local_path, save_voice_file
 from app.core.templates import templates
 from app.models import LyricsVersion, MagicLoginToken, Order, OrderEvent, User, VoiceInput
 from app.models.order_payment import build_order_pricing_preview
@@ -206,8 +205,8 @@ async def run_transcription_for_voice(
     db.commit()
 
     try:
-        result = await transcribe_audio_file(voice_input.storage_path)
-    except TranscriptionServiceError as exc:
+        result = await transcribe_audio_file(str(ensure_voice_input_local_path(voice_input)))
+    except (TranscriptionServiceError, StorageError) as exc:
         voice_input.transcription_status = "failed"
         db.add(
             OrderEvent(
@@ -602,7 +601,7 @@ async def questionnaire_voice_upload(
 
     try:
         stored = save_voice_file(voice_file)
-    except ValueError as exc:
+    except (ValueError, StorageError) as exc:
         return render_story_template(
             request,
             draft,
@@ -618,6 +617,9 @@ async def questionnaire_voice_upload(
         storage_path=stored.absolute_path,
         relative_path=stored.relative_path,
         size_bytes=stored.size_bytes,
+        storage_backend=stored.storage_backend,
+        storage_bucket=stored.storage_bucket,
+        storage_key=stored.storage_key,
         transcription_status="queued",
     )
     db.add(voice_input)
@@ -685,8 +687,9 @@ async def questionnaire_voice_retranscribe(
             status_code=303,
         )
 
-    file_path = Path(latest_voice.storage_path)
-    if not file_path.exists():
+    try:
+        ensure_voice_input_local_path(latest_voice)
+    except StorageError:
         request.session["voice_transcription_error"] = "Файл голосового не найден на сервере."
         return RedirectResponse(
             url=f"{request.url_for('questionnaire_story')}?transcription_failed=1",
@@ -766,9 +769,10 @@ async def questionnaire_voice_stream(
     if voice_input is None:
         raise HTTPException(status_code=404, detail="Файл не найден.")
 
-    file_path = Path(voice_input.storage_path)
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail="Файл не найден на диске.")
+    try:
+        file_path = ensure_voice_input_local_path(voice_input)
+    except StorageError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     return FileResponse(
         path=file_path,
