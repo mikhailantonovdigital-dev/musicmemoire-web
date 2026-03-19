@@ -21,7 +21,7 @@ from app.core.storage import StorageError, ensure_voice_input_local_path, save_v
 from app.core.templates import templates
 from app.models import LyricsVersion, MagicLoginToken, Order, OrderEvent, User, VoiceInput
 from app.models.order_payment import build_order_pricing_preview
-from app.services.email_service import EmailServiceError, send_magic_link_email
+from app.services.email_service import EmailServiceError, magic_link_email_subject, send_magic_link_email
 from app.services.lyrics_generation_service import (
     DualGenerationResult,
     LyricsGenerationError,
@@ -1401,7 +1401,32 @@ async def questionnaire_access_submit(
             recipient_email=email,
             login_url=login_url,
         )
+        create_email_log(
+            db,
+            email_type="magic_link",
+            recipient_email=email,
+            subject=magic_link_email_subject(),
+            status="stub" if delivery.mode == "stub" else "sent",
+            delivery_mode=delivery.mode,
+            order=draft,
+            user=user,
+            payload={"login_url": delivery.login_url, "source": "questionnaire_access"},
+        )
+        db.commit()
     except EmailServiceError as exc:
+        create_email_log(
+            db,
+            email_type="magic_link",
+            recipient_email=email,
+            subject=magic_link_email_subject(),
+            status="failed",
+            delivery_mode="email",
+            order=draft,
+            user=user,
+            error_message=str(exc),
+            payload={"login_url": login_url, "source": "questionnaire_access"},
+        )
+        db.commit()
         pricing = build_order_pricing_preview(db, draft)
         return templates.TemplateResponse(
             "questionnaire/access.html",
