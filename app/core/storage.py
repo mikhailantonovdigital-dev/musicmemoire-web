@@ -34,6 +34,9 @@ class StoredFile:
     size_bytes: int
     absolute_path: str
     relative_path: str
+    storage_backend: str = "local"
+    storage_bucket: str | None = None
+    storage_key: str | None = None
 
 
 class StorageError(RuntimeError):
@@ -44,6 +47,22 @@ def ensure_storage_dirs() -> None:
     base = Path(settings.UPLOADS_DIR)
     (base / "voice").mkdir(parents=True, exist_ok=True)
     (base / "songs").mkdir(parents=True, exist_ok=True)
+    (base / "tmp").mkdir(parents=True, exist_ok=True)
+
+
+def object_storage_enabled() -> bool:
+    return bool(
+        (settings.OBJECT_STORAGE_BUCKET or "").strip()
+        and (settings.OBJECT_STORAGE_ACCESS_KEY_ID or "").strip()
+        and (settings.OBJECT_STORAGE_SECRET_ACCESS_KEY or "").strip()
+    )
+
+
+def _get_upload_size_bytes(upload: UploadFile) -> int:
+    upload.file.seek(0, os.SEEK_END)
+    size = upload.file.tell()
+    upload.file.seek(0)
+    return size
 
 
 def _guess_extension(upload: UploadFile) -> str:
@@ -87,13 +106,6 @@ def _guess_remote_extension(url: str, content_type: str | None) -> str:
     return mapping.get(normalized_type, ".mp3")
 
 
-def _get_upload_size_bytes(upload: UploadFile) -> int:
-    upload.file.seek(0, os.SEEK_END)
-    size = upload.file.tell()
-    upload.file.seek(0)
-    return size
-
-
 def resolve_storage_path(relative_path: str) -> Path:
     base = Path(settings.UPLOADS_DIR).resolve()
     candidate = (base / relative_path).resolve()
@@ -102,7 +114,145 @@ def resolve_storage_path(relative_path: str) -> Path:
     return candidate
 
 
-def save_voice_file(upload: UploadFile) -> StoredFile:
+def _object_storage_prefix() -> str:
+    return (settings.OBJECT_STORAGE_PREFIX or "").strip("/")
+
+
+def build_object_storage_key(relative_path: str) -> str:
+    relative = relative_path.strip().lstrip("/")
+    prefix = _object_storage_prefix()
+    return f"{prefix}/{relative}" if prefix else relative
+
+
+def _create_s3_client():
+    try:
+        import boto3
+        from botocore.config import Config
+    except Exception as exc:  # noqa: BLE001
+        raise StorageError("Не установлен boto3 для object storage.") from exc
+
+    addressing_style = "path" if settings.OBJECT_STORAGE_FORCE_PATH_STYLE else "virtual"
+    config = Config(
+        signature_version="s3v4",
+        s3={"addressing_style": addressing_style},
+    )
+    return boto3.client(
+        "s3",
+        endpoint_url=(settings.OBJECT_STORAGE_ENDPOINT_URL or None),
+        region_name=(settings.OBJECT_STORAGE_REGION or None),
+        aws_access_key_id=settings.OBJECT_STORAGE_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.OBJECT_STORAGE_SECRET_ACCESS_KEY,
+        config=config,
+    )
+
+
+def _upload_local_file_to_object_storage(
+    *,
+    local_path: Path,
+    relative_path: str,
+    content_type: str,
+) -> tuple[str, str]:
+    if not object_storage_enabled():
+        raise StorageError("Object storage не настроен.")
+
+    bucket = (settings.OBJECT_STORAGE_BUCKET or "").strip()
+    storage_key = build_object_storage_key(relative_path)
+    client = _create_s3_client()
+
+    extra_args = {"ContentType": (content_type or "application/octet-stream").split(";", 1)[0].strip()}
+
+    try:
+        with local_path.open("rb") as file_obj:
+            client.upload_fileobj(file_obj, bucket, storage_key, ExtraArgs=extra_args)
+    except Exception as exc:  # noqa: BLE001
+        raise StorageError(f"Не удалось загрузить файл в object storage: {exc}") from exc
+
+    return bucket, storage_key
+
+
+def _download_object_to_local_cache(
+    *,
+    storage_key: str,
+    relative_path: str,
+    max_bytes: int,
+) -> Path:
+    if not object_storage_enabled():
+        raise StorageError("Object storage не настроен.")
+
+    bucket = (settings.OBJECT_STORAGE_BUCKET or "").strip()
+    client = _create_s3_client()
+    target_path = resolve_storage_path(relative_path)
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+
+    try:
+        response = client.get_object(Bucket=bucket, Key=storage_key)
+    except Exception as exc:  # noqa: BLE001
+        raise StorageError(f"Не удалось скачать файл из object storage: {exc}") from exc
+
+    body = response.get("Body")
+    content_length = int(response.get("ContentLength") or 0)
+    if content_length and content_length > max_bytes:
+        raise StorageError("Файл в object storage превышает допустимый размер.")
+
+    size_bytes = 0
+    try:
+        with target_path.open("wb") as out_file:
+            while True:
+                chunk = body.read(1024 * 256)
+                if not chunk:
+                    break
+                size_bytes += len(chunk)
+                if size_bytes > max_bytes:
+                    out_file.close()
+                    target_path.unlink(missing_ok=True)
+                    raise StorageError("Файл в object storage превышает допустимый размер.")
+                out_file.write(chunk)
+    finally:
+        try:
+            body.close()
+        except Exception:  # noqa: BLE001
+            pass
+
+    return target_path
+
+
+def ensure_local_cache_from_object_storage(
+    *,
+    storage_key: str | None,
+    relative_path: str,
+    max_bytes: int,
+) -> Path:
+    if not storage_key:
+        raise StorageError("Для файла не сохранён object storage key.")
+
+    local_path = resolve_storage_path(relative_path)
+    if local_path.exists():
+        return local_path
+
+    return _download_object_to_local_cache(
+        storage_key=storage_key,
+        relative_path=relative_path,
+        max_bytes=max_bytes,
+    )
+
+
+def ensure_voice_input_local_path(voice_input) -> Path:
+    local_path = Path(voice_input.storage_path)
+    if local_path.exists():
+        return local_path
+
+    backend = (getattr(voice_input, "storage_backend", None) or "local").strip() or "local"
+    if backend != "s3":
+        raise StorageError("Файл голосового не найден на сервере.")
+
+    return ensure_local_cache_from_object_storage(
+        storage_key=(getattr(voice_input, "storage_key", None) or "").strip() or None,
+        relative_path=voice_input.relative_path,
+        max_bytes=settings.MAX_VOICE_FILE_MB * 1024 * 1024,
+    )
+
+
+def _save_local_upload(upload: UploadFile) -> StoredFile:
     if not upload.filename:
         raise ValueError("Выбери аудиофайл.")
 
@@ -139,7 +289,27 @@ def save_voice_file(upload: UploadFile) -> StoredFile:
         size_bytes=size_bytes,
         absolute_path=str(absolute_path),
         relative_path=relative_path.as_posix(),
+        storage_backend="local",
+        storage_bucket=None,
+        storage_key=None,
     )
+
+
+def save_voice_file(upload: UploadFile) -> StoredFile:
+    stored = _save_local_upload(upload)
+
+    if not object_storage_enabled():
+        return stored
+
+    bucket, storage_key = _upload_local_file_to_object_storage(
+        local_path=Path(stored.absolute_path),
+        relative_path=stored.relative_path,
+        content_type=stored.content_type,
+    )
+    stored.storage_backend = "s3"
+    stored.storage_bucket = bucket
+    stored.storage_key = storage_key
+    return stored
 
 
 def cache_remote_song_file(remote_url: str, *, order_number: str, song_public_id: str, track_index: int) -> StoredFile:
@@ -200,10 +370,25 @@ def cache_remote_song_file(remote_url: str, *, order_number: str, song_public_id
     except Exception as exc:  # noqa: BLE001
         raise StorageError(f"Не удалось сохранить аудио песни: {exc}") from exc
 
-    return StoredFile(
+    stored = StoredFile(
         original_filename=f"{safe_order_number}-track-{track_index + 1}{ext}",
         content_type=(content_type or "audio/mpeg").split(";", 1)[0].strip() or "audio/mpeg",
         size_bytes=size_bytes,
         absolute_path=str(absolute_path),
         relative_path=relative_path.as_posix(),
+        storage_backend="local",
+        storage_bucket=None,
+        storage_key=None,
     )
+
+    if object_storage_enabled():
+        bucket, storage_key = _upload_local_file_to_object_storage(
+            local_path=absolute_path,
+            relative_path=stored.relative_path,
+            content_type=stored.content_type,
+        )
+        stored.storage_backend = "s3"
+        stored.storage_bucket = bucket
+        stored.storage_key = storage_key
+
+    return stored
