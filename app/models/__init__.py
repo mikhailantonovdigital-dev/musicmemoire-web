@@ -6,6 +6,7 @@ from app.models.magic_login_token import MagicLoginToken
 from app.models.order_payment import OrderPayment
 from app.models.song_generation import SongGeneration
 from app.models.security_event import SecurityEvent
+from app.models.background_job import BackgroundJob
 
 __all__ = [
     "User",
@@ -17,4 +18,5 @@ __all__ = [
     "OrderPayment",
     "SongGeneration",
     "SecurityEvent",
+    "BackgroundJob",
 ]
