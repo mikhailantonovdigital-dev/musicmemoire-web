@@ -6053,10 +6053,6 @@ strong,
   z-index: 1;
 }
 
-.questionnaire-stage {
-  padding-bottom: 24px;
-}
-
 .page-questionnaire .site-footer.site-footer-dark.site-footer-minimal,
 .page-checkout-screen .site-footer.site-footer-dark.site-footer-minimal {
   position: relative;
@@ -6064,7 +6060,7 @@ strong,
   right: auto;
   bottom: auto;
   margin-top: 0;
-  padding: 12px 0 20px;
+  padding: 0 0 18px;
   background:
     radial-gradient(circle at 12% 6%, rgba(118, 132, 255, 0.22), transparent 28%),
     radial-gradient(circle at 88% 12%, rgba(140, 92, 255, 0.24), transparent 26%),
@@ -6075,7 +6071,7 @@ strong,
 
 .page-questionnaire .footer-bottom-minimal,
 .page-checkout-screen .footer-bottom-minimal {
-  min-height: 56px;
+  min-height: 36px;
   display: flex;
   align-items: center;
   justify-content: space-between;
