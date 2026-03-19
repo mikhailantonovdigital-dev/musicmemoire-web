@@ -55,14 +55,6 @@ SONG_STATUS_OPTIONS = [
     ("canceled", "canceled"),
 ]
 
-SUPPORT_STATUS_OPTIONS = [
-    ("new", "new"),
-    ("in_progress", "in_progress"),
-    ("waiting_user", "waiting_user"),
-    ("closed", "closed"),
-]
-SUPPORT_FILTER_OPTIONS = [("all", "Любой статус"), *SUPPORT_STATUS_OPTIONS]
-
 FILTER_ALL = "all"
 STORY_SOURCE_OPTIONS = [
     (FILTER_ALL, "Любой источник"),
@@ -87,6 +79,16 @@ ORDER_STATUS_FILTER_OPTIONS = [(FILTER_ALL, "Любой статус заказ�
 
 VALID_ORDER_STATUSES = {value for value, _label in ORDER_STATUS_OPTIONS}
 VALID_SONG_STATUSES = {value for value, _label in SONG_STATUS_OPTIONS}
+VALID_SUPPORT_STATUSES = {value for value, _label in SUPPORT_STATUS_OPTIONS if value != FILTER_ALL}
+
+SUPPORT_STATUS_OPTIONS = [
+    (FILTER_ALL, "Любой статус обращения"),
+    ("new", "new"),
+    ("open", "open"),
+    ("pending", "pending"),
+    ("closed", "closed"),
+]
+
 FUNNEL_STAGES = [
     ("Черновики", ["draft"]),
     ("Ждут оплату", ["awaiting_payment", "payment_pending", "payment_canceled"]),
@@ -222,49 +224,6 @@ def get_lyrics_versions(db: Session, order_id: int) -> list[LyricsVersion]:
     )
 
 
-def humanize_support_status(status: str | None) -> str:
-    mapping = {
-        "new": "Новое",
-        "in_progress": "В работе",
-        "waiting_user": "Ждём клиента",
-        "closed": "Закрыто",
-    }
-    return mapping.get(status or "", status or "—")
-
-
-def get_recent_support_threads(db: Session, limit: int = 12) -> list[SupportThread]:
-    return db.query(SupportThread).order_by(SupportThread.updated_at.desc(), SupportThread.id.desc()).limit(limit).all()
-
-
-def get_support_threads_for_order(db: Session, order_id: int, limit: int = 20) -> list[SupportThread]:
-    return db.query(SupportThread).filter(SupportThread.order_id == order_id).order_by(SupportThread.updated_at.desc(), SupportThread.id.desc()).limit(limit).all()
-
-
-def get_latest_support_message(thread: SupportThread) -> SupportMessage | None:
-    if not thread.messages:
-        return None
-    return thread.messages[-1]
-
-
-def build_support_thread_card(thread: SupportThread) -> dict:
-    latest_message = get_latest_support_message(thread)
-    return {
-        "thread": thread,
-        "status_label": humanize_support_status(thread.status),
-        "latest_message": latest_message,
-        "message_count": len(thread.messages or []),
-    }
-
-
-def find_support_thread(db: Session, thread_public_id: str) -> SupportThread | None:
-    return db.query(SupportThread).filter(SupportThread.public_id == thread_public_id).first()
-
-
-def apply_support_status(thread: SupportThread, new_status: str) -> None:
-    thread.status = new_status
-    thread.closed_at = utcnow() if new_status == "closed" else None
-
-
 def humanize_payment_status(status: str | None) -> str:
     mapping = {
         "pending": "Ожидает оплаты",
@@ -314,6 +273,50 @@ def humanize_security_status(status: str | None) -> str:
 
 
 
+
+
+
+def humanize_support_status(status: str | None) -> str:
+    mapping = {
+        "new": "Новое",
+        "open": "В работе",
+        "pending": "Ждёт клиента",
+        "closed": "Закрыто",
+    }
+    return mapping.get(status or "", status or "—")
+
+
+def get_support_threads_for_order(db: Session, order_id: int) -> list[SupportThread]:
+    return (
+        db.query(SupportThread)
+        .filter(SupportThread.order_id == order_id)
+        .order_by(SupportThread.updated_at.desc(), SupportThread.id.desc())
+        .all()
+    )
+
+
+def get_recent_support_threads(db: Session, limit: int = 20) -> list[SupportThread]:
+    return db.query(SupportThread).order_by(SupportThread.updated_at.desc(), SupportThread.id.desc()).limit(limit).all()
+
+
+def get_support_thread_by_public_id(db: Session, thread_public_id: str | None) -> SupportThread | None:
+    if not thread_public_id:
+        return None
+    return db.query(SupportThread).filter(SupportThread.public_id == thread_public_id).first()
+
+
+def build_support_thread_card(thread: SupportThread) -> dict:
+    visible_messages = [item for item in thread.messages if not item.is_internal]
+    last_message = thread.messages[-1] if thread.messages else None
+    return {
+        "thread": thread,
+        "status_label": humanize_support_status(thread.status),
+        "message_count": len(thread.messages),
+        "visible_message_count": len(visible_messages),
+        "last_message": last_message,
+        "order_number": thread.order.order_number if thread.order else "—",
+        "email": thread.email or (thread.user.email if thread.user and thread.user.email else "—"),
+    }
 
 def humanize_background_job_status(status: str | None) -> str:
     mapping = {
@@ -485,8 +488,7 @@ async def admin_dashboard(
     blocked_security_events_today = db.query(func.count(SecurityEvent.id)).filter(SecurityEvent.status.in_(["blocked", "suspicious"]), SecurityEvent.created_at >= day_start_utc, SecurityEvent.created_at < day_end_utc).scalar() or 0
     queued_background_jobs = db.query(func.count(BackgroundJob.id)).filter(BackgroundJob.status.in_(["queued", "started"])).scalar() or 0
     failed_background_jobs_today = db.query(func.count(BackgroundJob.id)).filter(BackgroundJob.status == "failed", BackgroundJob.finished_at >= day_start_utc, BackgroundJob.finished_at < day_end_utc).scalar() or 0
-    support_threads_today = db.query(func.count(SupportThread.id)).filter(SupportThread.created_at >= day_start_utc, SupportThread.created_at < day_end_utc).scalar() or 0
-    open_support_threads = db.query(func.count(SupportThread.id)).filter(SupportThread.status != "closed").scalar() or 0
+    open_support_threads = db.query(func.count(SupportThread.id)).filter(SupportThread.status.in_(["new", "open", "pending"])).scalar() or 0
 
     orders_query = db.query(Order).outerjoin(User, Order.user_id == User.id)
     if query_text:
@@ -516,7 +518,7 @@ async def admin_dashboard(
     recent_problem_payments = db.query(OrderPayment).filter(OrderPayment.status.in_(["pending", "waiting_for_capture", "canceled"])).order_by(OrderPayment.updated_at.desc(), OrderPayment.id.desc()).limit(10).all()
     recent_security_events = db.query(SecurityEvent).filter(SecurityEvent.status.in_(["blocked", "suspicious"])).order_by(SecurityEvent.id.desc()).limit(12).all()
     recent_background_jobs = get_recent_background_jobs(db, limit=12)
-    recent_support_threads = get_recent_support_threads(db, limit=10)
+    recent_support_threads = get_recent_support_threads(db, limit=12)
 
     return templates.TemplateResponse(
         "admin/dashboard.html",
@@ -542,7 +544,6 @@ async def admin_dashboard(
             "blocked_security_events_today": blocked_security_events_today,
             "queued_background_jobs": queued_background_jobs,
             "failed_background_jobs_today": failed_background_jobs_today,
-            "support_threads_today": support_threads_today,
             "open_support_threads": open_support_threads,
             "order_status_counts": order_status_counts,
             "payment_status_counts": payment_status_counts,
@@ -555,7 +556,6 @@ async def admin_dashboard(
             "recent_background_jobs": [build_background_job_card(item) for item in recent_background_jobs],
             "recent_support_threads": [build_support_thread_card(item) for item in recent_support_threads],
             "humanize_security_action": humanize_security_action,
-            "humanize_support_status": humanize_support_status,
             "order_status_filter_options": ORDER_STATUS_FILTER_OPTIONS,
             "payment_status_filter_options": PAYMENT_STATUS_FILTER_OPTIONS,
             "song_status_filter_options": SONG_STATUS_FILTER_OPTIONS,
@@ -588,7 +588,7 @@ async def admin_order_detail(order_public_id: str, request: Request, db: Session
     events = db.query(OrderEvent).filter(OrderEvent.order_id == order.id).order_by(OrderEvent.id.desc()).limit(30).all()
     security_events = get_recent_security_events_for_order(db, order.id, limit=20)
     background_jobs = get_recent_background_jobs_for_order(db, order.id, limit=20)
-    support_threads = get_support_threads_for_order(db, order.id, limit=20)
+    support_threads = get_support_threads_for_order(db, order.id)
 
     return templates.TemplateResponse(
         "admin/order_detail.html",
@@ -620,6 +620,7 @@ async def admin_order_detail(order_public_id: str, request: Request, db: Session
             "events": events,
             "security_events": [build_security_event_card(item) for item in security_events],
             "background_jobs": [build_background_job_card(item) for item in background_jobs],
+            "support_threads": [build_support_thread_card(item) for item in support_threads],
             "humanize_payment_status": humanize_payment_status,
             "humanize_security_action": humanize_security_action,
         },
@@ -1160,18 +1161,20 @@ async def admin_order_song_ready_email_resend(order_public_id: str, request: Req
     set_admin_flash(request, "success", "Переотправка письма о готовой песне поставлена в очередь.")
     return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
 
+
 @router.get("/support", response_class=HTMLResponse)
-async def admin_support_page(
+async def admin_support_dashboard(
     request: Request,
     q: str | None = None,
-    status: str = "all",
+    status: str = FILTER_ALL,
+    thread: str | None = None,
     db: Session = Depends(get_db),
 ):
     if not has_admin_access(request):
         return RedirectResponse(url="/admin/login", status_code=303)
 
     query_text = (q or "").strip()
-    status = (status or "all").strip() or "all"
+    status = (status or FILTER_ALL).strip() or FILTER_ALL
 
     threads_query = db.query(SupportThread).outerjoin(Order, SupportThread.order_id == Order.id).outerjoin(User, SupportThread.user_id == User.id)
     if query_text:
@@ -1186,23 +1189,24 @@ async def admin_support_page(
                 User.email.ilike(pattern),
             )
         )
-    if status != "all":
+    if status != FILTER_ALL:
         threads_query = threads_query.filter(SupportThread.status == status)
 
     threads = threads_query.order_by(SupportThread.updated_at.desc(), SupportThread.id.desc()).limit(100).all()
+    selected_thread = get_support_thread_by_public_id(db, thread) or (threads[0] if threads else None)
 
     return templates.TemplateResponse(
         "admin/support.html",
         {
             "request": request,
-            "page_title": "Админка · Поддержка",
+            "page_title": "Поддержка — админка",
             "flash": pop_admin_flash(request),
             "admin_token_enabled": bool(settings.ADMIN_TOKEN),
             "q": query_text,
             "status": status,
-            "support_filter_options": SUPPORT_FILTER_OPTIONS,
-            "threads": [build_support_thread_card(item) for item in threads],
-            "humanize_support_status": humanize_support_status,
+            "status_options": SUPPORT_STATUS_OPTIONS,
+            "thread_cards": [build_support_thread_card(item) for item in threads],
+            "selected_thread": build_support_thread_card(selected_thread) if selected_thread else None,
         },
     )
 
@@ -1211,76 +1215,53 @@ async def admin_support_page(
 async def admin_support_status_update(
     thread_public_id: str,
     request: Request,
-    status: str = Form("new"),
-    next_url: str = Form("/admin/support"),
+    status: str = Form(...),
     db: Session = Depends(get_db),
 ):
     if not has_admin_access(request):
         return RedirectResponse(url="/admin/login", status_code=303)
-
-    thread = find_support_thread(db, thread_public_id)
+    thread = get_support_thread_by_public_id(db, thread_public_id)
     if thread is None:
         set_admin_flash(request, "error", "Обращение не найдено.")
         return RedirectResponse(url="/admin/support", status_code=303)
-
-    if status not in {value for value, _label in SUPPORT_STATUS_OPTIONS}:
-        set_admin_flash(request, "warning", "Неизвестный статус обращения.")
-        return RedirectResponse(url=next_url or "/admin/support", status_code=303)
-
-    apply_support_status(thread, status)
-    if thread.order_id:
-        db.add(
-            OrderEvent(
-                order_id=thread.order_id,
-                event_type="support_thread_status_changed",
-                payload={"thread_public_id": thread.public_id, "status": status},
-            )
-        )
+    target_status = (status or "").strip()
+    if target_status not in VALID_SUPPORT_STATUSES:
+        set_admin_flash(request, "error", "Недопустимый статус обращения.")
+        return RedirectResponse(url=f"/admin/support?thread={thread.public_id}", status_code=303)
+    previous_status = thread.status
+    thread.status = target_status
+    if thread.order is not None:
+        db.add(OrderEvent(order=thread.order, event_type="support_thread_status_changed", payload={"thread_public_id": thread.public_id, "status_from": previous_status, "status_to": target_status}))
     db.commit()
-    set_admin_flash(request, "success", f"Статус обращения {thread.public_id} обновлён.")
-    return RedirectResponse(url=next_url or "/admin/support", status_code=303)
+    set_admin_flash(request, "success", f"Статус обращения изменён: {previous_status} → {target_status}.")
+    return RedirectResponse(url=f"/admin/support?thread={thread.public_id}", status_code=303)
 
 
 @router.post("/support/{thread_public_id}/reply")
 async def admin_support_reply(
     thread_public_id: str,
     request: Request,
-    message_text: str = Form(""),
-    status: str = Form("in_progress"),
-    next_url: str = Form("/admin/support"),
+    body: str = Form(""),
+    is_internal: str | None = Form(None),
     db: Session = Depends(get_db),
 ):
     if not has_admin_access(request):
         return RedirectResponse(url="/admin/login", status_code=303)
-
-    thread = find_support_thread(db, thread_public_id)
+    thread = get_support_thread_by_public_id(db, thread_public_id)
     if thread is None:
         set_admin_flash(request, "error", "Обращение не найдено.")
         return RedirectResponse(url="/admin/support", status_code=303)
+    message_text = (body or "").strip()
+    if not message_text:
+        set_admin_flash(request, "error", "Введите текст ответа или заметки.")
+        return RedirectResponse(url=f"/admin/support?thread={thread.public_id}", status_code=303)
 
-    clean_message = (message_text or "").strip()
-    if len(clean_message) < 2:
-        set_admin_flash(request, "warning", "Введите ответ или заметку для истории обращения.")
-        return RedirectResponse(url=next_url or "/admin/support", status_code=303)
-
-    db.add(
-        SupportMessage(
-            thread_id=thread.id,
-            author_role="admin",
-            author_email=settings.SMTP_FROM_EMAIL,
-            message_text=clean_message,
-        )
-    )
-    if status in {value for value, _label in SUPPORT_STATUS_OPTIONS}:
-        apply_support_status(thread, status)
-    if thread.order_id:
-        db.add(
-            OrderEvent(
-                order_id=thread.order_id,
-                event_type="support_admin_reply",
-                payload={"thread_public_id": thread.public_id, "status": thread.status},
-            )
-        )
+    message = SupportMessage(sender_role="admin", body=message_text, is_internal=bool(is_internal))
+    thread.messages.append(message)
+    if thread.status == "new":
+        thread.status = "open"
+    if thread.order is not None:
+        db.add(OrderEvent(order=thread.order, event_type="support_thread_admin_reply_added", payload={"thread_public_id": thread.public_id, "is_internal": bool(is_internal)}))
     db.commit()
-    set_admin_flash(request, "success", f"Ответ по обращению {thread.public_id} сохранён.")
-    return RedirectResponse(url=next_url or "/admin/support", status_code=303)
+    set_admin_flash(request, "success", "Сообщение в обращение добавлено.")
+    return RedirectResponse(url=f"/admin/support?thread={thread.public_id}", status_code=303)
