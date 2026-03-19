@@ -19,7 +19,7 @@ from app.core.security import (
 from app.core.templates import templates
 from app.models import MagicLoginToken, Order, User
 from app.models.order_payment import build_order_pricing_preview
-from app.services.email_service import EmailServiceError, send_magic_link_email
+from app.services.email_service import EmailServiceError, magic_link_email_subject, send_magic_link_email
 from app.services.rate_limit_service import RateLimitRule, enforce_rate_limit, get_client_ip
 from app.services.song_workflow import get_latest_ready_song, get_latest_song, get_song_attempts
 
@@ -221,8 +221,31 @@ async def account_login_submit(
                 recipient_email=email,
                 login_url=login_url,
             )
+            create_email_log(
+                db,
+                email_type="magic_link",
+                recipient_email=email,
+                subject=magic_link_email_subject(),
+                status="stub" if delivery.mode == "stub" else "sent",
+                delivery_mode=delivery.mode,
+                user=user,
+                payload={"login_url": delivery.login_url},
+            )
+            db.commit()
 
         except EmailServiceError as exc:
+            create_email_log(
+                db,
+                email_type="magic_link",
+                recipient_email=email,
+                subject=magic_link_email_subject(),
+                status="failed",
+                delivery_mode="email",
+                user=user,
+                error_message=str(exc),
+                payload={"login_url": login_url},
+            )
+            db.commit()
             return templates.TemplateResponse(
                 "account/login.html",
                 {
