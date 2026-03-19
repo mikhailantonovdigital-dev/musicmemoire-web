@@ -21,6 +21,7 @@ from app.core.storage import StorageError, ensure_voice_input_local_path, object
 from app.core.templates import templates
 from app.models import LyricsVersion, MagicLoginToken, Order, OrderEvent, User, VoiceInput
 from app.models.order_payment import build_order_pricing_preview
+from app.services.email_log_service import create_email_log
 from app.services.email_service import EmailServiceError, magic_link_email_subject, send_magic_link_email
 from app.services.lyrics_generation_service import (
     DualGenerationResult,
@@ -1463,9 +1464,6 @@ async def questionnaire_access_submit(
         request.session.pop("stub_questionnaire_login_url", None)
 
     return RedirectResponse(
-        url=(
-            f"{request.url_for('account_order_detail', order_public_id=draft.public_id)}"
-            f"?welcome=1&delivery={delivery.mode}"
-        ),
+        url=f"/checkout/start/{draft.public_id}",
         status_code=303,
     )
