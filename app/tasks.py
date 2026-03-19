@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.db import SessionLocal
 from app.models import BackgroundJob, LyricsVersion, Order, OrderEvent, OrderPayment, SongGeneration, VoiceInput
+from app.core.storage import StorageError, ensure_voice_input_local_path
 from app.services.background_jobs import mark_job_failed, mark_job_started, mark_job_succeeded
 from app.services.email_service import EmailServiceError, send_payment_success_email, send_song_ready_email
 from app.services.lyrics_generation_service import DualGenerationResult, LyricsGenerationError, generate_dual_lyrics_versions
@@ -92,8 +93,9 @@ def run_voice_transcription_task(
         db.commit()
 
         try:
-            result = asyncio.run(transcribe_audio_file(voice_input.storage_path))
-        except TranscriptionServiceError as exc:
+            local_path = ensure_voice_input_local_path(voice_input)
+            result = asyncio.run(transcribe_audio_file(str(local_path)))
+        except (TranscriptionServiceError, StorageError) as exc:
             db.rollback()
             voice_input = _get_voice_input(db, voice_public_id)
             order = _get_order(db, order_public_id)
