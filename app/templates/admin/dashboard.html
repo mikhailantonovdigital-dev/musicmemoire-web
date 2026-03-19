@@ -96,6 +96,8 @@
       <div class="metric-card"><span>Блокировки и подозрительные действия сегодня</span><strong>{{ blocked_security_events_today }}</strong></div>
       <div class="metric-card"><span>Фоновые задачи в работе</span><strong>{{ queued_background_jobs }}</strong></div>
       <div class="metric-card"><span>Ошибки фоновых задач сегодня</span><strong>{{ failed_background_jobs_today }}</strong></div>
+      <div class="metric-card"><span>Обращения в поддержку сегодня</span><strong>{{ support_threads_today }}</strong></div>
+      <div class="metric-card"><span>Открытые обращения</span><strong>{{ open_support_threads }}</strong></div>
     </div>
 
     <div class="form-card" style="margin-top: 20px;">
@@ -170,6 +172,38 @@
       </div>
     </div>
 
+
+    <div class="admin-status-grid" style="margin-top: 20px;">
+      <div class="form-card">
+        <div class="lyrics-card-head" style="margin-bottom: 16px;">
+          <div>
+            <h2 class="form-title" style="margin-bottom: 4px;">Последние обращения в поддержку</h2>
+            <p class="muted" style="margin: 0;">Обращения с сайта и по заказам. Открываются в отдельном операторском разделе.</p>
+          </div>
+          <a href="/admin/support" class="btn btn-secondary">Открыть раздел поддержки</a>
+        </div>
+        {% if recent_support_threads %}
+          <div class="admin-events">
+            {% for item in recent_support_threads %}
+              {% set thread = item.thread %}
+              <div class="admin-event">
+                <div class="admin-event-head"><strong>{{ thread.public_id }}</strong><span>{{ thread.updated_at }}</span></div>
+                <p style="margin: 0 0 8px;"><strong>Статус:</strong> {{ item.status_label }}</p>
+                <p style="margin: 0 0 8px;"><strong>Email:</strong> {{ thread.email or '—' }}</p>
+                {% if thread.order %}<p style="margin: 0 0 8px;"><strong>Заказ:</strong> {{ thread.order.order_number }}</p>{% endif %}
+                {% if item.latest_message %}<p class="helper-text" style="margin: 0 0 8px;">{{ item.latest_message.message_text[:180] }}{% if item.latest_message.message_text|length > 180 %}...{% endif %}</p>{% endif %}
+                <div class="form-actions" style="margin-top: 12px;">
+                  {% if thread.order %}<a href="/admin/orders/{{ thread.order.public_id }}" class="btn btn-secondary">Открыть заказ</a>{% endif %}
+                  <a href="/admin/support?q={{ thread.public_id }}" class="btn btn-secondary">Открыть обращение</a>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="muted">Обращений пока нет.</p>
+        {% endif %}
+      </div>
+    </div>
     <div class="form-card" style="margin-top: 20px;">
       <h2 class="form-title">Последние фоновые задачи</h2>
       {% if recent_background_jobs %}
