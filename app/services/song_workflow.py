@@ -8,8 +8,8 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.security import utcnow
 from app.core.storage import StorageError, cache_remote_song_file, resolve_storage_path
-from app.models import Order, OrderEvent, SongGeneration
-from app.services.email_service import EmailServiceError, send_song_ready_email
+from app.models import BackgroundJob, Order, OrderEvent, SongGeneration
+from app.services.background_jobs import BackgroundJobError, enqueue_background_job, find_active_job_for_order
 from app.services.suno_service import (
     SongCallbackResult,
     SongSyncResult,
@@ -51,35 +51,33 @@ def _get_primary_song_audio_url(song: SongGeneration) -> str | None:
     return (song.audio_url or "").strip() or None
 
 
-def maybe_send_song_ready_email(db: Session, song: SongGeneration) -> None:
+def maybe_send_song_ready_email(db: Session, song: SongGeneration) -> BackgroundJob | None:
     order = song.order
     if order.user is None or not order.user.email:
-        return
+        return None
 
     if has_order_event(db, order, "song_ready_email_sent"):
-        return
+        return None
 
-    order_url = f"{settings.BASE_URL.rstrip('/')}/account/orders/{order.public_id}"
+    active_job = find_active_job_for_order(db, order, "song_ready_email")
+    if active_job is not None:
+        return active_job
+
+    from app.tasks import run_song_ready_email_task
 
     try:
-        send_song_ready_email(
-            recipient_email=order.user.email,
-            order_number=order.order_number,
-            order_url=order_url,
-            audio_url=_get_primary_song_audio_url(song),
+        return enqueue_background_job(
+            db,
+            order=order,
+            job_type="song_ready_email",
+            func=run_song_ready_email_task,
+            payload={
+                "order_public_id": order.public_id,
+                "song_public_id": song.public_id,
+                "audio_url": _get_primary_song_audio_url(song),
+            },
         )
-        db.add(
-            OrderEvent(
-                order=order,
-                event_type="song_ready_email_sent",
-                payload={
-                    "song_job_id": song.public_id,
-                    "email": order.user.email,
-                    "audio_url": _get_primary_song_audio_url(song),
-                },
-            )
-        )
-    except EmailServiceError as exc:
+    except BackgroundJobError as exc:
         db.add(
             OrderEvent(
                 order=order,
@@ -91,21 +89,27 @@ def maybe_send_song_ready_email(db: Session, song: SongGeneration) -> None:
                 },
             )
         )
+        return None
 
 
-def resend_song_ready_email(db: Session, song: SongGeneration) -> None:
+def resend_song_ready_email(db: Session, song: SongGeneration) -> BackgroundJob | None:
     order = song.order
     if order.user is None or not order.user.email:
-        raise EmailServiceError("У заказа нет email для отправки письма.")
+        raise RuntimeError("У заказа нет email для отправки письма.")
 
-    order_url = f"{settings.BASE_URL.rstrip('/')}/account/orders/{order.public_id}"
+    from app.tasks import run_song_ready_email_task
 
     try:
-        send_song_ready_email(
-            recipient_email=order.user.email,
-            order_number=order.order_number,
-            order_url=order_url,
-            audio_url=_get_primary_song_audio_url(song),
+        background_job = enqueue_background_job(
+            db,
+            order=order,
+            job_type="song_ready_email",
+            func=run_song_ready_email_task,
+            payload={
+                "order_public_id": order.public_id,
+                "song_public_id": song.public_id,
+                "audio_url": _get_primary_song_audio_url(song),
+            },
         )
         db.add(
             OrderEvent(
@@ -116,10 +120,12 @@ def resend_song_ready_email(db: Session, song: SongGeneration) -> None:
                     "email": order.user.email,
                     "audio_url": _get_primary_song_audio_url(song),
                     "trigger": "admin_manual_resend",
+                    "background_job_id": background_job.public_id,
                 },
             )
         )
-    except EmailServiceError as exc:
+        return background_job
+    except BackgroundJobError as exc:
         db.add(
             OrderEvent(
                 order=order,
@@ -133,7 +139,7 @@ def resend_song_ready_email(db: Session, song: SongGeneration) -> None:
                 },
             )
         )
-        raise
+        raise RuntimeError(str(exc)) from exc
 
 
 def get_song_attempts(order: Order) -> list[SongGeneration]:
@@ -290,7 +296,7 @@ def cache_song_assets(db: Session, song: SongGeneration, *, source: str) -> None
         )
 
 
-def create_song_job(db: Session, order: Order, *, event_type: str = "song_generation_started") -> SongGeneration:
+def create_song_job_record(db: Session, order: Order, *, queued_event_type: str = "song_generation_enqueued", trigger: str | None = None) -> SongGeneration:
     latest_song = get_latest_song(order)
     if latest_song and latest_song.status in RUNNING_SONG_STATUSES:
         return latest_song
@@ -317,14 +323,60 @@ def create_song_job(db: Session, order: Order, *, event_type: str = "song_genera
     )
     db.add(song)
     db.flush()
+    order.status = "song_pending"
 
-    result = start_song_generation(
-        order_number=order.order_number,
-        lyrics_text=lyrics_text,
-        song_style=order.song_style,
-        song_style_custom=order.song_style_custom,
-        singer_gender=order.singer_gender,
+    db.add(
+        OrderEvent(
+            order=order,
+            event_type=queued_event_type,
+            payload={
+                "song_job_id": song.public_id,
+                "attempt_no": song.attempt_no,
+                "provider": song.provider,
+                "trigger": trigger,
+            },
+        )
     )
+    return song
+
+
+def start_song_job_now(
+    db: Session,
+    song: SongGeneration,
+    *,
+    started_event_type: str,
+    failed_event_type: str,
+    trigger: str,
+    payment: Any | None = None,
+    background_job: BackgroundJob | None = None,
+) -> SongGeneration:
+    order = song.order
+    try:
+        result = start_song_generation(
+            order_number=order.order_number,
+            lyrics_text=song.lyrics_text_snapshot,
+            song_style=order.song_style,
+            song_style_custom=order.song_style_custom,
+            singer_gender=order.singer_gender,
+        )
+    except SunoServiceError as exc:
+        song.status = "failed"
+        song.error_message = str(exc)
+        song.started_at = song.started_at or utcnow()
+        song.finished_at = utcnow()
+        order.status = "song_failed"
+        payload = {
+            "song_job_id": song.public_id,
+            "trigger": trigger,
+            "attempt_no": song.attempt_no,
+            "error": str(exc),
+        }
+        if payment is not None:
+            payload["payment_public_id"] = payment.public_id
+        if background_job is not None:
+            payload["background_job_id"] = background_job.public_id
+        db.add(OrderEvent(order=order, event_type=failed_event_type, payload=payload))
+        return song
 
     song.external_job_id = result.external_job_id
     song.status = result.status
@@ -333,19 +385,30 @@ def create_song_job(db: Session, order: Order, *, event_type: str = "song_genera
     song.error_message = None
     order.status = "song_pending"
 
-    db.add(
-        OrderEvent(
-            order=order,
-            event_type=event_type,
-            payload={
-                "song_job_id": song.public_id,
-                "attempt_no": song.attempt_no,
-                "provider": song.provider,
-                "external_job_id": song.external_job_id,
-            },
-        )
-    )
+    payload = {
+        "song_job_id": song.public_id,
+        "trigger": trigger,
+        "attempt_no": song.attempt_no,
+        "provider": song.provider,
+        "external_job_id": song.external_job_id,
+    }
+    if payment is not None:
+        payload["payment_public_id"] = payment.public_id
+    if background_job is not None:
+        payload["background_job_id"] = background_job.public_id
+    db.add(OrderEvent(order=order, event_type=started_event_type, payload=payload))
     return song
+
+
+def create_song_job(db: Session, order: Order, *, event_type: str = "song_generation_started") -> SongGeneration:
+    song = create_song_job_record(db, order, queued_event_type=event_type, trigger="sync_inline")
+    return start_song_job_now(
+        db,
+        song,
+        started_event_type=event_type,
+        failed_event_type="song_generation_start_failed",
+        trigger="sync_inline",
+    )
 
 
 def _merge_raw_payload(song: SongGeneration, sync_raw: dict[str, Any], *, bucket_name: str) -> dict[str, Any]:
