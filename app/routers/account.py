@@ -21,6 +21,7 @@ from app.models import MagicLoginToken, Order, User
 from app.models.order_payment import build_order_pricing_preview
 from app.services.email_log_service import create_email_log
 from app.services.email_service import EmailServiceError, magic_link_email_subject, send_magic_link_email
+from app.services.payment_workflow import FINAL_PAYMENT_STATUSES, sync_payment_with_remote
 from app.services.rate_limit_service import RateLimitRule, enforce_rate_limit, get_client_ip
 from app.services.song_workflow import get_latest_ready_song, get_latest_song, get_song_attempts
 
