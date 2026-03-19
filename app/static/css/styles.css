@@ -5133,7 +5133,7 @@ strong,
 }
 
 .questionnaire-stage {
-  padding: 96px 0 64px;
+  padding: 108px 0 76px;
 }
 
 .questionnaire-shell {
@@ -5376,8 +5376,8 @@ strong,
 
 @media (max-width: 980px) {
   .questionnaire-stage {
-    padding-top: 82px;
-    padding-bottom: 56px;
+    padding-top: 92px;
+    padding-bottom: 64px;
   }
 
   .questionnaire-shell {
@@ -5388,8 +5388,8 @@ strong,
 
 @media (max-width: 640px) {
   .questionnaire-stage {
-    padding-top: 72px;
-    padding-bottom: 44px;
+    padding-top: 82px;
+    padding-bottom: 52px;
   }
 
   .questionnaire-shell {
@@ -6215,4 +6215,195 @@ strong,
     justify-content: flex-start;
     gap: 8px;
   }
+}
+
+
+/* ===== 2026-03-19 account chrome + simplified order card ===== */
+.page-account-screen {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.page-account-screen .site-header,
+.page-account-screen .site-header-upgraded,
+.page-account-screen .site-header-dark {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  background: transparent !important;
+  border-bottom: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+.page-account-screen .site-main {
+  flex: 1 0 auto;
+  min-height: calc(100vh - 180px);
+  position: relative;
+  background:
+    radial-gradient(circle at 12% 6%, rgba(118, 132, 255, 0.22), transparent 28%),
+    radial-gradient(circle at 88% 12%, rgba(140, 92, 255, 0.24), transparent 26%),
+    radial-gradient(circle at 52% 100%, rgba(74, 195, 255, 0.14), transparent 34%),
+    linear-gradient(180deg, #060b14 0%, #08101d 44%, #091322 72%, #070d18 100%);
+}
+
+.page-account-screen .site-main::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0)),
+    radial-gradient(circle at 18% 22%, rgba(152, 118, 255, 0.12), transparent 18%),
+    radial-gradient(circle at 82% 78%, rgba(76, 193, 255, 0.10), transparent 20%),
+    radial-gradient(circle at 50% 46%, rgba(110, 126, 255, 0.07), transparent 24%);
+}
+
+.page-account-screen .container,
+.page-account-screen .container.narrow {
+  position: relative;
+  z-index: 1;
+}
+
+.page-account-screen .site-footer.site-footer-dark.site-footer-minimal {
+  margin-top: 0;
+  padding: 0 0 18px;
+  background:
+    radial-gradient(circle at 12% 6%, rgba(118, 132, 255, 0.22), transparent 28%),
+    radial-gradient(circle at 88% 12%, rgba(140, 92, 255, 0.24), transparent 26%),
+    radial-gradient(circle at 52% 100%, rgba(74, 195, 255, 0.14), transparent 34%),
+    linear-gradient(180deg, #060b14 0%, #08101d 44%, #091322 72%, #070d18 100%) !important;
+  border-top: 0 !important;
+}
+
+.page-account-screen .footer-bottom-minimal {
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  color: rgba(233, 239, 255, 0.78);
+}
+
+.account-order-stage {
+  padding-top: 112px;
+  padding-bottom: 82px;
+}
+
+.account-order-shell {
+  gap: 18px;
+}
+
+.account-order-head {
+  margin-bottom: 0;
+}
+
+.account-order-number {
+  font-size: clamp(26px, 3.2vw, 34px) !important;
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.account-song-meta-card,
+.account-song-card {
+  position: relative;
+  z-index: 1;
+}
+
+.account-song-meta-list {
+  margin-top: 14px;
+}
+
+.account-song-meta-list .detail-list-item + .detail-list-item {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(160, 181, 220, 0.12);
+}
+
+.account-song-results {
+  display: grid;
+  gap: 14px;
+}
+
+.account-song-result-item {
+  padding: 16px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 18px;
+  background: rgba(255,255,255,.03);
+}
+
+.account-song-result-title {
+  margin: 0 0 10px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.account-song-spinner-card {
+  width: 100%;
+  margin-top: 12px;
+}
+
+.page-account-screen .dashboard-hero-dark,
+.page-account-screen .page-shell-dark {
+  background: transparent;
+  box-shadow: none;
+}
+
+@media (max-width: 760px) {
+  .page-account-screen .footer-bottom-minimal {
+    min-height: 0;
+    align-items: flex-start;
+    justify-content: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+}
+
+@media (max-width: 640px) {
+  .page-account-screen {
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .page-account-screen .site-header,
+  .page-account-screen .site-header-upgraded,
+  .page-account-screen .site-header-dark {
+    position: relative;
+    background: linear-gradient(180deg, rgba(8, 14, 28, 0.96), rgba(8, 14, 28, 0.72)) !important;
+    backdrop-filter: blur(18px) saturate(110%) !important;
+  }
+
+  .page-account-screen .header-shell {
+    min-height: auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "brand actions"
+      "nav nav";
+    align-items: center;
+    row-gap: 12px;
+    column-gap: 12px;
+    padding: calc(env(safe-area-inset-top, 0px) + 10px) 0 10px;
+  }
+
+  .page-account-screen .brand { grid-area: brand; min-width: 0; display: flex; align-items: center; gap: 12px; }
+  .page-account-screen .logo-badge { width: 52px; height: 52px; border-radius: 18px; font-size: 16px; }
+  .page-account-screen .brand-copy { gap: 0; min-width: 0; }
+  .page-account-screen .logo-text { font-size: 15px; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .page-account-screen .header-actions { grid-area: actions; width: auto; margin-top: 0; display: flex; align-items: center; justify-content: flex-end; justify-self: end; gap: 0; }
+  .page-account-screen .header-link-btn { width: auto; min-height: 42px; padding: 0 14px; border-radius: 14px; white-space: nowrap; font-size: 15px; }
+  .page-account-screen .header-cta { display: none; }
+  .page-account-screen .site-header-upgraded .nav { grid-area: nav; display: flex; overflow-x: auto; -webkit-overflow-scrolling: touch; flex-wrap: nowrap; width: 100%; padding-bottom: 2px; scrollbar-width: none; }
+  .page-account-screen .site-header-upgraded .nav::-webkit-scrollbar { display: none; }
+  .page-account-screen .nav-horizontal { justify-content: flex-start; gap: 8px; }
+  .account-order-stage { padding-top: 88px; padding-bottom: 56px; }
+  .account-order-number { font-size: 24px !important; }
 }
