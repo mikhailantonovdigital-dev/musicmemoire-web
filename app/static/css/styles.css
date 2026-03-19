@@ -5075,9 +5075,31 @@ strong,
 }
 /* ===== Commit 12.6 — questionnaire premium pass ===== */
 
-.page-questionnaire .site-main {
+.page-questionnaire {
   position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.page-questionnaire .site-header,
+.page-questionnaire .site-header-upgraded,
+.page-questionnaire .site-header-dark {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  background: transparent !important;
+  border-bottom: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+.page-questionnaire .site-main {
+  flex: 1 0 auto;
   min-height: calc(100vh - 180px);
+  position: relative;
   background:
     radial-gradient(circle at 12% 6%, rgba(118, 132, 255, 0.22), transparent 28%),
     radial-gradient(circle at 88% 12%, rgba(140, 92, 255, 0.24), transparent 26%),
@@ -5267,6 +5289,7 @@ strong,
 }
 
 .questionnaire-shell .radio-card {
+  position: relative;
   background: rgba(12, 20, 34, 0.86);
   border: 1px solid rgba(160, 181, 220, 0.16);
   color: #eef4ff;
@@ -5278,7 +5301,11 @@ strong,
 }
 
 .questionnaire-shell .radio-card input {
-  accent-color: #7b82ff;
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
 }
 
 @supports selector(:has(*)) {
@@ -5692,5 +5719,121 @@ strong,
   .not-found-actions .btn {
     width: 100%;
     justify-content: center;
+  }
+}
+
+
+.page-questionnaire .site-footer-minimal {
+  position: relative;
+  bottom: auto;
+  margin-top: 0;
+  padding: 0 0 18px;
+}
+
+.page-questionnaire .footer-bottom-minimal {
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  color: rgba(233, 239, 255, 0.72);
+}
+
+@media (max-width: 640px) {
+  .page-questionnaire {
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .page-questionnaire .site-header,
+  .page-questionnaire .site-header-upgraded,
+  .page-questionnaire .site-header-dark {
+    position: relative;
+    background: linear-gradient(180deg, rgba(8, 14, 28, 0.96), rgba(8, 14, 28, 0.72)) !important;
+    backdrop-filter: blur(18px) saturate(110%) !important;
+  }
+
+  .page-questionnaire .header-shell {
+    min-height: auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "brand actions"
+      "nav nav";
+    align-items: center;
+    row-gap: 12px;
+    column-gap: 12px;
+    padding: calc(env(safe-area-inset-top, 0px) + 10px) 0 10px;
+  }
+
+  .page-questionnaire .brand {
+    grid-area: brand;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .page-questionnaire .logo-badge {
+    width: 52px;
+    height: 52px;
+    border-radius: 18px;
+    font-size: 16px;
+  }
+
+  .page-questionnaire .brand-copy {
+    gap: 0;
+    min-width: 0;
+  }
+
+  .page-questionnaire .logo-text {
+    font-size: 15px;
+    line-height: 1.15;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .page-questionnaire .header-actions {
+    grid-area: actions;
+    width: auto;
+    margin-top: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    justify-self: end;
+    gap: 0;
+  }
+
+  .page-questionnaire .header-link-btn {
+    width: auto;
+    min-height: 42px;
+    padding: 0 14px;
+    border-radius: 14px;
+    white-space: nowrap;
+    font-size: 15px;
+  }
+
+  .page-questionnaire .header-cta {
+    display: none;
+  }
+
+  .page-questionnaire .site-header-upgraded .nav {
+    grid-area: nav;
+    display: flex;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+    width: 100%;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+
+  .page-questionnaire .site-header-upgraded .nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .page-questionnaire .nav-horizontal {
+    justify-content: flex-start;
+    gap: 8px;
   }
 }
