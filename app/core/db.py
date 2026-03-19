@@ -73,6 +73,17 @@ def run_bootstrap_migrations() -> None:
             if "result_tracks" not in song_columns:
                 conn.execute(text("ALTER TABLE song_generations ADD COLUMN result_tracks JSON"))
 
+    if "voice_inputs" in inspector.get_table_names():
+        voice_columns = {col["name"] for col in inspector.get_columns("voice_inputs")}
+
+        with engine.begin() as conn:
+            if "storage_backend" not in voice_columns:
+                conn.execute(text("ALTER TABLE voice_inputs ADD COLUMN storage_backend VARCHAR(20)"))
+            if "storage_bucket" not in voice_columns:
+                conn.execute(text("ALTER TABLE voice_inputs ADD COLUMN storage_bucket VARCHAR(255)"))
+            if "storage_key" not in voice_columns:
+                conn.execute(text("ALTER TABLE voice_inputs ADD COLUMN storage_key VARCHAR(1024)"))
+
     if "magic_login_tokens" not in inspector.get_table_names():
         pass
 
