@@ -310,6 +310,35 @@ function initLyricsPicker() {
   });
 }
 
+function initRadioCardSelection() {
+  const groups = document.querySelectorAll("form, .questionnaire-shell, .panel-card");
+  if (!groups.length) return;
+
+  function syncWithin(root) {
+    const cards = root.querySelectorAll("label.radio-card");
+    if (!cards.length) return;
+
+    cards.forEach((card) => {
+      const input = card.querySelector('input[type="radio"], input[type="checkbox"]');
+      const isSelected = !!(input && input.checked);
+      card.classList.toggle("is-selected", isSelected);
+      card.setAttribute("aria-checked", isSelected ? "true" : "false");
+    });
+  }
+
+  groups.forEach((root) => {
+    const inputs = root.querySelectorAll('label.radio-card input[type="radio"], label.radio-card input[type="checkbox"]');
+    if (!inputs.length) return;
+
+    const sync = () => syncWithin(root);
+    inputs.forEach((input) => {
+      input.addEventListener("change", sync);
+      input.addEventListener("click", sync);
+    });
+    sync();
+  });
+}
+
 function initSongStylePicker() {
   const root = document.querySelector("[data-song-style-form]");
   if (!root) return;
@@ -402,6 +431,7 @@ function initQuestionnaireGenerationState() {
 document.addEventListener("DOMContentLoaded", () => {
   initVoiceRecorder();
   initLyricsPicker();
+  initRadioCardSelection();
   initSongStylePicker();
   initExclusiveAudioPlayers();
   initQuestionnaireGenerationState();
