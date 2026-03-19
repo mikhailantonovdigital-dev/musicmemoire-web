@@ -163,7 +163,7 @@ function initVoiceRecorder() {
         });
 
         stopTracks();
-        setStatus("Запись готова. Прослушай её и нажми «Отправить голосовое».", "success");
+        setStatus("Запись готова. Прослушай её и нажми «Расшифровать голосовое».", "success");
       };
 
       mediaRecorder.start();
@@ -217,7 +217,7 @@ function initVoiceRecorder() {
       canUpload: false,
     });
 
-    setStatus("Отправляем голосовое и распознаём речь. Это может занять немного времени...", "info");
+    setStatus("Расшифровываем голосовое и приводим текст в порядок. Это может занять немного времени...", "info");
 
     try {
       const response = await fetch(uploadForm.action, {
