@@ -1,25 +1,12 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="section">
+<section class="section checkout-status-stage">
   <div class="container narrow">
-    <div class="page-shell">
-      <p class="eyebrow">Оплата</p>
-      <h1>Заказ {{ order.order_number }}</h1>
-      <p class="section-lead">
-        Здесь видно, прошла ли оплата, и что происходит с запуском генерации песни.
-      </p>
-
-      <div class="step-meta">
-        <span>Итог: <strong>{{ price_rub }} ₽</strong></span>
-        {% if has_discount %}
-          <span>Базовая цена: <strong>{{ base_price_rub }} ₽</strong></span>
-          <span>Скидка: <strong>-{{ discount_rub }} ₽</strong></span>
-        {% endif %}
-        <span>Статус оплаты: <strong>{{ payment_status_label }}</strong></span>
-        {% if is_success %}
-          <span>Песня: <strong>{{ song_status_label }}</strong></span>
-        {% endif %}
+    <div class="page-shell checkout-status-shell">
+      <div class="checkout-status-head">
+        <span class="mini-label">Заказ</span>
+        <h1 class="checkout-order-title">{{ order.order_number }}</h1>
       </div>
 
       {% if is_success and latest_song and latest_song.status in ["queued", "processing"] %}
@@ -119,6 +106,7 @@
               <a href="/account/orders/{{ order.public_id }}" class="btn btn-primary">Открыть заказ</a>
             {% elif is_pending %}
               <a href="/checkout/status?payment={{ payment.public_id }}" class="btn btn-secondary">Обновить статус</a>
+              <a href="/account/orders/{{ order.public_id }}" class="btn btn-secondary">Открыть заказ</a>
             {% else %}
               <form method="post" action="/checkout/start/{{ order.public_id }}">
                 <button type="submit" class="btn btn-primary">Попробовать оплатить снова</button>
