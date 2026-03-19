@@ -9,96 +9,114 @@
         <h1>Поддержка</h1>
       </div>
       <div class="form-actions">
-        <a href="/admin/" class="btn btn-secondary">Назад на дашборд</a>
+        <a href="/admin/" class="btn btn-secondary">Назад в админку</a>
+        {% if admin_token_enabled %}<a href="/admin/logout" class="btn btn-secondary">Выйти</a>{% endif %}
       </div>
     </div>
 
-    {% if flash %}
-      <div class="notice notice-{{ flash.kind }}">{{ flash.text }}</div>
-    {% endif %}
+    {% if flash %}<div class="notice notice-{{ flash.kind }}">{{ flash.text }}</div>{% endif %}
 
     <form class="form-card admin-search-form" method="get" action="/admin/support">
       <h2 class="form-title">Поиск обращений</h2>
+      <label class="form-label" for="q">Поиск по id обращения, email, номеру заказа или теме</label>
       <div class="admin-search-row">
-        <input id="q" name="q" type="text" class="text-input" placeholder="Email, номер заказа, public id обращения" value="{{ q }}" />
+        <input id="q" name="q" type="text" class="text-input" value="{{ q }}" placeholder="Например: MM-260319 или client@example.com" />
         <button type="submit" class="btn btn-primary">Найти</button>
         {% if q or status != 'all' %}<a href="/admin/support" class="btn btn-secondary">Сбросить</a>{% endif %}
       </div>
-      <div class="admin-status-grid" style="margin-top: 16px;">
-        <div>
-          <label class="label" for="status">Статус обращения</label>
-          <select id="status" name="status" class="input">
-            {% for value, label in support_filter_options %}
-              <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-          </select>
-        </div>
-      </div>
-      <div class="form-actions" style="margin-top: 16px;">
-        <button type="submit" class="btn btn-primary">Применить</button>
+      <div style="margin-top: 14px; max-width: 320px;">
+        <label class="label" for="status">Статус обращения</label>
+        <select id="status" name="status" class="input">
+          {% for value, label in status_options %}
+            <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
       </div>
     </form>
 
-    <div class="form-card" style="margin-top: 20px;">
-      <h2 class="form-title">Обращения</h2>
-      {% if threads %}
-        <div style="display: grid; gap: 16px;">
-          {% for item in threads %}
-            {% set thread = item.thread %}
-            <div class="panel-card" style="padding: 16px; border: 1px solid #ececec; background: #fafafa;">
-              <div class="lyrics-card-head" style="margin-bottom: 12px;">
-                <div>
-                  <h3 style="margin: 0;">{{ thread.public_id }}</h3>
-                  <p class="lyrics-angle">Статус: {{ item.status_label }}</p>
-                  <p class="lyrics-angle">Email: {{ thread.email or '—' }}</p>
-                  {% if thread.order %}<p class="lyrics-angle">Заказ: {{ thread.order.order_number }}</p>{% endif %}
+    <div class="detail-shell" style="margin-top: 20px; align-items: start;">
+      <div class="detail-main">
+        <div class="form-card">
+          <h2 class="form-title">Обращения</h2>
+          {% if thread_cards %}
+            <div class="admin-events">
+              {% for item in thread_cards %}
+                {% set thread = item.thread %}
+                <div class="admin-event">
+                  <div class="admin-event-head">
+                    <strong>{{ thread.public_id }}</strong>
+                    <span>{{ thread.updated_at }}</span>
+                  </div>
+                  <p style="margin: 0 0 6px;"><strong>Статус:</strong> {{ item.status_label }}</p>
+                  <p style="margin: 0 0 6px;"><strong>Email:</strong> {{ item.email }}</p>
+                  <p style="margin: 0 0 6px;"><strong>Заказ:</strong> {{ item.order_number }}</p>
+                  {% if thread.subject %}<p style="margin: 0 0 6px;"><strong>Тема:</strong> {{ thread.subject }}</p>{% endif %}
+                  <p class="helper-text">Сообщений: {{ item.message_count }}</p>
+                  <div class="form-actions" style="margin-top: 10px;">
+                    <a href="/admin/support?thread={{ thread.public_id }}" class="btn btn-secondary">Открыть</a>
+                    {% if thread.order %}<a href="/admin/orders/{{ thread.order.public_id }}" class="btn btn-secondary">Открыть заказ</a>{% endif %}
+                  </div>
                 </div>
-                <span class="variant-chip">{{ item.message_count }} сообщений</span>
-              </div>
-              {% if thread.subject %}<p style="margin: 0 0 10px;"><strong>Тема:</strong> {{ thread.subject }}</p>{% endif %}
-              {% if thread.messages %}
-                <div class="admin-events" style="margin-bottom: 12px;">
-                  {% for message in thread.messages %}
-                    <div class="admin-event">
-                      <div class="admin-event-head"><strong>{{ 'Клиент' if message.author_role == 'user' else 'Оператор' }}</strong><span>{{ message.created_at }}</span></div>
-                      <div style="white-space: pre-wrap;">{{ message.message_text }}</div>
-                    </div>
-                  {% endfor %}
-                </div>
-              {% endif %}
-              <div class="form-actions" style="margin-bottom: 12px;">
-                {% if thread.order %}<a href="/admin/orders/{{ thread.order.public_id }}" class="btn btn-secondary">Открыть заказ</a>{% endif %}
-              </div>
-              <div class="admin-status-grid">
-                <form method="post" action="/admin/support/{{ thread.public_id }}/status" class="panel-card" style="padding: 12px; background: #fff; border: 1px solid #ececec;">
-                  <input type="hidden" name="next_url" value="/admin/support{% if q %}?q={{ q }}{% endif %}" />
-                  <label class="label" for="status-{{ thread.public_id }}">Статус</label>
-                  <select id="status-{{ thread.public_id }}" name="status" class="input">
-                    {% for value, label in support_filter_options[1:] %}
-                      <option value="{{ value }}" {% if thread.status == value %}selected{% endif %}>{{ label }}</option>
-                    {% endfor %}
-                  </select>
-                  <div class="form-actions" style="margin-top: 12px;"><button type="submit" class="btn btn-secondary">Сменить статус</button></div>
-                </form>
-                <form method="post" action="/admin/support/{{ thread.public_id }}/reply" class="panel-card" style="padding: 12px; background: #fff; border: 1px solid #ececec;">
-                  <input type="hidden" name="next_url" value="/admin/support{% if q %}?q={{ q }}{% endif %}" />
-                  <label class="label" for="reply-{{ thread.public_id }}">Ответ / заметка</label>
-                  <textarea id="reply-{{ thread.public_id }}" class="textarea" name="message_text" rows="4"></textarea>
-                  <label class="label" for="reply-status-{{ thread.public_id }}">Статус после ответа</label>
-                  <select id="reply-status-{{ thread.public_id }}" name="status" class="input">
-                    {% for value, label in support_filter_options[1:] %}
-                      <option value="{{ value }}" {% if thread.status == value %}selected{% endif %}>{{ label }}</option>
-                    {% endfor %}
-                  </select>
-                  <div class="form-actions" style="margin-top: 12px;"><button type="submit" class="btn btn-primary">Сохранить ответ</button></div>
-                </form>
-              </div>
+              {% endfor %}
             </div>
-          {% endfor %}
+          {% else %}
+            <p class="muted">Обращений пока нет.</p>
+          {% endif %}
         </div>
-      {% else %}
-        <p class="muted">Обращений пока нет.</p>
-      {% endif %}
+      </div>
+
+      <aside class="aside-stack">
+        <div class="form-card">
+          <h2 class="form-title">Карточка обращения</h2>
+          {% if selected_thread %}
+            {% set thread = selected_thread.thread %}
+            <div class="step-meta" style="margin-bottom: 12px;">
+              <span>ID: <strong>{{ thread.public_id }}</strong></span>
+              <span>Статус: <strong>{{ selected_thread.status_label }}</strong></span>
+            </div>
+            <div class="detail-list">
+              <div class="detail-list-item"><span class="detail-label">Email</span><strong class="detail-value">{{ selected_thread.email }}</strong></div>
+              <div class="detail-list-item"><span class="detail-label">Заказ</span><strong class="detail-value">{{ selected_thread.order_number }}</strong></div>
+              <div class="detail-list-item"><span class="detail-label">Источник</span><strong class="detail-value">{{ thread.source }}</strong></div>
+            </div>
+            {% if thread.subject %}<p style="margin-top: 12px;"><strong>Тема:</strong> {{ thread.subject }}</p>{% endif %}
+
+            <form method="post" action="/admin/support/{{ thread.public_id }}/status" style="margin-top: 16px;">
+              <label class="label" for="thread-status">Статус обращения</label>
+              <select id="thread-status" name="status" class="input">
+                {% for value, label in status_options if value != 'all' %}
+                  <option value="{{ value }}" {% if thread.status == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+              <div class="form-actions" style="margin-top: 12px;"><button type="submit" class="btn btn-secondary">Сменить статус</button></div>
+            </form>
+
+            <div style="display: grid; gap: 12px; margin-top: 16px;">
+              {% for message in thread.messages %}
+                <div class="panel-card" style="padding: 12px; border: 1px solid #ececec; background: {% if message.is_internal %}#fff8e6{% else %}#fafafa{% endif %};">
+                  <div class="admin-event-head">
+                    <strong>{% if message.sender_role == 'user' %}Пользователь{% else %}Оператор{% endif %}{% if message.is_internal %} · Внутренняя заметка{% endif %}</strong>
+                    <span>{{ message.created_at }}</span>
+                  </div>
+                  <div style="white-space: pre-wrap;">{{ message.body }}</div>
+                </div>
+              {% endfor %}
+            </div>
+
+            <form method="post" action="/admin/support/{{ thread.public_id }}/reply" style="margin-top: 16px;">
+              <label class="label" for="thread-reply">Ответ или заметка</label>
+              <textarea id="thread-reply" name="body" class="textarea" rows="6" placeholder="Добавьте ответ клиенту или внутреннюю заметку."></textarea>
+              <label class="checkbox-field" style="margin-top: 10px; display: flex; gap: 8px; align-items: center;">
+                <input type="checkbox" name="is_internal" value="1" />
+                <span>Внутренняя заметка оператора</span>
+              </label>
+              <div class="form-actions" style="margin-top: 12px;"><button type="submit" class="btn btn-primary">Добавить сообщение</button></div>
+            </form>
+          {% else %}
+            <p class="muted">Выберите обращение из списка слева.</p>
+          {% endif %}
+        </div>
+      </aside>
     </div>
   </div>
 </section>
