@@ -164,6 +164,93 @@ def song_has_audio(song: SongGeneration | None) -> bool:
     return bool(song.audio_url or song.audio_variants)
 
 
+def maybe_send_song_failed_email(db: Session, song: SongGeneration) -> BackgroundJob | None:
+    order = song.order
+    if order.user is None or not order.user.email:
+        return None
+
+    if has_order_event(db, order, "song_failed_email_sent"):
+        return None
+
+    active_job = find_active_job_for_order(db, order, "song_failed_email")
+    if active_job is not None:
+        return active_job
+
+    from app.tasks import run_song_failed_email_task
+
+    try:
+        return enqueue_background_job(
+            db,
+            order=order,
+            job_type="song_failed_email",
+            func=run_song_failed_email_task,
+            payload={
+                "order_public_id": order.public_id,
+                "song_public_id": song.public_id,
+            },
+        )
+    except BackgroundJobError as exc:
+        db.add(
+            OrderEvent(
+                order=order,
+                event_type="song_failed_email_failed",
+                payload={
+                    "song_job_id": song.public_id,
+                    "email": order.user.email,
+                    "error": str(exc),
+                },
+            )
+        )
+        return None
+
+
+def resend_song_failed_email(db: Session, song: SongGeneration) -> BackgroundJob | None:
+    order = song.order
+    if order.user is None or not order.user.email:
+        raise RuntimeError("У заказа нет email для отправки письма.")
+
+    from app.tasks import run_song_failed_email_task
+
+    try:
+        background_job = enqueue_background_job(
+            db,
+            order=order,
+            job_type="song_failed_email",
+            func=run_song_failed_email_task,
+            payload={
+                "order_public_id": order.public_id,
+                "song_public_id": song.public_id,
+            },
+        )
+        db.add(
+            OrderEvent(
+                order=order,
+                event_type="song_failed_email_resent",
+                payload={
+                    "song_job_id": song.public_id,
+                    "email": order.user.email,
+                    "trigger": "admin_manual_resend",
+                    "background_job_id": background_job.public_id,
+                },
+            )
+        )
+        return background_job
+    except BackgroundJobError as exc:
+        db.add(
+            OrderEvent(
+                order=order,
+                event_type="song_failed_email_resend_failed",
+                payload={
+                    "song_job_id": song.public_id,
+                    "email": order.user.email,
+                    "trigger": "admin_manual_resend",
+                    "error": str(exc),
+                },
+            )
+        )
+        raise RuntimeError(str(exc)) from exc
+
+
 def get_latest_ready_song(order: Order) -> SongGeneration | None:
     for song in get_song_attempts(order):
         if song.status == "succeeded" and song_has_audio(song):
@@ -398,6 +485,7 @@ def start_song_job_now(
         song.started_at = song.started_at or utcnow()
         song.finished_at = utcnow()
         order.status = "song_failed"
+        maybe_send_song_failed_email(db, song)
         payload = {
             "song_job_id": song.public_id,
             "trigger": trigger,
@@ -484,6 +572,7 @@ def apply_song_sync_result(
         if song.finished_at is None:
             song.finished_at = utcnow()
         song.order.status = "song_failed"
+        maybe_send_song_failed_email(db, song)
     else:
         song.order.status = "song_pending"
 
