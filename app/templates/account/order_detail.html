@@ -33,7 +33,7 @@
               <div class="account-song-result-item">
                 <p class="account-song-result-title">Вариант {{ loop.index }}</p>
                 {% if playable_url %}
-                  <audio class="audio-player" controls preload="none" src="{{ playable_url }}"></audio>
+                  <audio class="audio-player" controls preload="none" data-exclusive-audio-group="order-{{ order.public_id }}" src="{{ playable_url }}"></audio>
                 {% endif %}
                 <div class="form-actions" style="margin-top: 12px;">
                   {% if track.audio_url or track.stream_audio_url %}
@@ -45,7 +45,7 @@
           </div>
         {% elif playback_song and playback_song.audio_url %}
           <div class="account-song-result-item">
-            <audio class="audio-player" controls preload="none" src="{{ request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=0) }}"></audio>
+            <audio class="audio-player" controls preload="none" data-exclusive-audio-group="order-{{ order.public_id }}" src="{{ request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=0) }}"></audio>
             <div class="form-actions" style="margin-top: 12px;">
               <a href="{{ request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=0) }}?download=1" class="btn btn-secondary">Скачать mp3</a>
             </div>
@@ -93,9 +93,24 @@
   </div>
 </section>
 
+<script>
+  (function () {
+    var scrollKey = "order-scroll-{{ order.public_id }}";
+    var savedScroll = window.sessionStorage.getItem(scrollKey);
+
+    if (savedScroll !== null) {
+      window.sessionStorage.removeItem(scrollKey);
+      window.addEventListener("load", function () {
+        window.scrollTo({ top: parseInt(savedScroll, 10) || 0, behavior: "auto" });
+      });
+    }
+  })();
+</script>
+
 {% if latest_song and song_is_running and not playback_song and not suno_stub_mode and not song_sync_error %}
 <script>
   setTimeout(function () {
+    window.sessionStorage.setItem("order-scroll-{{ order.public_id }}", String(window.scrollY || window.pageYOffset || 0));
     window.location.reload();
   }, 5000);
 </script>

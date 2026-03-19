@@ -464,7 +464,7 @@ def run_song_ready_email_task(*, background_job_public_id: str, order_public_id:
 
         from app.core.config import settings
 
-        order_url = f"{settings.BASE_URL.rstrip('/')}/account/orders/{order.public_id}"
+        order_url = f"{settings.BASE_URL.rstrip('/')}/account/"
         try:
             send_song_ready_email(
                 recipient_email=recipient_email,
