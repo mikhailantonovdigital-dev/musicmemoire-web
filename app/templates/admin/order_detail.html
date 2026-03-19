@@ -171,7 +171,7 @@
                   <p class="helper-text" style="margin: 0 0 8px;">Попытка {{ latest_ready_song.attempt_no }}</p>
                   {% if playable_url %}<audio class="audio-player" controls preload="none" src="{{ playable_url }}"></audio>{% endif %}
                   {% if track.audio_url %}<p class="helper-text" style="margin-top: 8px;">Источник: {{ track.audio_url }}</p>{% endif %}
-                  {% if track.stored_relative_path %}<p class="helper-text" style="margin-top: 6px;">Локальная копия сохранена.</p>{% endif %}
+                  {% if track.object_storage_key %}<p class="helper-text" style="margin-top: 6px;">Файл сохранён в object storage.</p>{% endif %}{% if track.stored_relative_path %}<p class="helper-text" style="margin-top: 6px;">Локальная копия сохранена.</p>{% endif %}
                   <p style="margin-top: 10px;"><a href="{{ download_url }}" class="btn btn-secondary">Скачать mp3</a></p>
                 </div>
               {% endfor %}
@@ -250,7 +250,7 @@
                       <p style="margin: 0 0 8px;"><strong>Вариант {{ loop.index }}</strong></p>
                       {% if playable_url %}<audio class="audio-player" controls preload="none" src="{{ playable_url }}"></audio>{% endif %}
                       {% if track.audio_url %}<p class="helper-text" style="margin-top: 8px;">Источник: {{ track.audio_url }}</p>{% endif %}
-                  {% if track.stored_relative_path %}<p class="helper-text" style="margin-top: 6px;">Локальная копия сохранена.</p>{% endif %}
+                  {% if track.object_storage_key %}<p class="helper-text" style="margin-top: 6px;">Файл сохранён в object storage.</p>{% endif %}{% if track.stored_relative_path %}<p class="helper-text" style="margin-top: 6px;">Локальная копия сохранена.</p>{% endif %}
                   <p style="margin-top: 10px;"><a href="{{ download_url }}" class="btn btn-secondary">Скачать mp3</a></p>
                     </div>
                   {% endfor %}
@@ -318,6 +318,7 @@
                   <span class="variant-chip">{{ card.status_label }}</span>
                 </div>
                 <p class="helper-text">Размер: {{ card.size_label or "—" }} · Тип: {{ voice.content_type }} · Загружено: {{ voice.created_at }}</p>
+                <p class="helper-text">Хранение: {{ card.storage_label }}{% if card.storage_key %} · Key: {{ card.storage_key }}{% endif %}</p>
                 <audio class="audio-player" controls preload="none" src="{{ card.stream_url }}"></audio>
                 <p class="helper-text" style="margin-top: 8px;"><a href="{{ card.stream_url }}">Открыть / скачать голосовое</a></p>
                 <p style="margin: 12px 0 6px;"><strong>Расшифровка этого файла</strong></p>
