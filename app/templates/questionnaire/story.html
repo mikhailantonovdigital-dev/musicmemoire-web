@@ -41,6 +41,12 @@
           </div>
         {% endif %}
 
+        {% if transcription_queued %}
+          <div class="notice">
+            Расшифровка поставлена в очередь. Страница обновится автоматически, когда статус изменится.
+          </div>
+        {% endif %}
+
         {% if transcription_failed and transcription_error %}
           <div class="notice notice-error">
             {{ transcription_error }}
@@ -166,4 +172,11 @@
     </div>
   </div>
 </section>
+{% if latest_voice and latest_voice.transcription_status in ["queued", "transcribing"] %}
+<script>
+  setTimeout(function () {
+    window.location.href = "{{ request.url_for('questionnaire_story') }}";
+  }, 5000);
+</script>
+{% endif %}
 {% endblock %}
