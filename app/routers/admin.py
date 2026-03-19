@@ -13,14 +13,12 @@ from app.core.config import settings
 from app.core.db import get_db
 from app.core.security import utcnow
 from app.core.templates import templates
-from app.models import LyricsVersion, Order, OrderEvent, OrderPayment, SecurityEvent, SongGeneration, User, VoiceInput
+from app.models import BackgroundJob, LyricsVersion, Order, OrderEvent, OrderPayment, SecurityEvent, SongGeneration, User, VoiceInput
 from app.models.order_payment import build_order_pricing_preview
-from app.services.email_service import EmailServiceError
-from app.services.lyrics_generation_service import DualGenerationResult, LyricsGenerationError, generate_dual_lyrics_versions
 from app.services.payment_workflow import resend_payment_success_email, sync_payment_with_remote
 from app.services.song_workflow import (
     RUNNING_SONG_STATUSES,
-    create_song_job,
+    create_song_job_record,
     get_latest_ready_song,
     get_latest_song,
     get_song_attempts,
@@ -30,7 +28,8 @@ from app.services.song_workflow import (
     sync_song_job_state,
 )
 from app.services.suno_service import SunoServiceError
-from app.services.transcription_service import TranscriptionServiceError, transcribe_audio_file
+from app.services.background_jobs import BackgroundJobError, get_job_label, enqueue_background_job, find_active_job_for_order
+from app.tasks import run_admin_lyrics_regeneration_task, run_song_start_task, run_voice_transcription_task
 from app.services.yookassa_service import YooKassaError
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -123,6 +122,7 @@ def format_size(size_bytes: int | None) -> str | None:
 def humanize_transcription_status(status: str | None) -> str:
     mapping = {
         "uploaded": "Загружено",
+        "queued": "В очереди",
         "transcribing": "Распознаём",
         "done": "Расшифровано",
         "failed": "Ошибка распознавания",
@@ -259,6 +259,43 @@ def humanize_security_status(status: str | None) -> str:
     return mapping.get(status or "", status or "—")
 
 
+
+
+def humanize_background_job_status(status: str | None) -> str:
+    mapping = {
+        "queued": "В очереди",
+        "started": "В работе",
+        "succeeded": "Успешно",
+        "failed": "Ошибка",
+    }
+    return mapping.get(status or "", status or "—")
+
+
+def build_background_job_card(job: BackgroundJob) -> dict:
+    payload = job.payload if isinstance(job.payload, dict) else {}
+    return {
+        "job": job,
+        "job_label": get_job_label(job.job_type),
+        "status_label": humanize_background_job_status(job.status),
+        "song_job_id": payload.get("song_public_id") or payload.get("song_job_id"),
+        "voice_input_id": payload.get("voice_public_id") or payload.get("voice_input_id"),
+        "payment_id": payload.get("payment_public_id"),
+    }
+
+
+def get_recent_background_jobs(db: Session, limit: int = 20) -> list[BackgroundJob]:
+    return db.query(BackgroundJob).order_by(BackgroundJob.id.desc()).limit(limit).all()
+
+
+def get_recent_background_jobs_for_order(db: Session, order_id: int, limit: int = 20) -> list[BackgroundJob]:
+    return (
+        db.query(BackgroundJob)
+        .filter(BackgroundJob.order_id == order_id)
+        .order_by(BackgroundJob.id.desc())
+        .limit(limit)
+        .all()
+    )
+
 def build_security_event_card(event: SecurityEvent) -> dict:
     payload = event.payload if isinstance(event.payload, dict) else {}
     return {
@@ -391,6 +428,8 @@ async def admin_dashboard(
     pending_payments = db.query(func.count(OrderPayment.id)).filter(OrderPayment.status.in_(["pending", "waiting_for_capture"])).scalar() or 0
     failed_song_jobs = db.query(func.count(SongGeneration.id)).filter(SongGeneration.status == "failed").scalar() or 0
     blocked_security_events_today = db.query(func.count(SecurityEvent.id)).filter(SecurityEvent.status.in_(["blocked", "suspicious"]), SecurityEvent.created_at >= day_start_utc, SecurityEvent.created_at < day_end_utc).scalar() or 0
+    queued_background_jobs = db.query(func.count(BackgroundJob.id)).filter(BackgroundJob.status.in_(["queued", "started"])).scalar() or 0
+    failed_background_jobs_today = db.query(func.count(BackgroundJob.id)).filter(BackgroundJob.status == "failed", BackgroundJob.finished_at >= day_start_utc, BackgroundJob.finished_at < day_end_utc).scalar() or 0
 
     orders_query = db.query(Order).outerjoin(User, Order.user_id == User.id)
     if query_text:
@@ -419,6 +458,7 @@ async def admin_dashboard(
 
     recent_problem_payments = db.query(OrderPayment).filter(OrderPayment.status.in_(["pending", "waiting_for_capture", "canceled"])).order_by(OrderPayment.updated_at.desc(), OrderPayment.id.desc()).limit(10).all()
     recent_security_events = db.query(SecurityEvent).filter(SecurityEvent.status.in_(["blocked", "suspicious"])).order_by(SecurityEvent.id.desc()).limit(12).all()
+    recent_background_jobs = get_recent_background_jobs(db, limit=12)
 
     return templates.TemplateResponse(
         "admin/dashboard.html",
@@ -442,6 +482,8 @@ async def admin_dashboard(
             "failed_song_jobs": failed_song_jobs,
             "pending_payments": pending_payments,
             "blocked_security_events_today": blocked_security_events_today,
+            "queued_background_jobs": queued_background_jobs,
+            "failed_background_jobs_today": failed_background_jobs_today,
             "order_status_counts": order_status_counts,
             "payment_status_counts": payment_status_counts,
             "song_status_counts": song_status_counts,
@@ -450,6 +492,7 @@ async def admin_dashboard(
             "recent_failed_songs": recent_failed_songs,
             "recent_problem_payments": recent_problem_payments,
             "recent_security_events": [build_security_event_card(item) for item in recent_security_events],
+            "recent_background_jobs": [build_background_job_card(item) for item in recent_background_jobs],
             "humanize_security_action": humanize_security_action,
             "order_status_filter_options": ORDER_STATUS_FILTER_OPTIONS,
             "payment_status_filter_options": PAYMENT_STATUS_FILTER_OPTIONS,
@@ -482,6 +525,7 @@ async def admin_order_detail(order_public_id: str, request: Request, db: Session
     latest_voice = voice_inputs[0] if voice_inputs else None
     events = db.query(OrderEvent).filter(OrderEvent.order_id == order.id).order_by(OrderEvent.id.desc()).limit(30).all()
     security_events = get_recent_security_events_for_order(db, order.id, limit=20)
+    background_jobs = get_recent_background_jobs_for_order(db, order.id, limit=20)
 
     return templates.TemplateResponse(
         "admin/order_detail.html",
@@ -512,6 +556,7 @@ async def admin_order_detail(order_public_id: str, request: Request, db: Session
             "song_status_options": SONG_STATUS_OPTIONS,
             "events": events,
             "security_events": [build_security_event_card(item) for item in security_events],
+            "background_jobs": [build_background_job_card(item) for item in background_jobs],
             "humanize_payment_status": humanize_payment_status,
             "humanize_security_action": humanize_security_action,
         },
@@ -574,15 +619,30 @@ async def admin_order_song_run(order_public_id: str, request: Request, db: Sessi
         return RedirectResponse(url="/admin/", status_code=303)
 
     try:
-        song = create_song_job(db, order, event_type="admin_song_generation_started")
+        song = create_song_job_record(db, order, queued_event_type="admin_song_generation_enqueued", trigger="admin_manual_start")
+        background_job = find_active_job_for_order(db, order, "song_generation_start")
+        if background_job is None:
+            background_job = enqueue_background_job(
+            db,
+            order=order,
+            job_type="song_generation_start",
+            func=run_song_start_task,
+            payload={
+                "song_public_id": song.public_id,
+                "order_public_id": order.public_id,
+                "started_event_type": "admin_song_generation_started",
+                "failed_event_type": "admin_song_generation_failed",
+                "trigger": "admin_manual_start",
+            },
+            )
         db.commit()
         db.refresh(song)
-    except SunoServiceError as exc:
+    except (SunoServiceError, BackgroundJobError) as exc:
         db.rollback()
         set_admin_flash(request, "error", str(exc))
         return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
 
-    set_admin_flash(request, "success", f"Генерация песни запущена. Попытка #{song.attempt_no}.")
+    set_admin_flash(request, "success", f"Генерация песни поставлена в очередь. Попытка #{song.attempt_no}, job {background_job.public_id}.")
     return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
 
 
@@ -902,41 +962,31 @@ async def admin_order_voice_retranscribe(
         set_admin_flash(request, "error", "Файл голосового не найден на сервере.")
         return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
 
-    voice_input.transcription_status = "transcribing"
-    db.add(OrderEvent(order=order, event_type="admin_voice_retranscription_started", payload={
-        "voice_input_id": voice_input.public_id,
-        "trigger": "admin_voice_retranscribe",
-    }))
-    db.commit()
-
+    voice_input.transcription_status = "queued"
+    db.add(voice_input)
     try:
-        result = await transcribe_audio_file(voice_input.storage_path)
-    except TranscriptionServiceError as exc:
-        voice_input.transcription_status = "failed"
-        db.add(OrderEvent(order=order, event_type="admin_voice_retranscription_failed", payload={
-            "voice_input_id": voice_input.public_id,
-            "error": str(exc),
-            "trigger": "admin_voice_retranscribe",
-        }))
+        background_job = enqueue_background_job(
+            db,
+            order=order,
+            job_type="voice_transcription",
+            func=run_voice_transcription_task,
+            payload={
+                "order_public_id": order.public_id,
+                "voice_public_id": voice_input.public_id,
+                "apply_to_order": apply_to_order,
+                "started_event_type": "admin_voice_retranscription_started",
+                "success_event_type": "admin_voice_retranscription_done",
+                "failure_event_type": "admin_voice_retranscription_failed",
+                "trigger": "admin_voice_retranscribe",
+            },
+        )
         db.commit()
+    except BackgroundJobError as exc:
+        db.rollback()
         set_admin_flash(request, "error", str(exc))
         return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
 
-    voice_input.transcription_status = "done"
-    voice_input.transcript_text = result.text
-    if apply_to_order:
-        order.transcript_text = result.text
-
-    db.add(OrderEvent(order=order, event_type="admin_voice_retranscription_done", payload={
-        "voice_input_id": voice_input.public_id,
-        "text_length": len(result.text),
-        "model": result.model,
-        "language": result.language,
-        "applied_to_order": bool(apply_to_order),
-        "trigger": "admin_voice_retranscribe",
-    }))
-    db.commit()
-    set_admin_flash(request, "success", "Голосовое заново расшифровано.")
+    set_admin_flash(request, "success", f"Перерасшифровка поставлена в очередь. Job {background_job.public_id}.")
     return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
 
 
@@ -958,63 +1008,23 @@ async def admin_order_lyrics_regenerate(order_public_id: str, request: Request, 
         set_admin_flash(request, "warning", "Сначала нужен исходный текст для генерации.")
         return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
 
-    db.add(OrderEvent(order=order, event_type="admin_lyrics_regeneration_started", payload={
-        "story_source": order.story_source,
-        "text_length": len(source_text),
-        "trigger": "admin_manual_regenerate",
-    }))
-    db.commit()
-
     try:
-        result: DualGenerationResult = await generate_dual_lyrics_versions(source_text)
-    except LyricsGenerationError as exc:
-        db.add(OrderEvent(order=order, event_type="admin_lyrics_regeneration_failed", payload={
-            "error": str(exc),
-            "trigger": "admin_manual_regenerate",
-        }))
+        background_job = enqueue_background_job(
+            db,
+            order=order,
+            job_type="lyrics_regeneration",
+            func=run_admin_lyrics_regeneration_task,
+            payload={
+                "order_public_id": order.public_id,
+            },
+        )
         db.commit()
+    except BackgroundJobError as exc:
+        db.rollback()
         set_admin_flash(request, "error", str(exc))
         return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
 
-    db.query(LyricsVersion).filter(LyricsVersion.order_id == order.id).delete(synchronize_session=False)
-
-    selected_version_id = None
-    final_text = None
-    for index, item in enumerate(result.versions):
-        version = LyricsVersion(
-            order_id=order.id,
-            provider=item.provider,
-            model_name=item.model_name,
-            angle_label=item.angle_label,
-            prompt_text=item.prompt_text,
-            lyrics_text=item.lyrics_text,
-            edited_lyrics_text=None,
-            is_selected=index == 0,
-        )
-        db.add(version)
-        db.flush()
-        if index == 0:
-            selected_version_id = version.public_id
-            final_text = item.lyrics_text
-
-    if final_text:
-        order.final_lyrics_text = final_text
-
-    variant_errors = [{
-        "slot_label": err.slot_label,
-        "user_message": err.user_message,
-        "technical_message": err.technical_message,
-    } for err in result.errors]
-
-    db.add(OrderEvent(order=order, event_type="admin_lyrics_regeneration_done", payload={
-        "versions_count": len(result.versions),
-        "selected_version_id": selected_version_id,
-        "model": result.versions[0].model_name if result.versions else None,
-        "errors": variant_errors,
-        "trigger": "admin_manual_regenerate",
-    }))
-    db.commit()
-    set_admin_flash(request, "success", f"Тексты перегенерированы. Получено версий: {len(result.versions)}.")
+    set_admin_flash(request, "success", f"Перегенерация текстов поставлена в очередь. Job {background_job.public_id}.")
     return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
 
 
@@ -1052,12 +1062,12 @@ async def admin_order_payment_email_resend_attempt(order_public_id: str, payment
     try:
         resend_payment_success_email(db, order, payment)
         db.commit()
-    except EmailServiceError as exc:
+    except RuntimeError as exc:
         db.rollback()
         set_admin_flash(request, "error", str(exc))
         return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
 
-    set_admin_flash(request, "success", f"Письмо об успешной оплате отправлено повторно для платежа {payment.public_id}.")
+    set_admin_flash(request, "success", f"Переотправка письма об оплате поставлена в очередь для платежа {payment.public_id}.")
     return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
 
 
@@ -1078,10 +1088,10 @@ async def admin_order_song_ready_email_resend(order_public_id: str, request: Req
     try:
         resend_song_ready_email(db, latest_song)
         db.commit()
-    except EmailServiceError as exc:
+    except RuntimeError as exc:
         db.rollback()
         set_admin_flash(request, "error", str(exc))
         return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
 
-    set_admin_flash(request, "success", "Письмо о готовой песне отправлено повторно.")
+    set_admin_flash(request, "success", "Переотправка письма о готовой песне поставлена в очередь.")
     return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
