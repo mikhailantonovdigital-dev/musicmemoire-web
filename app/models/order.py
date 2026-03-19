@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from app.models.order_payment import OrderPayment
     from app.models.song_generation import SongGeneration
     from app.models.security_event import SecurityEvent
+    from app.models.background_job import BackgroundJob
 
 
 def generate_order_number() -> str:
@@ -134,6 +135,11 @@ class Order(Base):
         back_populates="order",
         cascade="all, delete-orphan",
         order_by="SecurityEvent.id.desc()",
+    )
+    background_jobs: Mapped[list["BackgroundJob"]] = relationship(
+        back_populates="order",
+        cascade="all, delete-orphan",
+        order_by="BackgroundJob.id.desc()",
     )
 
 
