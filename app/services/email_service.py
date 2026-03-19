@@ -200,7 +200,7 @@ def send_payment_success_email(*, recipient_email: str, order_number: str, order
         </div>
 
         <p style="margin:0;font-size:13px;line-height:1.6;color:#9fb0d9;">
-          Заказ сохранён в кабинете. Ссылка ведёт прямо в карточку заказа.
+          Заказ сохранён в кабинете. На следующие заказы в течение дня действует скидка 50%.
         </p>
       </div>
     </div>
@@ -227,6 +227,8 @@ def send_song_ready_email(*, recipient_email: str, order_number: str, order_url:
 {order_url}
 
 В кабинете можно прослушать результат и открыть нужный заказ.
+
+На следующие заказы в течение дня действует скидка 50%.
 """
 
     html_body = f"""\
@@ -254,7 +256,7 @@ def send_song_ready_email(*, recipient_email: str, order_number: str, order_url:
         </div>
 
         <p style="margin:0;font-size:13px;line-height:1.6;color:#9fb0d9;">
-          В кабинете можно прослушать готовую песню и открыть нужный заказ.
+          В кабинете можно прослушать готовую песню и открыть нужный заказ. Следующие заказы в течение дня — со скидкой 50%.
         </p>
       </div>
     </div>

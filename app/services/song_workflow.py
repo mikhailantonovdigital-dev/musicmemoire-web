@@ -478,6 +478,7 @@ def start_song_job_now(
             song_style=order.song_style,
             song_style_custom=order.song_style_custom,
             singer_gender=order.singer_gender,
+            song_mood=order.song_mood,
         )
     except SunoServiceError as exc:
         song.status = "failed"

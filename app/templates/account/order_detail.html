@@ -22,6 +22,11 @@
         {% endif %}
       </div>
 
+      <div class="notice notice-success account-discount-banner">
+        На следующие заказы в течение дня действует скидка 50%.
+        <a href="/questionnaire/" class="btn btn-primary">Создать песню</a>
+      </div>
+
       <div class="panel-card account-song-card">
         <div class="mini-label">Песня</div>
 
@@ -79,6 +84,10 @@
             <strong class="detail-value">{{ song_style_details }}</strong>
           </div>
           {% endif %}
+          <div class="detail-list-item">
+            <span class="detail-label">Настроение</span>
+            <strong class="detail-value">{{ mood_label }}</strong>
+          </div>
           <div class="detail-list-item">
             <span class="detail-label">Исполнение</span>
             <strong class="detail-value">{{ singer_label }}</strong>

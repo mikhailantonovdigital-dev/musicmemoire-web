@@ -41,11 +41,19 @@ class SongCallbackResult:
 
 
 STYLE_MAP = {
-    "pop": "Pop, contemporary pop ballad",
-    "rap": "Rap, melodic hip-hop",
-    "rock": "Rock, emotional rock ballad",
-    "chanson": "Chanson, heartfelt singer-songwriter song",
-    "indie": "Indie pop, atmospheric singer-songwriter song",
+    "pop": "Modern chart pop, big chorus, polished topline, radio-ready production",
+    "rap": "Modern melodic rap, catchy flow, streaming-ready hooks, crisp low end",
+    "rock": "Modern pop rock, anthemic chorus, emotional guitars, stadium energy",
+    "chanson": "Modern heartfelt chanson, memorable hook, cinematic warmth, rich storytelling",
+    "indie": "Modern indie pop, atmospheric texture, intimate vocals, tasteful hook",
+}
+
+MOOD_MAP = {
+    "romantic": "romantic, warm, intimate, in love",
+    "uplifting": "uplifting, inspiring, bright, hopeful",
+    "nostalgic": "nostalgic, heartfelt, bittersweet, reflective",
+    "dramatic": "dramatic, emotionally powerful, cinematic, intense",
+    "party": "celebratory, energetic, feel-good, danceable",
 }
 
 
@@ -138,23 +146,27 @@ def build_song_style(
     *,
     song_style: str | None,
     song_style_custom: str | None,
+    song_mood: str | None = None,
 ) -> str:
     style_code = (song_style or "").strip().lower()
     style_custom = (song_style_custom or "").strip()
 
+    mood_hint = MOOD_MAP.get((song_mood or "").strip().lower())
+
     if style_code == "multi" and style_custom:
-        return f"Mixed styles: {style_custom}"
+        base_style = f"Mixed styles: {style_custom}"
+        return f"{base_style}. Mood: {mood_hint}" if mood_hint else base_style
 
     if style_code == "custom" and style_custom:
-        return style_custom
+        base_style = style_custom
+    elif style_code in STYLE_MAP:
+        base_style = STYLE_MAP[style_code]
+    elif style_custom:
+        base_style = style_custom
+    else:
+        base_style = "Modern chart pop, emotional personalized song, memorable hook"
 
-    if style_code in STYLE_MAP:
-        return STYLE_MAP[style_code]
-
-    if style_custom:
-        return style_custom
-
-    return "Pop, emotional personalized song"
+    return f"{base_style}. Mood: {mood_hint}" if mood_hint else base_style
 
 
 def build_song_title(order_number: str) -> str:
@@ -250,10 +262,12 @@ def start_song_generation(
     song_style: str | None = None,
     song_style_custom: str | None = None,
     singer_gender: str | None = None,
+    song_mood: str | None = None,
 ) -> SongStartResult:
     style_text = build_song_style(
         song_style=song_style,
         song_style_custom=song_style_custom,
+        song_mood=song_mood,
     )
     lyrics = (lyrics_text or "").strip()
 
@@ -273,6 +287,7 @@ def start_song_generation(
                 "song_style": song_style,
                 "song_style_custom": song_style_custom,
                 "singer_gender": singer_gender,
+                "song_mood": song_mood,
                 "style_text": style_text,
             },
         )

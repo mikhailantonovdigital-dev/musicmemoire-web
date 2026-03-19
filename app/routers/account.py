@@ -73,6 +73,17 @@ def humanize_singer_gender(gender: str | None) -> str:
     return mapping.get((gender or "").strip().lower(), "Не выбран")
 
 
+def humanize_song_mood(mood: str | None) -> str:
+    mapping = {
+        "romantic": "Романтичное",
+        "uplifting": "Воодушевляющее",
+        "nostalgic": "Ностальгичное",
+        "dramatic": "Драматичное",
+        "party": "Праздничное",
+    }
+    return mapping.get((mood or "").strip().lower(), "Не выбрано")
+
+
 def build_song_profile(order: Order) -> dict[str, str | None]:
     style_code = (order.song_style or "").strip().lower()
     style_custom = (order.song_style_custom or "").strip()
@@ -85,6 +96,7 @@ def build_song_profile(order: Order) -> dict[str, str | None]:
         "style_label": humanize_song_style(style_code),
         "style_details": style_details,
         "singer_label": humanize_singer_gender(order.singer_gender),
+        "mood_label": humanize_song_mood(order.song_mood),
     }
 
 
@@ -359,6 +371,7 @@ async def account_dashboard(request: Request, db: Session = Depends(get_db)):
                 "song_style_label": song_profile["style_label"],
                 "song_style_details": song_profile["style_details"],
                 "singer_label": song_profile["singer_label"],
+                "mood_label": song_profile["mood_label"],
                 "can_pay_order": can_pay_order(order),
                 "payment_cta_label": get_payment_cta_label(db, order),
                 "can_start_song": can_start_song(order),
@@ -483,6 +496,7 @@ async def account_order_detail(
             "song_style_label": song_profile["style_label"],
             "song_style_details": song_profile["style_details"],
             "singer_label": song_profile["singer_label"],
+            "mood_label": song_profile["mood_label"],
             "can_pay_order": can_pay_order(order),
             "payment_cta_label": get_payment_cta_label(db, order),
             **pricing,
