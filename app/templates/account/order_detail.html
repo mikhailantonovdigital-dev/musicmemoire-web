@@ -1,230 +1,97 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="section">
-  <div class="container">
-    <div class="page-shell page-shell-dark">
-      <div class="dashboard-hero-dark">
-        <div class="dashboard-hero-copy">
-          <p class="eyebrow eyebrow-dark">Карточка заказа</p>
-          <h1>{{ order.order_number }}</h1>
-          <p class="section-lead">
-            Здесь собраны финальный текст, параметры песни, статус заказа и управление генерацией.
+<section class="questionnaire-stage account-order-stage">
+  <div class="container narrow">
+    <div class="questionnaire-shell account-order-shell">
+      <div class="questionnaire-stage-head account-order-head">
+        <p class="eyebrow">Заказ</p>
+        <h1 class="account-order-number">{{ order.order_number }}</h1>
+        {% if welcome %}
+          <p class="questionnaire-stage-lead">
+            {% if welcome_delivery == "payment_success" %}
+              Оплата прошла успешно. Генерация песни уже запущена автоматически.
+            {% elif welcome_delivery == "email" %}
+              Заказ открыт в кабинете. Ссылку для входа мы отправили на почту.
+            {% elif welcome_delivery == "stub" %}
+              Заказ открыт в кабинете. Письмо сейчас в тестовом режиме.
+            {% else %}
+              Заказ уже привязан к вашему профилю.
+            {% endif %}
           </p>
-        </div>
-
-        <div class="dashboard-head-actions">
-          <a href="/account/" class="btn btn-secondary">Назад в кабинет</a>
-          <a href="/support?order={{ order.public_id }}" class="btn btn-secondary">Поддержка</a>
-        </div>
-      </div>
-
-      <div class="step-meta step-meta-dark">
-        <span>Статус заказа: <strong>{{ order.status|replace('_', ' ') }}</strong></span>
-        <span>Режим: <strong>{{ "Свой текст" if order.lyrics_mode == "custom" else "2 версии бесплатно" }}</strong></span>
-        <span>Источник: <strong>{{ "Голос" if order.story_source == "voice" else "Текст" }}</strong></span>
-        <span>Текущая попытка: <strong>{{ song_status_label }}</strong></span>
-        {% if has_previous_ready_song and playback_song %}
-          <span>Последний готовый результат: <strong>попытка {{ playback_song.attempt_no }}</strong></span>
         {% endif %}
       </div>
 
-      {% if welcome %}
-        <div class="notice notice-success" style="margin-top: 18px;">
-          {% if welcome_delivery == "payment_success" %}
-            Оплата прошла успешно. Генерация песни уже запущена автоматически.
-          {% elif welcome_delivery == "email" %}
-            Кабинет создан. Ссылку для входа мы отправили на почту, а этот заказ уже открыт сразу здесь.
-          {% elif welcome_delivery == "stub" %}
-            Кабинет создан. Письмо сейчас в stub-режиме, но заказ уже открыт в кабинете.
-          {% else %}
-            Кабинет создан, и заказ уже привязан к вашему профилю.
+      <div class="account-song-meta-card panel-card panel-card-dark">
+        <div class="mini-label">Параметры песни</div>
+        <div class="detail-list account-song-meta-list">
+          <div class="detail-list-item">
+            <span class="detail-label">Стиль</span>
+            <strong class="detail-value">{{ song_style_label }}</strong>
+          </div>
+          {% if song_style_details %}
+          <div class="detail-list-item">
+            <span class="detail-label">Уточнение</span>
+            <strong class="detail-value">{{ song_style_details }}</strong>
+          </div>
           {% endif %}
-        </div>
-      {% endif %}
-
-      <div class="detail-shell">
-        <div class="detail-main">
-          <div class="panel-card panel-card-dark">
-            <div class="mini-label">Финальный текст</div>
-            <h2 class="form-title">Текст заказа</h2>
-            <textarea class="textarea textarea-readonly" readonly>{{ order.final_lyrics_text or "Финальный текст пока не сохранён." }}</textarea>
+          <div class="detail-list-item">
+            <span class="detail-label">Исполнение</span>
+            <strong class="detail-value">{{ singer_label }}</strong>
           </div>
         </div>
-
-        <aside class="aside-stack">
-          <div class="panel-card status-panel panel-card-dark">
-            <div class="mini-label">Текущее состояние</div>
-
-            <div class="detail-list">
-              <div class="detail-list-item">
-                <span class="detail-label">Заказ</span>
-                <strong class="detail-value">{{ order.status|replace('_', ' ') }}</strong>
-              </div>
-              <div class="detail-list-item">
-                <span class="detail-label">Генерация</span>
-                <strong class="detail-value">{{ song_status_label }}</strong>
-              </div>
-              {% if latest_song %}
-                <div class="detail-list-item">
-                  <span class="detail-label">Текущая попытка</span>
-                  <strong class="detail-value">{{ latest_song.attempt_no }}</strong>
-                </div>
-              {% endif %}
-              {% if playback_song %}
-                <div class="detail-list-item">
-                  <span class="detail-label">Готовый результат</span>
-                  <strong class="detail-value">Попытка {{ playback_song.attempt_no }}</strong>
-                </div>
-                <div class="detail-list-item">
-                  <span class="detail-label">Вариантов</span>
-                  <strong class="detail-value">{{ playback_song.audio_variants|length if playback_song.audio_variants else (1 if playback_song.audio_url else '—') }}</strong>
-                </div>
-              {% endif %}
-            </div>
-          </div>
-
-          <div class="panel-card panel-card-dark">
-            <div class="mini-label">Параметры песни</div>
-          
-            <div class="detail-list">
-              <div class="detail-list-item">
-                <span class="detail-label">Стиль</span>
-                <strong class="detail-value">{{ song_style_label }}</strong>
-              </div>
-          
-              {% if song_style_details %}
-                <div class="detail-list-item">
-                  <span class="detail-label">Уточнение по стилю</span>
-                  <strong class="detail-value">{{ song_style_details }}</strong>
-                </div>
-              {% endif %}
-          
-              <div class="detail-list-item">
-                <span class="detail-label">Исполнение</span>
-                <strong class="detail-value">{{ singer_label }}</strong>
-              </div>
-            </div>
-          </div>
-
-          <div class="panel-card panel-card-dark">
-            <div class="mini-label">Песня</div>
-
-            {% if has_previous_ready_song and playback_song %}
-              <div class="notice" style="margin-bottom: 14px;">
-                Последняя попытка ещё не дала готовый результат, но предыдущая успешная песня из попытки {{ playback_song.attempt_no }} доступна ниже.
-              </div>
-            {% endif %}
-
-            {% if playback_song and playback_song.audio_variants %}
-              <div style="display: grid; gap: 14px;">
-                {% for track in playback_song.audio_variants %}
-                  {% set playable_url = request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=loop.index0) %}
-                  {% set download_url = request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=loop.index0) ~ '?download=1' %}
-                  <div style="padding: 14px; border: 1px solid rgba(255,255,255,.08); border-radius: 18px; background: rgba(255,255,255,.03);">
-                    <p style="margin: 0 0 8px;"><strong>Вариант {{ loop.index }}</strong></p>
-                    <p class="muted" style="margin: 0 0 10px;">Попытка {{ playback_song.attempt_no }}</p>
-                    {% if playable_url %}
-                      <audio class="audio-player" controls preload="none" src="{{ playable_url }}"></audio>
-                    {% endif %}
-                    <div class="form-actions" style="margin-top: 12px;">
-                      {% if track.audio_url or track.stream_audio_url %}
-                        <a href="{{ download_url }}" class="btn btn-secondary">Скачать mp3</a>
-                      {% endif %}
-                    </div>
-                  </div>
-                {% endfor %}
-              </div>
-            {% elif playback_song and playback_song.audio_url %}
-              <div style="padding: 14px; border: 1px solid rgba(255,255,255,.08); border-radius: 18px; background: rgba(255,255,255,.03);">
-                <p class="muted" style="margin: 0 0 10px;">Готовый результат из попытки {{ playback_song.attempt_no }}</p>
-                <audio class="audio-player" controls preload="none" src="{{ request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=0) }}"></audio>
-                <div class="form-actions" style="margin-top: 12px;">
-                  <a href="{{ request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=0) }}?download=1" class="btn btn-secondary">Скачать mp3</a>
-                </div>
-              </div>
-            {% elif latest_song and song_is_ready and suno_stub_mode %}
-              <p class="muted" style="margin: 0;">
-                Тестовый режим завершён. Для боевого результата нужен реальный аудиофайл.
-              </p>
-            {% elif latest_song and song_is_running %}
-              <p class="muted" style="margin: 0;">
-                Задача уже запущена. Можно открыть страницу статуса и дождаться завершения.
-              </p>
-            {% elif latest_song and song_is_failed %}
-              <p class="muted" style="margin: 0;">
-                Последняя попытка завершилась ошибкой. Можно запустить генерацию ещё раз.
-              </p>
-            {% else %}
-              <p class="muted" style="margin: 0;">
-                Генерация песни ещё не запускалась.
-              </p>
-            {% endif %}
-
-            <div class="form-actions action-stack">
-              {% if can_pay_order %}
-                <form method="post" action="/checkout/start/{{ order.public_id }}">
-                  <button type="submit" class="btn btn-primary">{{ payment_cta_label }}</button>
-                </form>
-              {% endif %}
-
-              {% if latest_song and song_is_running %}
-                <a href="/songs/status?job={{ latest_song.public_id }}" class="btn btn-secondary">Открыть статус</a>
-              {% elif latest_song and song_is_failed %}
-                <form method="post" action="/songs/retry/{{ latest_song.public_id }}">
-                  <button type="submit" class="btn btn-secondary">Повторить генерацию</button>
-                </form>
-                {% if playback_song %}
-                  <a href="/songs/status?job={{ playback_song.public_id }}" class="btn btn-secondary">Открыть готовый результат</a>
-                {% endif %}
-              {% elif latest_song and song_is_ready %}
-                <a href="/songs/status?job={{ latest_song.public_id }}" class="btn btn-secondary">Открыть результат</a>
-              {% elif playback_song %}
-                <a href="/songs/status?job={{ playback_song.public_id }}" class="btn btn-secondary">Открыть готовый результат</a>
-              {% elif can_start_song %}
-                <form method="post" action="/songs/start/{{ order.public_id }}">
-                  <button type="submit" class="btn btn-secondary">Сгенерировать песню</button>
-                </form>
-              {% elif not can_pay_order %}
-                <span class="btn btn-secondary">Генерация после оплаты</span>
-              {% endif %}
-            </div>
-          </div>
-        </aside>
       </div>
 
-      {% if song_attempts %}
-        <div class="form-card" style="margin-top: 20px;">
-          <h2 class="form-title">История попыток генерации</h2>
-          <div style="display: grid; gap: 16px;">
-            {% for attempt in song_attempts %}
-              <div class="panel-card panel-card-dark" style="padding: 16px;">
-                <div class="lyrics-card-head" style="margin-bottom: 12px;">
-                  <div>
-                    <h3 style="margin: 0;">Попытка {{ attempt.attempt_no }}</h3>
-                    <p class="lyrics-angle">Статус: {{ attempt.status }}</p>
-                    {% if attempt.external_job_id %}<p class="lyrics-angle">task id: {{ attempt.external_job_id }}</p>{% endif %}
-                  </div>
-                  <span class="variant-chip variant-chip-dark">{% if latest_song and latest_song.public_id == attempt.public_id %}Текущая{% elif playback_song and playback_song.public_id == attempt.public_id %}Готовая{% else %}История{% endif %}</span>
+      <div class="panel-card panel-card-dark account-song-card">
+        <div class="mini-label">Песня</div>
+
+        {% if playback_song and playback_song.audio_variants %}
+          <div class="account-song-results">
+            {% for track in playback_song.audio_variants %}
+              {% set playable_url = request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=loop.index0) %}
+              {% set download_url = request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=loop.index0) ~ '?download=1' %}
+              <div class="account-song-result-item">
+                <p class="account-song-result-title">Вариант {{ loop.index }}</p>
+                {% if playable_url %}
+                  <audio class="audio-player" controls preload="none" src="{{ playable_url }}"></audio>
+                {% endif %}
+                <div class="form-actions" style="margin-top: 12px;">
+                  {% if track.audio_url or track.stream_audio_url %}
+                    <a href="{{ download_url }}" class="btn btn-secondary">Скачать mp3</a>
+                  {% endif %}
                 </div>
-                {% if attempt.audio_variants %}
-                  <p class="muted" style="margin: 0 0 10px;">Вариантов mp3: {{ attempt.audio_variants|length }}</p>
-                {% elif attempt.audio_url %}
-                  <p class="muted" style="margin: 0 0 10px;">Доступен 1 mp3-файл.</p>
-                {% endif %}
-                {% if attempt.error_message %}
-                  <div class="notice notice-warning" style="margin-bottom: 12px;">{{ attempt.error_message }}</div>
-                {% endif %}
-                <details>
-                  <summary style="cursor: pointer;">Показать текст, на котором запускалась эта попытка</summary>
-                  <textarea class="textarea textarea-readonly" readonly rows="12" style="margin-top: 12px;">{{ attempt.lyrics_text_snapshot or "" }}</textarea>
-                </details>
               </div>
             {% endfor %}
           </div>
-        </div>
-      {% endif %}
+        {% elif playback_song and playback_song.audio_url %}
+          <div class="account-song-result-item">
+            <audio class="audio-player" controls preload="none" src="{{ request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=0) }}"></audio>
+            <div class="form-actions" style="margin-top: 12px;">
+              <a href="{{ request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=0) }}?download=1" class="btn btn-secondary">Скачать mp3</a>
+            </div>
+          </div>
+        {% elif latest_song and song_is_ready and suno_stub_mode %}
+          <p class="muted" style="margin: 0;">Тестовый режим завершён. Для боевого результата нужен реальный аудиофайл.</p>
+        {% else %}
+          <div class="generation-overlay-card account-song-spinner-card">
+            <div class="generation-spinner"></div>
+            <h2>Готовим песню</h2>
+            <p>Генерация уже запущена. Как только песня будет готова, она появится здесь автоматически.</p>
+          </div>
+          {% if latest_song and song_is_failed and latest_song.error_message %}
+            <div class="notice notice-warning" style="margin-top: 16px;">{{ latest_song.error_message }}</div>
+          {% endif %}
+        {% endif %}
+      </div>
     </div>
   </div>
 </section>
+
+{% if latest_song and not playback_song and not suno_stub_mode %}
+<script>
+  setTimeout(function () {
+    window.location.reload();
+  }, 5000);
+</script>
+{% endif %}
 {% endblock %}
