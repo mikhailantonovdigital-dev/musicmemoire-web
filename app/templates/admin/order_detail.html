@@ -16,6 +16,25 @@
 
     {% if flash %}<div class="notice notice-{{ flash.kind }}">{{ flash.text }}</div>{% endif %}
 
+    {% if background_jobs %}
+      <div class="form-card" style="margin-top: 20px;">
+        <h2 class="form-title">Последние фоновые задачи по заказу</h2>
+        <div class="admin-events">
+          {% for item in background_jobs %}
+            {% set job = item.job %}
+            <div class="admin-event">
+              <div class="admin-event-head"><strong>{{ item.job_label }}</strong><span>{{ job.created_at }}</span></div>
+              <p style="margin: 0 0 8px;"><strong>Статус:</strong> {{ item.status_label }}</p>
+              {% if item.song_job_id %}<p style="margin: 0 0 8px;"><strong>Song job:</strong> {{ item.song_job_id }}</p>{% endif %}
+              {% if item.voice_input_id %}<p style="margin: 0 0 8px;"><strong>Voice input:</strong> {{ item.voice_input_id }}</p>{% endif %}
+              {% if item.payment_id %}<p style="margin: 0 0 8px;"><strong>Платёж:</strong> {{ item.payment_id }}</p>{% endif %}
+              {% if job.error_message %}<div class="notice notice-error" style="margin-top: 8px;">{{ job.error_message }}</div>{% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
     <div class="step-meta">
       <span>Статус заказа: <strong>{{ order.status }}</strong></span>
       <span>Email: <strong>{{ order.user.email if order.user and order.user.email else "—" }}</strong></span>
@@ -280,7 +299,7 @@
         {% if order.lyrics_mode == "generate" %}
           <div class="form-actions" style="margin-top: 12px;">
             <form method="post" action="/admin/orders/{{ order.public_id }}/lyrics-regenerate">
-              <button type="submit" class="btn btn-secondary">Перегенерировать тексты</button>
+              <button type="submit" class="btn btn-secondary">Поставить перегенерацию в очередь</button>
             </form>
           </div>
         {% endif %}
@@ -310,7 +329,7 @@
                       <input type="checkbox" name="apply_to_order" value="1" {% if loop.first %}checked{% endif %} />
                       <span>После расшифровки подставить в заказ</span>
                     </label>
-                    <button type="submit" class="btn btn-secondary">Перерасшифровать</button>
+                    <button type="submit" class="btn btn-secondary">Поставить перерасшифровку в очередь</button>
                   </form>
                   {% if voice.transcript_text %}
                     <form method="post" action="/admin/orders/{{ order.public_id }}/voice-apply">
@@ -343,7 +362,7 @@
             <h2 class="form-title" style="margin-bottom: 4px;">Сохранённые версии текста</h2>
             <p class="muted" style="margin: 0;">Оператор может выбрать готовую версию или полностью перегенерировать тексты из текущей истории.</p>
           </div>
-          {% if order.lyrics_mode == "generate" %}<form method="post" action="/admin/orders/{{ order.public_id }}/lyrics-regenerate"><button type="submit" class="btn btn-secondary">Перегенерировать тексты</button></form>{% endif %}
+          {% if order.lyrics_mode == "generate" %}<form method="post" action="/admin/orders/{{ order.public_id }}/lyrics-regenerate"><button type="submit" class="btn btn-secondary">Поставить перегенерацию в очередь</button></form>{% endif %}
         </div>
         <div style="display: grid; gap: 16px;">
           {% for version in lyrics_versions %}
@@ -377,7 +396,7 @@
       <div class="form-card" style="margin-top: 20px;">
         <h2 class="form-title">Сохранённые версии текста</h2>
         <p class="muted">Версий текста пока нет. Можно запустить перегенерацию из текущей истории.</p>
-        <div class="form-actions" style="margin-top: 12px;"><form method="post" action="/admin/orders/{{ order.public_id }}/lyrics-regenerate"><button type="submit" class="btn btn-secondary">Перегенерировать тексты</button></form></div>
+        <div class="form-actions" style="margin-top: 12px;"><form method="post" action="/admin/orders/{{ order.public_id }}/lyrics-regenerate"><button type="submit" class="btn btn-secondary">Поставить перегенерацию в очередь</button></form></div>
       </div>
     {% endif %}
 
