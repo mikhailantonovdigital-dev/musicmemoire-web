@@ -159,6 +159,7 @@ services:
         value: Magic Music
       - key: BASE_URL
         sync: false
+
       - key: DATABASE_URL
         sync: false
       - key: REDIS_URL
@@ -192,6 +193,20 @@ services:
       - key: SUNO_REQUEST_TIMEOUT_SECONDS
         value: 60
       - key: SUNO_CALLBACK_TOKEN
+        sync: false
+
+      - key: YOOKASSA_SHOP_ID
+        sync: false
+      - key: YOOKASSA_SECRET_KEY
+        sync: false
+      - key: YOOKASSA_TAX_SYSTEM_CODE
+        sync: false
+      - key: YOOKASSA_VAT_CODE
+        sync: false
+      - key: YOOKASSA_RECEIPT_EMAIL
+        sync: false
+
+      - key: METRICA_COUNTER_ID
         sync: false
 
       - key: SUPPORT_TG_URL
@@ -237,3 +252,24 @@ services:
         value: Magic Music
       - key: SMTP_TIMEOUT_SECONDS
         value: 20
+
+      - key: MAGIC_LINK_TTL_MINUTES
+        value: 30
+      - key: MAGIC_LINK_STUB_MODE
+        value: false
+
+      - key: MAGIC_LINK_EMAIL_LIMIT_PER_HOUR
+        value: 5
+      - key: MAGIC_LINK_IP_LIMIT_PER_HOUR
+        value: 12
+      - key: QUESTIONNAIRE_MAGIC_LINK_ORDER_LIMIT_PER_HOUR
+        value: 3
+      - key: VOICE_UPLOAD_LIMIT_PER_ORDER_PER_DAY
+        value: 5
+      - key: VOICE_RETRANSCRIBE_LIMIT_PER_ORDER_PER_HOUR
+        value: 3
+      - key: SONG_START_LIMIT_PER_ORDER_PER_DAY
+        value: 6
+
+      - key: ADMIN_TOKEN
+        sync: false
