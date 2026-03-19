@@ -7,6 +7,7 @@ from app.models.order_payment import OrderPayment
 from app.models.song_generation import SongGeneration
 from app.models.security_event import SecurityEvent
 from app.models.background_job import BackgroundJob
+from app.models.email_log import EmailLog
 
 __all__ = [
     "User",
@@ -19,6 +20,7 @@ __all__ = [
     "SongGeneration",
     "SecurityEvent",
     "BackgroundJob",
+    "EmailLog",
     "SupportThread",
     "SupportMessage",
 ]
