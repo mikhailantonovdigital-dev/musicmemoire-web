@@ -703,6 +703,11 @@ async def offer_page(request: Request):
     return render_legal_page(request, "offer")
 
 
+@router.get("/policy", response_class=HTMLResponse)
+async def policy_page(request: Request):
+    return render_legal_page(request, "policy")
+
+
 @router.get("/faq", response_class=HTMLResponse)
 async def faq_page(request: Request):
     return render_faq_page(request)
