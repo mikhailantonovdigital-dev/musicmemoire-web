@@ -154,11 +154,25 @@ def maybe_start_song_generation_after_payment(
         )
         return None
 
-    song = create_song_job_record(db, order, queued_event_type="song_generation_autostart_enqueued", trigger=trigger)
-
     active_job = find_active_job_for_order(db, order, "song_generation_start")
     if active_job is not None:
-        return song
+        existing_song = next((item for item in order.song_generations if item.status in RUNNING_SONG_STATUSES), None)
+        if existing_song is not None:
+            db.add(
+                OrderEvent(
+                    order=order,
+                    event_type="song_generation_autostart_reused_active_job",
+                    payload={
+                        "payment_public_id": payment.public_id,
+                        "trigger": trigger,
+                        "song_job_id": existing_song.public_id,
+                        "attempt_no": existing_song.attempt_no,
+                    },
+                )
+            )
+            return existing_song
+
+    song = create_song_job_record(db, order, queued_event_type="song_generation_autostart_enqueued", trigger=trigger)
 
     from app.tasks import run_song_start_task
 
