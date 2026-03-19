@@ -78,7 +78,9 @@
             <h2>Готовим песню</h2>
             <p>Генерация уже запущена. Как только песня будет готова, она появится здесь автоматически.</p>
           </div>
-          {% if latest_song and song_is_failed and latest_song.error_message %}
+          {% if song_sync_error %}
+            <div class="notice notice-warning" style="margin-top: 16px;">Не удалось обновить статус генерации: {{ song_sync_error }}</div>
+          {% elif latest_song and song_is_failed and latest_song.error_message %}
             <div class="notice notice-warning" style="margin-top: 16px;">{{ latest_song.error_message }}</div>
           {% endif %}
         {% endif %}
@@ -87,7 +89,7 @@
   </div>
 </section>
 
-{% if latest_song and song_is_running and not playback_song and not suno_stub_mode %}
+{% if latest_song and song_is_running and not playback_song and not suno_stub_mode and not song_sync_error %}
 <script>
   setTimeout(function () {
     window.location.reload();

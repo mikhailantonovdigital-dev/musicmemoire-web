@@ -6224,6 +6224,11 @@ strong,
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  background:
+    radial-gradient(circle at 12% 6%, rgba(118, 132, 255, 0.22), transparent 28%),
+    radial-gradient(circle at 88% 12%, rgba(140, 92, 255, 0.24), transparent 26%),
+    radial-gradient(circle at 52% 100%, rgba(74, 195, 255, 0.14), transparent 34%),
+    linear-gradient(180deg, #060b14 0%, #08101d 44%, #091322 72%, #070d18 100%);
 }
 
 .page-account-screen .site-header,
@@ -6244,11 +6249,7 @@ strong,
   flex: 1 0 auto;
   min-height: calc(100vh - 180px);
   position: relative;
-  background:
-    radial-gradient(circle at 12% 6%, rgba(118, 132, 255, 0.22), transparent 28%),
-    radial-gradient(circle at 88% 12%, rgba(140, 92, 255, 0.24), transparent 26%),
-    radial-gradient(circle at 52% 100%, rgba(74, 195, 255, 0.14), transparent 34%),
-    linear-gradient(180deg, #060b14 0%, #08101d 44%, #091322 72%, #070d18 100%);
+  background: transparent;
 }
 
 .page-account-screen .site-main::before {
@@ -6285,6 +6286,7 @@ strong,
   justify-content: space-between;
   gap: 18px;
   color: rgba(233, 239, 255, 0.78);
+  background: transparent !important;
 }
 
 .account-order-stage {
@@ -6331,7 +6333,16 @@ strong,
 }
 
 .account-song-meta-list {
-  margin-top: 14px;
+  margin-top: 18px;
+}
+
+.account-song-meta-card {
+  margin-top: 6px;
+  padding: 26px 24px;
+}
+
+.account-song-card {
+  padding: 24px;
 }
 
 .account-song-meta-card {
@@ -6366,11 +6377,27 @@ strong,
 
 .account-song-spinner-card {
   width: 100%;
-  margin-top: 4px;
+  margin-top: 8px;
   min-height: 260px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  row-gap: 14px;
+  padding: 44px 32px;
+  text-align: center;
+}
+
+.account-song-spinner-card .generation-spinner {
+  margin: 0 auto 2px;
+}
+
+.account-song-spinner-card h2 {
+  margin: 0;
+}
+
+.account-song-spinner-card p {
+  max-width: 620px;
+  margin: 0;
 }
 
 .page-account-screen .dashboard-hero-dark,
@@ -6443,5 +6470,7 @@ strong,
   .page-account-screen .site-header-upgraded .nav::-webkit-scrollbar { display: none; }
   .page-account-screen .nav-horizontal { justify-content: flex-start; gap: 8px; }
   .account-order-stage { padding-top: 88px; padding-bottom: 56px; }
+  .account-song-meta-card,
+  .account-song-card { padding: 20px; }
   .account-order-number { font-size: 24px !important; }
 }
