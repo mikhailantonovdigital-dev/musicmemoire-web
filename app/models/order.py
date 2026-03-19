@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from app.models.security_event import SecurityEvent
     from app.models.background_job import BackgroundJob
     from app.models.support_thread import SupportThread
+    from app.models.email_log import EmailLog
 
 
 def generate_order_number() -> str:
@@ -146,6 +147,11 @@ class Order(Base):
         back_populates="order",
         cascade="all, delete-orphan",
         order_by="SupportThread.id.desc()",
+    )
+    email_logs: Mapped[list["EmailLog"]] = relationship(
+        back_populates="order",
+        cascade="all, delete-orphan",
+        order_by="EmailLog.id.desc()",
     )
 
 
