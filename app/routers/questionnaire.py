@@ -33,6 +33,8 @@ from app.services.transcription_service import (
     transcribe_audio_file,
 )
 from app.services.rate_limit_service import RateLimitRule, enforce_rate_limit, get_client_ip
+from app.services.background_jobs import BackgroundJobError, enqueue_background_job
+from app.tasks import run_voice_transcription_task
 
 router = APIRouter(prefix="/questionnaire", tags=["questionnaire"])
 
@@ -141,6 +143,7 @@ def format_size(size_bytes: int | None) -> str | None:
 def humanize_transcription_status(status: str | None) -> str:
     mapping = {
         "uploaded": "Загружено",
+        "queued": "В очереди",
         "transcribing": "Распознаём",
         "done": "Расшифровано",
         "failed": "Ошибка распознавания",
@@ -157,6 +160,7 @@ def render_story_template(
     saved: bool = False,
     voice_uploaded: bool = False,
     transcribed: bool = False,
+    transcription_queued: bool = False,
     transcription_failed: bool = False,
     transcription_error: str | None = None,
     status_code: int = 200,
@@ -175,6 +179,7 @@ def render_story_template(
             "saved": saved,
             "voice_uploaded": voice_uploaded,
             "transcribed": transcribed,
+            "transcription_queued": transcription_queued,
             "transcription_failed": transcription_failed,
             "transcription_error": transcription_error,
             "error": error,
@@ -536,6 +541,7 @@ async def questionnaire_story(request: Request, db: Session = Depends(get_db)):
     saved = request.query_params.get("saved") == "1"
     voice_uploaded = request.query_params.get("voice_uploaded") == "1"
     transcribed = request.query_params.get("transcribed") == "1"
+    transcription_queued = request.query_params.get("transcription_queued") == "1"
     transcription_failed = request.query_params.get("transcription_failed") == "1"
     transcription_error = request.session.pop("voice_transcription_error", None)
 
@@ -546,6 +552,7 @@ async def questionnaire_story(request: Request, db: Session = Depends(get_db)):
         saved=saved,
         voice_uploaded=voice_uploaded,
         transcribed=transcribed,
+        transcription_queued=transcription_queued,
         transcription_failed=transcription_failed,
         transcription_error=transcription_error,
     )
@@ -611,7 +618,7 @@ async def questionnaire_voice_upload(
         storage_path=stored.absolute_path,
         relative_path=stored.relative_path,
         size_bytes=stored.size_bytes,
-        transcription_status="uploaded",
+        transcription_status="queued",
     )
     db.add(voice_input)
     db.flush()
@@ -630,14 +637,34 @@ async def questionnaire_voice_upload(
     db.commit()
     db.refresh(voice_input)
 
-    success = await run_transcription_for_voice(db, request, draft, voice_input)
+    try:
+        enqueue_background_job(
+            db,
+            order=draft,
+            job_type="voice_transcription",
+            func=run_voice_transcription_task,
+            payload={
+                "order_public_id": draft.public_id,
+                "voice_public_id": voice_input.public_id,
+                "apply_to_order": True,
+                "started_event_type": "voice_transcription_started",
+                "success_event_type": "voice_transcription_done",
+                "failure_event_type": "voice_transcription_failed",
+                "trigger": "questionnaire_voice_upload",
+            },
+        )
+        db.commit()
+    except BackgroundJobError as exc:
+        db.rollback()
+        return render_story_template(
+            request,
+            draft,
+            latest_voice,
+            error=f"Не удалось поставить расшифровку в очередь: {exc}",
+            status_code=500,
+        )
 
-    redirect_url = f"{request.url_for('questionnaire_story')}?voice_uploaded=1"
-    if success:
-        redirect_url += "&transcribed=1"
-    else:
-        redirect_url += "&transcription_failed=1"
-
+    redirect_url = f"{request.url_for('questionnaire_story')}?voice_uploaded=1&transcription_queued=1"
     return RedirectResponse(url=redirect_url, status_code=303)
 
 
@@ -685,16 +712,36 @@ async def questionnaire_voice_retranscribe(
             status_code=303,
         )
 
+    latest_voice.transcription_status = "queued"
+    db.add(latest_voice)
     db.commit()
 
-    success = await run_transcription_for_voice(db, request, draft, latest_voice)
+    try:
+        enqueue_background_job(
+            db,
+            order=draft,
+            job_type="voice_transcription",
+            func=run_voice_transcription_task,
+            payload={
+                "order_public_id": draft.public_id,
+                "voice_public_id": latest_voice.public_id,
+                "apply_to_order": True,
+                "started_event_type": "voice_transcription_started",
+                "success_event_type": "voice_transcription_done",
+                "failure_event_type": "voice_transcription_failed",
+                "trigger": "questionnaire_voice_retranscribe",
+            },
+        )
+        db.commit()
+    except BackgroundJobError as exc:
+        db.rollback()
+        request.session["voice_transcription_error"] = f"Не удалось поставить расшифровку в очередь: {exc}"
+        return RedirectResponse(
+            url=f"{request.url_for('questionnaire_story')}?transcription_failed=1",
+            status_code=303,
+        )
 
-    redirect_url = str(request.url_for("questionnaire_story"))
-    if success:
-        redirect_url += "?transcribed=1"
-    else:
-        redirect_url += "?transcription_failed=1"
-
+    redirect_url = str(request.url_for("questionnaire_story")) + "?transcription_queued=1"
     return RedirectResponse(url=redirect_url, status_code=303)
 
 
