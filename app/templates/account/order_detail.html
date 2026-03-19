@@ -83,6 +83,10 @@
             <span class="detail-label">Исполнение</span>
             <strong class="detail-value">{{ singer_label }}</strong>
           </div>
+          <div class="detail-list-item">
+            <span class="detail-label">Текст песни</span>
+            <div class="account-song-lyrics">{{ order.final_lyrics_text or "Текст песни пока не сохранён." }}</div>
+          </div>
         </div>
       </div>
     </div>

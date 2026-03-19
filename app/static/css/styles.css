@@ -6354,6 +6354,7 @@ strong,
 
 .account-song-card {
   padding: 24px;
+  overflow: hidden;
 }
 
 .account-song-meta-list .detail-list-item + .detail-list-item {
@@ -6365,6 +6366,11 @@ strong,
 .account-song-results {
   display: grid;
   gap: 14px;
+}
+
+.account-song-card .notice {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .account-song-result-item {
@@ -6384,6 +6390,7 @@ strong,
 
 .account-song-spinner-card {
   width: 100%;
+  max-width: 100%;
   margin-top: 8px;
   min-height: 260px;
   display: grid;
@@ -6392,6 +6399,7 @@ strong,
   row-gap: 14px;
   padding: 44px 32px;
   text-align: center;
+  overflow: hidden;
 }
 
 .account-song-spinner-card .generation-spinner {
@@ -6400,11 +6408,18 @@ strong,
 
 .account-song-spinner-card h2 {
   margin: 0;
+  max-width: 100%;
 }
 
 .account-song-spinner-card p {
   max-width: 620px;
   margin: 0;
+}
+
+.account-song-lyrics {
+  white-space: pre-wrap;
+  color: rgba(238, 244, 255, 0.92);
+  line-height: 1.7;
 }
 
 .page-account-screen .dashboard-hero-dark,

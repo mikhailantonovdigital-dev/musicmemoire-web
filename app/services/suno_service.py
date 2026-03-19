@@ -65,6 +65,35 @@ def _base_url() -> str:
     return (settings.SUNO_API_BASE_URL or "https://api.sunoapi.org").rstrip("/")
 
 
+def _build_request_headers() -> dict[str, str]:
+    return {
+        "Authorization": f"Bearer {settings.SUNO_API_KEY}",
+        "Accept": "application/json",
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/145.0.0.0 Safari/537.36"
+        ),
+        "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Cache-Control": "no-cache",
+    }
+
+
+def _humanize_http_error(exc: HTTPError, raw_text: str) -> str:
+    parsed = _safe_json_loads(raw_text)
+    if isinstance(parsed, dict):
+        error_name = str(parsed.get("error_name") or "").strip().lower()
+        detail = str(parsed.get("detail") or parsed.get("message") or parsed.get("msg") or "").strip()
+        if exc.code == 403 and error_name == "browser_signature_banned":
+            return (
+                "Сервис генерации отклонил запрос через защиту Cloudflare (403). "
+                "Похоже, провайдер блокирует текущую сигнатуру HTTP-клиента."
+            )
+        if detail:
+            return detail
+    return raw_text.strip() or str(exc)
+
+
 def _api_request(method: str, path: str, *, payload: dict[str, Any] | None = None, query: dict[str, str] | None = None) -> dict[str, Any]:
     _ensure_api_ready()
 
@@ -73,10 +102,7 @@ def _api_request(method: str, path: str, *, payload: dict[str, Any] | None = Non
         url = f"{url}?{urlencode(query)}"
 
     body = None
-    headers = {
-        "Authorization": f"Bearer {settings.SUNO_API_KEY}",
-        "Accept": "application/json",
-    }
+    headers = _build_request_headers()
 
     if payload is not None:
         body = json.dumps(payload).encode("utf-8")
@@ -89,11 +115,7 @@ def _api_request(method: str, path: str, *, payload: dict[str, Any] | None = Non
             raw_text = response.read().decode("utf-8")
     except HTTPError as exc:
         raw_text = exc.read().decode("utf-8", errors="replace")
-        parsed = _safe_json_loads(raw_text)
-        if isinstance(parsed, dict):
-            msg = str(parsed.get("msg") or parsed.get("message") or raw_text).strip()
-        else:
-            msg = raw_text.strip() or str(exc)
+        msg = _humanize_http_error(exc, raw_text)
         raise SunoServiceError(f"Ошибка сервиса генерации ({exc.code}): {msg}") from exc
     except URLError as exc:
         raise SunoServiceError(f"Не удалось связаться с сервисом генерации: {exc.reason}") from exc
