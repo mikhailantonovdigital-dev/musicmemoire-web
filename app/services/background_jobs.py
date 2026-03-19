@@ -141,6 +141,7 @@ def enqueue_background_job(
     func: Callable[..., Any],
     payload: dict[str, Any] | None = None,
     queue_name: str = DEFAULT_QUEUE_NAME,
+    force_sync: bool = False,
 ) -> BackgroundJob:
     background_job = BackgroundJob(
         order_id=order.id if order is not None else None,
@@ -168,7 +169,7 @@ def enqueue_background_job(
             )
         )
 
-    if settings.BACKGROUND_JOBS_SYNC_MODE:
+    if force_sync or settings.BACKGROUND_JOBS_SYNC_MODE:
         background_job.rq_job_id = f"sync-{background_job.public_id}"
         db.commit()
         func(**task_kwargs)
