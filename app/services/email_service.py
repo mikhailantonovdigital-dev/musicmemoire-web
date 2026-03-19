@@ -73,11 +73,27 @@ def _deliver_email(*, recipient_email: str, subject: str, text_body: str, html_b
         raise EmailServiceError("Не удалось отправить письмо.") from exc
 
 
+def magic_link_email_subject() -> str:
+    return "Вход в личный кабинет Magic Music"
+
+
+def payment_success_email_subject(order_number: str) -> str:
+    return f"Оплата прошла — заказ {order_number}"
+
+
+def song_ready_email_subject(order_number: str) -> str:
+    return f"Песня готова — заказ {order_number}"
+
+
+def song_failed_email_subject(order_number: str) -> str:
+    return f"Нужна дополнительная проверка — заказ {order_number}"
+
+
 def send_magic_link_email(*, recipient_email: str, login_url: str) -> MagicLinkDeliveryResult:
     if settings.MAGIC_LINK_STUB_MODE:
         return MagicLinkDeliveryResult(mode="stub", login_url=login_url)
 
-    subject = "Вход в личный кабинет Magic Music"
+    subject = magic_link_email_subject()
 
     text_body = f"""Здравствуйте!
 
@@ -142,7 +158,7 @@ def send_magic_link_email(*, recipient_email: str, login_url: str) -> MagicLinkD
 
 
 def send_payment_success_email(*, recipient_email: str, order_number: str, order_url: str, price_rub: int) -> None:
-    subject = f"Оплата прошла — заказ {order_number}"
+    subject = payment_success_email_subject(order_number)
 
     text_body = f"""Здравствуйте!
 
@@ -201,7 +217,7 @@ def send_payment_success_email(*, recipient_email: str, order_number: str, order
 
 
 def send_song_ready_email(*, recipient_email: str, order_number: str, order_url: str, audio_url: str | None = None) -> None:
-    subject = f"Песня готова — заказ {order_number}"
+    subject = song_ready_email_subject(order_number)
 
     extra_text = f"\nСсылка на аудио:\n{audio_url}\n" if audio_url else ""
 
@@ -254,6 +270,74 @@ def send_song_ready_email(*, recipient_email: str, order_number: str, order_url:
 
         <p style="margin:0;font-size:13px;line-height:1.6;color:#9fb0d9;">
           В кабинете можно прослушать готовую песню и открыть карточку заказа.
+        </p>
+      </div>
+    </div>
+  </body>
+</html>
+"""
+
+    _deliver_email(
+        recipient_email=recipient_email,
+        subject=subject,
+        text_body=text_body,
+        html_body=html_body,
+    )
+
+
+def send_song_failed_email(*, recipient_email: str, order_number: str, order_url: str, error_message: str | None = None) -> None:
+    subject = song_failed_email_subject(order_number)
+
+    safe_error = (error_message or "").strip()
+    error_block_text = f"\nЧто произошло:\n{safe_error}\n" if safe_error else ""
+    error_block_html = (
+        f"""
+        <div style="margin:0 0 18px;padding:14px 16px;border-radius:16px;background:rgba(255,255,255,0.06);border:1px solid rgba(160,181,220,0.16);">
+          <p style="margin:0 0 6px;font-size:14px;line-height:1.6;color:#c8d6fb;"><strong>Что произошло:</strong></p>
+          <p style="margin:0;font-size:14px;line-height:1.6;color:#dfe8ff;">{safe_error}</p>
+        </div>
+        """
+        if safe_error
+        else ""
+    )
+
+    text_body = f"""Здравствуйте!
+
+С заказом {order_number} возникла ситуация, которую мы уже заметили и разбираем вручную.
+
+Открыть заказ:
+{order_url}{error_block_text}
+Мы уже видим заказ в системе. Если хотите ускорить разбор, можно написать в поддержку из карточки заказа.
+"""
+
+    html_body = f"""\
+<!doctype html>
+<html lang="ru">
+  <body style="margin:0;padding:0;background:#0a1220;color:#f5f7ff;font-family:Arial,sans-serif;">
+    <div style="max-width:640px;margin:0 auto;padding:32px 20px;">
+      <div style="padding:28px;border-radius:24px;background:linear-gradient(135deg,#101b31 0%,#172542 52%,#1a3158 100%);border:1px solid rgba(160,181,220,0.18);box-shadow:0 24px 60px rgba(4,12,28,0.28);">
+        <div style="font-size:12px;line-height:1.4;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#b8c8ff;margin-bottom:14px;">
+          Magic Music
+        </div>
+
+        <h1 style="margin:0 0 14px;font-size:28px;line-height:1.1;color:#ffffff;">
+          Заказ требует дополнительной проверки
+        </h1>
+
+        <p style="margin:0 0 14px;font-size:16px;line-height:1.6;color:#dfe8ff;">
+          Мы заметили проблему по заказу <strong>{order_number}</strong> и уже разбираем её вручную.
+        </p>
+
+        {error_block_html}
+
+        <div style="margin:24px 0 22px;">
+          <a href="{order_url}" style="display:inline-block;padding:14px 22px;border-radius:14px;background:linear-gradient(135deg,#6d7cff 0%,#8d66ff 100%);color:#ffffff;text-decoration:none;font-size:16px;font-weight:700;">
+            Открыть заказ
+          </a>
+        </div>
+
+        <p style="margin:0;font-size:13px;line-height:1.6;color:#9fb0d9;">
+          В карточке заказа виден текущий статус и ссылка в поддержку.
         </p>
       </div>
     </div>
