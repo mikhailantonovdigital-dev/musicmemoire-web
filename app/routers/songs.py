@@ -172,10 +172,15 @@ async def song_start(order_public_id: str, request: Request, db: Session = Depen
 
     db.commit()
 
+    active_background_job = find_active_job_for_order(db, order, "song_generation_start")
+    if active_background_job is not None:
+        active_song = next((item for item in order.song_generations if item.status in RUNNING_SONG_STATUSES), None)
+        if active_song is not None:
+            return RedirectResponse(url=f"/songs/status?job={active_song.public_id}", status_code=303)
+
     try:
         song = create_song_job_record(db, order, queued_event_type="song_generation_enqueued", trigger="user_start")
-        if find_active_job_for_order(db, order, "song_generation_start") is None:
-            enqueue_background_job(
+        enqueue_background_job(
             db,
             order=order,
             job_type="song_generation_start",
@@ -187,7 +192,7 @@ async def song_start(order_public_id: str, request: Request, db: Session = Depen
                 "failed_event_type": "song_generation_failed",
                 "trigger": "user_start",
             },
-            )
+        )
         db.commit()
         db.refresh(song)
     except (SunoServiceError, BackgroundJobError) as exc:
@@ -321,10 +326,15 @@ async def song_retry(job_public_id: str, request: Request, db: Session = Depends
 
     db.commit()
 
+    active_background_job = find_active_job_for_order(db, song.order, "song_generation_start")
+    if active_background_job is not None:
+        active_song = next((item for item in song.order.song_generations if item.status in RUNNING_SONG_STATUSES), None)
+        if active_song is not None:
+            return RedirectResponse(url=f"/songs/status?job={active_song.public_id}", status_code=303)
+
     try:
         new_song = create_song_job_record(db, song.order, queued_event_type="song_generation_enqueued", trigger="user_retry")
-        if find_active_job_for_order(db, song.order, "song_generation_start") is None:
-            enqueue_background_job(
+        enqueue_background_job(
             db,
             order=song.order,
             job_type="song_generation_start",
@@ -336,7 +346,7 @@ async def song_retry(job_public_id: str, request: Request, db: Session = Depends
                 "failed_event_type": "song_generation_failed",
                 "trigger": "user_retry",
             },
-            )
+        )
         db.commit()
         db.refresh(new_song)
     except (SunoServiceError, BackgroundJobError) as exc:
