@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.db import get_db
+from app.core.db import engine, get_db
 from app.core.templates import templates
 from app.models import Order, OrderEvent, SupportMessage, SupportThread, User
+from app.services.background_jobs import get_redis_connection
 
 router = APIRouter()
 
@@ -877,6 +878,56 @@ async def sitemap_xml():
     return Response(content=xml, media_type="application/xml")
 
 
+def _check_database_health() -> tuple[bool, str | None]:
+    try:
+        with engine.connect() as conn:
+            conn.exec_driver_sql("SELECT 1")
+        return True, None
+    except Exception as exc:  # noqa: BLE001
+        return False, str(exc)
+
+
+def _check_redis_health() -> tuple[bool, str | None]:
+    try:
+        get_redis_connection().ping()
+        return True, None
+    except Exception as exc:  # noqa: BLE001
+        return False, str(exc)
+
+
+def _detect_storage_mode() -> str:
+    if (settings.OBJECT_STORAGE_BUCKET or "").strip() and (settings.OBJECT_STORAGE_ACCESS_KEY_ID or "").strip() and (settings.OBJECT_STORAGE_SECRET_ACCESS_KEY or "").strip():
+        return "object_storage"
+    return "local"
+
+
 @router.get("/health")
 async def health():
-    return {"ok": True, "service": "magic-music-web"}
+    return {
+        "ok": True,
+        "service": "magic-music-web",
+        "queue_name": settings.BACKGROUND_QUEUE_NAME,
+        "background_jobs_sync_mode": settings.BACKGROUND_JOBS_SYNC_MODE,
+        "storage_mode": _detect_storage_mode(),
+    }
+
+
+@router.get("/ready")
+async def ready():
+    db_ok, db_error = _check_database_health()
+    redis_ok, redis_error = _check_redis_health()
+
+    checks = {
+        "database": {"ok": db_ok, "error": db_error},
+        "redis": {"ok": redis_ok, "error": redis_error},
+        "storage": {"mode": _detect_storage_mode()},
+    }
+    ok = db_ok and redis_ok
+    return JSONResponse(
+        status_code=200 if ok else 503,
+        content={
+            "ok": ok,
+            "service": "magic-music-web",
+            "checks": checks,
+        },
+    )
