@@ -5,7 +5,7 @@ services:
     plan: starter
     buildCommand: "pip install -r requirements.txt"
     startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
-    healthCheckPath: /
+    healthCheckPath: /health
     autoDeploy: true
     disk:
       name: uploads
@@ -30,6 +30,8 @@ services:
         sync: false
       - key: BACKGROUND_QUEUE_NAME
         value: default
+      - key: BACKGROUND_JOBS_SYNC_MODE
+        value: false
 
       - key: OPENAI_API_KEY
         sync: false
@@ -42,13 +44,19 @@ services:
 
       - key: SUNO_API_KEY
         sync: false
+      - key: SUNO_API_BASE_URL
+        value: https://api.sunoapi.org
       - key: SUNO_MODEL
-        sync: false
+        value: V5
       - key: SUNO_STUB_MODE
-        value: true
+        value: false
       - key: SUNO_STUB_DELAY_SECONDS
         value: 12
       - key: SUNO_STUB_AUDIO_URL
+        sync: false
+      - key: SUNO_REQUEST_TIMEOUT_SECONDS
+        value: 60
+      - key: SUNO_CALLBACK_TOKEN
         sync: false
 
       - key: YOOKASSA_SHOP_ID
@@ -76,6 +84,23 @@ services:
         value: /var/data/musicmemoire/uploads
       - key: MAX_VOICE_FILE_MB
         value: 25
+      - key: MAX_SONG_FILE_MB
+        value: 80
+
+      - key: OBJECT_STORAGE_BUCKET
+        sync: false
+      - key: OBJECT_STORAGE_ENDPOINT_URL
+        sync: false
+      - key: OBJECT_STORAGE_REGION
+        value: auto
+      - key: OBJECT_STORAGE_ACCESS_KEY_ID
+        sync: false
+      - key: OBJECT_STORAGE_SECRET_ACCESS_KEY
+        sync: false
+      - key: OBJECT_STORAGE_PREFIX
+        value: musicmemoire
+      - key: OBJECT_STORAGE_FORCE_PATH_STYLE
+        value: false
 
       - key: SMTP_HOST
         sync: false
@@ -96,6 +121,19 @@ services:
         value: 30
       - key: MAGIC_LINK_STUB_MODE
         value: false
+
+      - key: MAGIC_LINK_EMAIL_LIMIT_PER_HOUR
+        value: 5
+      - key: MAGIC_LINK_IP_LIMIT_PER_HOUR
+        value: 12
+      - key: QUESTIONNAIRE_MAGIC_LINK_ORDER_LIMIT_PER_HOUR
+        value: 3
+      - key: VOICE_UPLOAD_LIMIT_PER_ORDER_PER_DAY
+        value: 5
+      - key: VOICE_RETRANSCRIBE_LIMIT_PER_ORDER_PER_HOUR
+        value: 3
+      - key: SONG_START_LIMIT_PER_ORDER_PER_DAY
+        value: 6
 
       - key: ADMIN_TOKEN
         sync: false
@@ -127,6 +165,8 @@ services:
         sync: false
       - key: BACKGROUND_QUEUE_NAME
         value: default
+      - key: BACKGROUND_JOBS_SYNC_MODE
+        value: false
 
       - key: OPENAI_API_KEY
         sync: false
@@ -142,9 +182,9 @@ services:
       - key: SUNO_API_BASE_URL
         value: https://api.sunoapi.org
       - key: SUNO_MODEL
-        sync: false
+        value: V5
       - key: SUNO_STUB_MODE
-        value: true
+        value: false
       - key: SUNO_STUB_DELAY_SECONDS
         value: 12
       - key: SUNO_STUB_AUDIO_URL
@@ -154,6 +194,11 @@ services:
       - key: SUNO_CALLBACK_TOKEN
         sync: false
 
+      - key: SUPPORT_TG_URL
+        value: https://t.me/mikhailantonov19
+      - key: SUPPORT_MAX_URL
+        value: https://max.ru/u/f9LHodD0cOKg36L-baFKeBJquxSx5xydupa2AYOKdl7BUFipfVYS5FVVV80
+
       - key: PRICE_RUB
         value: 990
       - key: UPLOADS_DIR
@@ -162,6 +207,21 @@ services:
         value: 25
       - key: MAX_SONG_FILE_MB
         value: 80
+
+      - key: OBJECT_STORAGE_BUCKET
+        sync: false
+      - key: OBJECT_STORAGE_ENDPOINT_URL
+        sync: false
+      - key: OBJECT_STORAGE_REGION
+        value: auto
+      - key: OBJECT_STORAGE_ACCESS_KEY_ID
+        sync: false
+      - key: OBJECT_STORAGE_SECRET_ACCESS_KEY
+        sync: false
+      - key: OBJECT_STORAGE_PREFIX
+        value: musicmemoire
+      - key: OBJECT_STORAGE_FORCE_PATH_STYLE
+        value: false
 
       - key: SMTP_HOST
         sync: false
@@ -177,4 +237,3 @@ services:
         value: Magic Music
       - key: SMTP_TIMEOUT_SECONDS
         value: 20
-
