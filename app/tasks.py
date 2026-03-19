@@ -432,6 +432,122 @@ def run_payment_success_email_task(*, background_job_public_id: str, order_publi
         db.close()
 
 
+
+
+def run_song_ready_email_task(*, background_job_public_id: str, order_public_id: str, song_public_id: str, audio_url: str | None = None) -> None:
+    db = SessionLocal()
+    try:
+        background_job = _get_background_job(db, background_job_public_id)
+        order = _get_order(db, order_public_id)
+        song = _get_song(db, song_public_id)
+        mark_job_started(db, background_job)
+        db.commit()
+
+        recipient_email = order.user.email if order.user and order.user.email else None
+        subject = song_ready_email_subject(order.order_number)
+        if not recipient_email:
+            create_email_log(
+                db,
+                email_type="song_ready",
+                recipient_email="missing",
+                subject=subject,
+                status="failed",
+                delivery_mode="email",
+                order=order,
+                background_job_public_id=background_job.public_id,
+                payload={"song_job_id": song.public_id, "audio_url": audio_url},
+                error_message="У заказа нет email для отправки письма.",
+            )
+            mark_job_failed(db, background_job, error_message="У заказа нет email для отправки письма.")
+            db.commit()
+            return
+
+        from app.core.config import settings
+
+        order_url = f"{settings.BASE_URL.rstrip('/')}/account/orders/{order.public_id}"
+        try:
+            send_song_ready_email(
+                recipient_email=recipient_email,
+                order_number=order.order_number,
+                order_url=order_url,
+                audio_url=audio_url or song.audio_url,
+            )
+        except EmailServiceError as exc:
+            db.rollback()
+            background_job = _get_background_job(db, background_job_public_id)
+            order = _get_order(db, order_public_id)
+            song = _get_song(db, song_public_id)
+            create_email_log(
+                db,
+                email_type="song_ready",
+                recipient_email=recipient_email,
+                subject=subject,
+                status="failed",
+                delivery_mode="email",
+                order=order,
+                user=order.user,
+                background_job_public_id=background_job.public_id,
+                payload={"song_job_id": song.public_id, "audio_url": audio_url or song.audio_url},
+                error_message=str(exc),
+            )
+            db.add(
+                OrderEvent(
+                    order=order,
+                    event_type="song_ready_email_failed",
+                    payload={
+                        "song_job_id": song.public_id,
+                        "email": recipient_email,
+                        "audio_url": audio_url or song.audio_url,
+                        "error": str(exc),
+                        "background_job_id": background_job.public_id,
+                    },
+                )
+            )
+            mark_job_failed(db, background_job, error_message=str(exc))
+            db.commit()
+            return
+
+        order = _get_order(db, order_public_id)
+        background_job = _get_background_job(db, background_job_public_id)
+        song = _get_song(db, song_public_id)
+        create_email_log(
+            db,
+            email_type="song_ready",
+            recipient_email=recipient_email,
+            subject=subject,
+            status="sent",
+            delivery_mode="email",
+            order=order,
+            user=order.user,
+            background_job_public_id=background_job.public_id,
+            payload={"song_job_id": song.public_id, "audio_url": audio_url or song.audio_url},
+        )
+        db.add(
+            OrderEvent(
+                order=order,
+                event_type="song_ready_email_sent",
+                payload={
+                    "song_job_id": song.public_id,
+                    "email": recipient_email,
+                    "audio_url": audio_url or song.audio_url,
+                    "background_job_id": background_job.public_id,
+                },
+            )
+        )
+        mark_job_succeeded(
+            db,
+            background_job,
+            result_payload={
+                "email": recipient_email,
+                "song_job_id": song.public_id,
+                "audio_url": audio_url or song.audio_url,
+            },
+        )
+        db.commit()
+    finally:
+        db.close()
+
+
 def run_song_failed_email_task(*, background_job_public_id: str, order_public_id: str, song_public_id: str) -> None:
     db = SessionLocal()
     try:

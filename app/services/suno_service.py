@@ -41,11 +41,11 @@ class SongCallbackResult:
 
 
 STYLE_MAP = {
-    "pop": "Поп, современная поп-баллада",
-    "rap": "Рэп, мелодичный хип-хоп",
-    "rock": "Рок, эмоциональный рок",
-    "chanson": "Шансон, душевная авторская песня",
-    "indie": "Инди-поп, атмосферная авторская песня",
+    "pop": "Pop, contemporary pop ballad",
+    "rap": "Rap, melodic hip-hop",
+    "rock": "Rock, emotional rock ballad",
+    "chanson": "Chanson, heartfelt singer-songwriter song",
+    "indie": "Indie pop, atmospheric singer-songwriter song",
 }
 
 
@@ -143,7 +143,7 @@ def build_song_style(
     style_custom = (song_style_custom or "").strip()
 
     if style_code == "multi" and style_custom:
-        return f"Смешение стилей: {style_custom}"
+        return f"Mixed styles: {style_custom}"
 
     if style_code == "custom" and style_custom:
         return style_custom
@@ -154,7 +154,7 @@ def build_song_style(
     if style_custom:
         return style_custom
 
-    return "Поп, эмоциональная персональная песня"
+    return "Pop, emotional personalized song"
 
 
 def build_song_title(order_number: str) -> str:
