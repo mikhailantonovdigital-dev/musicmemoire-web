@@ -64,6 +64,9 @@ class Settings(BaseSettings):
     SONG_START_LIMIT_PER_ORDER_PER_DAY: int = 6
     MAGIC_LINK_STUB_MODE: bool = True
 
+    BACKGROUND_QUEUE_NAME: str = "default"
+    BACKGROUND_JOBS_SYNC_MODE: bool = False
+
     ADMIN_TOKEN: str | None = None
 
 
