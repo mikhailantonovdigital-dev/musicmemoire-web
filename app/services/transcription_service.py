@@ -19,6 +19,35 @@ class TranscriptionResult:
     language: str | None = None
 
 
+async def _cleanup_transcript_text(client: AsyncOpenAI, text: str) -> str:
+    model = (settings.OPENAI_MODEL or "").strip()
+    if not model:
+        return text
+
+    try:
+        response = await client.chat.completions.create(
+            model=model,
+            temperature=0.1,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "Ты редактор расшифровок. Приведи текст в аккуратный читаемый вид: "
+                        "исправь явные оговорки, орфографию, пунктуацию и разбиение на абзацы. "
+                        "Не добавляй новые факты, не сокращай смысл и не выдумывай детали. "
+                        "Верни только готовый очищенный текст без пояснений."
+                    ),
+                },
+                {"role": "user", "content": text},
+            ],
+        )
+    except Exception:
+        return text
+
+    cleaned = (response.choices[0].message.content or "").strip() if getattr(response, "choices", None) else ""
+    return cleaned or text
+
+
 async def transcribe_audio_file(file_path: str) -> TranscriptionResult:
     if not settings.OPENAI_API_KEY:
         raise TranscriptionServiceError(
@@ -39,20 +68,23 @@ async def transcribe_audio_file(file_path: str) -> TranscriptionResult:
                 language=settings.AUDIO_TRANSCRIBE_LANGUAGE or None,
                 response_format="json",
             )
+
+        text = (getattr(response, "text", "") or "").strip()
+        if not text:
+            raise TranscriptionServiceError(
+                "Распознавание завершилось без текста. Попробуй запись получше или перезапусти расшифровку."
+            )
+
+        text = await _cleanup_transcript_text(client, text)
+        language = getattr(response, "language", None)
+    except TranscriptionServiceError:
+        raise
     except Exception as exc:
         raise TranscriptionServiceError(
             "Не удалось распознать голосовое. Попробуй ещё раз чуть позже."
         ) from exc
     finally:
         await client.close()
-
-    text = (getattr(response, "text", "") or "").strip()
-    if not text:
-        raise TranscriptionServiceError(
-            "Распознавание завершилось без текста. Попробуй запись получше или перезапусти расшифровку."
-        )
-
-    language = getattr(response, "language", None)
 
     return TranscriptionResult(
         text=text,
