@@ -81,8 +81,7 @@ def build_payment_template_context(payment: OrderPayment) -> dict[str, int | boo
     }
 
 
-@router.post("/start/{order_public_id}")
-async def checkout_start(order_public_id: str, request: Request, db: Session = Depends(get_db)):
+async def _checkout_start(order_public_id: str, request: Request, db: Session):
     order = get_checkout_order(request, db, order_public_id)
     if order is None:
         raise HTTPException(status_code=403, detail="Нет доступа к заказу.")
@@ -199,6 +198,16 @@ async def checkout_start(order_public_id: str, request: Request, db: Session = D
         raise HTTPException(status_code=500, detail="ЮKassa не вернула ссылку на оплату.")
 
     return RedirectResponse(url=payment.confirmation_url, status_code=303)
+
+
+@router.get("/start/{order_public_id}")
+async def checkout_start_get(order_public_id: str, request: Request, db: Session = Depends(get_db)):
+    return await _checkout_start(order_public_id, request, db)
+
+
+@router.post("/start/{order_public_id}")
+async def checkout_start_post(order_public_id: str, request: Request, db: Session = Depends(get_db)):
+    return await _checkout_start(order_public_id, request, db)
 
 
 @router.get("/status", response_class=HTMLResponse)
