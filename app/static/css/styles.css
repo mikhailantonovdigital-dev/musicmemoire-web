@@ -5966,17 +5966,16 @@ strong,
   margin-top: 0;
   padding-top: 6px;
   padding-bottom: 18px;
-  background:
-    radial-gradient(circle at 12% 6%, rgba(118, 132, 255, 0.22), transparent 28%),
-    radial-gradient(circle at 88% 12%, rgba(140, 92, 255, 0.24), transparent 26%),
-    radial-gradient(circle at 52% 100%, rgba(74, 195, 255, 0.14), transparent 34%),
-    linear-gradient(180deg, #060b14 0%, #08101d 44%, #091322 72%, #070d18 100%) !important;
+  background: transparent !important;
   border-top: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
 }
 
 .page-questionnaire .footer-bottom-minimal {
   min-height: 34px;
   color: rgba(233, 239, 255, 0.78);
+  background: transparent !important;
 }
 
 @media (max-width: 640px) {
@@ -6026,6 +6025,18 @@ strong,
   min-height: 0;
 }
 
+.page-questionnaire {
+  background:
+    radial-gradient(circle at 12% 6%, rgba(118, 132, 255, 0.22), transparent 28%),
+    radial-gradient(circle at 88% 12%, rgba(140, 92, 255, 0.24), transparent 26%),
+    radial-gradient(circle at 52% 100%, rgba(74, 195, 255, 0.14), transparent 34%),
+    linear-gradient(180deg, #060b14 0%, #08101d 44%, #091322 72%, #070d18 100%);
+}
+
+.page-questionnaire .site-main {
+  background: transparent;
+}
+
 .page-checkout-screen .site-main {
   position: relative;
   background:
@@ -6061,12 +6072,10 @@ strong,
   bottom: auto;
   margin-top: 0;
   padding: 0 0 18px;
-  background:
-    radial-gradient(circle at 12% 6%, rgba(118, 132, 255, 0.22), transparent 28%),
-    radial-gradient(circle at 88% 12%, rgba(140, 92, 255, 0.24), transparent 26%),
-    radial-gradient(circle at 52% 100%, rgba(74, 195, 255, 0.14), transparent 34%),
-    linear-gradient(180deg, #060b14 0%, #08101d 44%, #091322 72%, #070d18 100%) !important;
+  background: transparent !important;
   border-top: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
 }
 
 .page-questionnaire .footer-bottom-minimal,
@@ -6077,6 +6086,7 @@ strong,
   justify-content: space-between;
   gap: 18px;
   color: rgba(233, 239, 255, 0.78);
+  background: transparent !important;
 }
 
 .checkout-status-stage {
@@ -6303,7 +6313,8 @@ strong,
 }
 
 .account-order-shell-premium {
-  gap: 24px;
+  display: grid;
+  gap: 28px;
 }
 
 .account-order-head {
@@ -6337,7 +6348,7 @@ strong,
 }
 
 .account-song-meta-card {
-  margin-top: 6px;
+  margin-top: 0;
   padding: 26px 24px;
 }
 

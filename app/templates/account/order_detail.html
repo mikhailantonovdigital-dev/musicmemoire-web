@@ -22,26 +22,6 @@
         {% endif %}
       </div>
 
-      <div class="account-song-meta-card panel-card">
-        <div class="mini-label">Параметры песни</div>
-        <div class="detail-list account-song-meta-list">
-          <div class="detail-list-item">
-            <span class="detail-label">Стиль</span>
-            <strong class="detail-value">{{ song_style_label }}</strong>
-          </div>
-          {% if song_style_details %}
-          <div class="detail-list-item">
-            <span class="detail-label">Уточнение</span>
-            <strong class="detail-value">{{ song_style_details }}</strong>
-          </div>
-          {% endif %}
-          <div class="detail-list-item">
-            <span class="detail-label">Исполнение</span>
-            <strong class="detail-value">{{ singer_label }}</strong>
-          </div>
-        </div>
-      </div>
-
       <div class="panel-card account-song-card">
         <div class="mini-label">Песня</div>
 
@@ -84,6 +64,26 @@
             <div class="notice notice-warning" style="margin-top: 16px;">{{ latest_song.error_message }}</div>
           {% endif %}
         {% endif %}
+      </div>
+
+      <div class="account-song-meta-card panel-card">
+        <div class="mini-label">Параметры песни</div>
+        <div class="detail-list account-song-meta-list">
+          <div class="detail-list-item">
+            <span class="detail-label">Стиль</span>
+            <strong class="detail-value">{{ song_style_label }}</strong>
+          </div>
+          {% if song_style_details %}
+          <div class="detail-list-item">
+            <span class="detail-label">Уточнение</span>
+            <strong class="detail-value">{{ song_style_details }}</strong>
+          </div>
+          {% endif %}
+          <div class="detail-list-item">
+            <span class="detail-label">Исполнение</span>
+            <strong class="detail-value">{{ singer_label }}</strong>
+          </div>
+        </div>
       </div>
     </div>
   </div>
