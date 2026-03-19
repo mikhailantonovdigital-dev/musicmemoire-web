@@ -5837,3 +5837,161 @@ strong,
     gap: 8px;
   }
 }
+
+
+/* ===== 2026-03-19 questionnaire polish + checkout start ===== */
+
+.payment-summary-card {
+  margin: 20px 0 28px;
+  padding: 24px 24px 22px;
+  border-radius: 26px;
+  background:
+    radial-gradient(circle at 12% 18%, rgba(103, 130, 255, 0.20), transparent 28%),
+    radial-gradient(circle at 88% 18%, rgba(134, 101, 255, 0.16), transparent 24%),
+    linear-gradient(180deg, rgba(18, 29, 49, 0.96), rgba(10, 17, 30, 0.96));
+  border: 1px solid rgba(132, 154, 255, 0.26);
+  box-shadow:
+    0 24px 56px rgba(4, 12, 28, 0.30),
+    0 0 0 1px rgba(132, 154, 255, 0.08);
+}
+
+.payment-summary-label {
+  display: inline-flex;
+  margin-bottom: 10px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #dbe4ff;
+}
+
+.payment-summary-price {
+  display: block;
+  font-size: clamp(34px, 5vw, 46px);
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: #ffffff;
+}
+
+.payment-summary-caption {
+  margin: 10px 0 0;
+  color: #a9b8d4;
+}
+
+.payment-summary-meta {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(160, 181, 220, 0.14);
+}
+
+.payment-summary-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  color: #dbe4ff;
+}
+
+.payment-summary-meta-row span {
+  color: #a9b8d4;
+}
+
+.questionnaire-shell .radio-card:hover {
+  border-color: rgba(148, 172, 255, 0.42);
+  background: linear-gradient(180deg, rgba(18, 29, 49, 0.94), rgba(11, 19, 34, 0.94));
+  box-shadow:
+    0 14px 34px rgba(7, 14, 28, 0.32),
+    0 0 0 1px rgba(132, 154, 255, 0.08);
+}
+
+.questionnaire-shell .radio-card.is-selected {
+  border-color: rgba(156, 178, 255, 0.58);
+  background:
+    radial-gradient(circle at 10% 14%, rgba(118, 135, 255, 0.20), transparent 28%),
+    linear-gradient(180deg, rgba(22, 35, 62, 0.98), rgba(12, 20, 36, 0.97));
+  box-shadow:
+    0 0 0 1px rgba(156, 178, 255, 0.22),
+    0 20px 42px rgba(7, 14, 28, 0.34),
+    0 0 36px rgba(104, 134, 255, 0.14);
+}
+
+.questionnaire-shell .radio-card.is-selected .radio-card-title {
+  color: #ffffff;
+}
+
+.questionnaire-shell .radio-card.is-selected .radio-card-text {
+  color: #dbe4ff;
+}
+
+.questionnaire-shell .song-style-card.is-selected .song-style-card-icon {
+  border-color: rgba(156, 178, 255, 0.54);
+  background: rgba(123, 130, 255, 0.24);
+  box-shadow:
+    0 0 0 1px rgba(156, 178, 255, 0.16),
+    0 12px 28px rgba(7, 14, 28, 0.24);
+}
+
+@supports selector(:has(*)) {
+  .questionnaire-shell .radio-card:has(input:checked) {
+    border-color: rgba(156, 178, 255, 0.58);
+    background:
+      radial-gradient(circle at 10% 14%, rgba(118, 135, 255, 0.20), transparent 28%),
+      linear-gradient(180deg, rgba(22, 35, 62, 0.98), rgba(12, 20, 36, 0.97));
+    box-shadow:
+      0 0 0 1px rgba(156, 178, 255, 0.22),
+      0 20px 42px rgba(7, 14, 28, 0.34),
+      0 0 36px rgba(104, 134, 255, 0.14);
+  }
+
+  .questionnaire-shell .radio-card:has(input:checked) .radio-card-title {
+    color: #ffffff;
+  }
+
+  .questionnaire-shell .radio-card:has(input:checked) .radio-card-text {
+    color: #dbe4ff;
+  }
+
+  .questionnaire-shell .song-style-card:has(input:checked) .song-style-card-icon {
+    border-color: rgba(156, 178, 255, 0.54);
+    background: rgba(123, 130, 255, 0.24);
+    box-shadow:
+      0 0 0 1px rgba(156, 178, 255, 0.16),
+      0 12px 28px rgba(7, 14, 28, 0.24);
+  }
+}
+
+.page-questionnaire .site-footer.site-footer-dark.site-footer-minimal {
+  margin-top: 0;
+  padding-top: 6px;
+  padding-bottom: 18px;
+  background:
+    radial-gradient(circle at 12% 6%, rgba(118, 132, 255, 0.22), transparent 28%),
+    radial-gradient(circle at 88% 12%, rgba(140, 92, 255, 0.24), transparent 26%),
+    radial-gradient(circle at 52% 100%, rgba(74, 195, 255, 0.14), transparent 34%),
+    linear-gradient(180deg, #060b14 0%, #08101d 44%, #091322 72%, #070d18 100%) !important;
+  border-top: 0 !important;
+}
+
+.page-questionnaire .footer-bottom-minimal {
+  min-height: 34px;
+  color: rgba(233, 239, 255, 0.78);
+}
+
+@media (max-width: 640px) {
+  .payment-summary-card {
+    padding: 20px 18px 18px;
+    border-radius: 22px;
+  }
+
+  .payment-summary-price {
+    font-size: 34px;
+  }
+
+  .payment-summary-meta-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+}
