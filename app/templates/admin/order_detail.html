@@ -404,6 +404,76 @@
     {% if order.story_text %}<div class="form-card" style="margin-top: 20px;"><h2 class="form-title">История пользователя</h2><textarea class="textarea textarea-readonly" readonly>{{ order.story_text }}</textarea></div>{% endif %}
     {% if order.custom_lyrics_text %}<div class="form-card" style="margin-top: 20px;"><h2 class="form-title">Свой текст пользователя</h2><textarea class="textarea textarea-readonly" readonly>{{ order.custom_lyrics_text }}</textarea></div>{% endif %}
 
+
+    <div class="form-card" style="margin-top: 20px;">
+      <div class="lyrics-card-head" style="margin-bottom: 16px;">
+        <div>
+          <h2 class="form-title" style="margin-bottom: 4px;">Поддержка по заказу</h2>
+          <p class="muted" style="margin: 0;">Обращения клиента, связанные с этим заказом. Можно менять статус и оставлять внутренний ответ для истории кейса.</p>
+        </div>
+        <div class="form-actions">
+          <a href="/support?order={{ order.public_id }}{% if order.user and order.user.email %}&email={{ order.user.email }}{% endif %}" class="btn btn-secondary" target="_blank" rel="noopener">Открыть форму клиента</a>
+          <a href="/admin/support{% if order.user and order.user.email %}?q={{ order.user.email }}{% endif %}" class="btn btn-secondary">Весь раздел поддержки</a>
+        </div>
+      </div>
+      {% if support_threads %}
+        <div style="display: grid; gap: 16px;">
+          {% for item in support_threads %}
+            {% set thread = item.thread %}
+            <div class="panel-card" style="padding: 16px; border: 1px solid #ececec; background: #fafafa;">
+              <div class="lyrics-card-head" style="margin-bottom: 12px;">
+                <div>
+                  <h3 style="margin: 0;">Обращение {{ thread.public_id }}</h3>
+                  <p class="lyrics-angle">Статус: {{ item.status_label }}</p>
+                  <p class="lyrics-angle">Email: {{ thread.email or '—' }}</p>
+                  <p class="lyrics-angle">Создано: {{ thread.created_at }} · Обновлено: {{ thread.updated_at }}</p>
+                </div>
+                <span class="variant-chip">{{ item.message_count }} сообщений</span>
+              </div>
+              {% if thread.subject %}<p style="margin: 0 0 10px;"><strong>Тема:</strong> {{ thread.subject }}</p>{% endif %}
+              {% if thread.messages %}
+                <div class="admin-events" style="margin-bottom: 12px;">
+                  {% for message in thread.messages %}
+                    <div class="admin-event">
+                      <div class="admin-event-head"><strong>{{ 'Клиент' if message.author_role == 'user' else 'Оператор' }}</strong><span>{{ message.created_at }}</span></div>
+                      {% if message.author_email %}<p style="margin: 0 0 8px;"><strong>Email:</strong> {{ message.author_email }}</p>{% endif %}
+                      <div style="white-space: pre-wrap;">{{ message.message_text }}</div>
+                    </div>
+                  {% endfor %}
+                </div>
+              {% endif %}
+              <div class="admin-status-grid">
+                <form method="post" action="/admin/support/{{ thread.public_id }}/status" class="panel-card" style="padding: 12px; background: #fff; border: 1px solid #ececec;">
+                  <input type="hidden" name="next_url" value="/admin/orders/{{ order.public_id }}" />
+                  <label class="label" for="support-status-{{ thread.public_id }}">Статус</label>
+                  <select id="support-status-{{ thread.public_id }}" name="status" class="input">
+                    {% for value, label in support_status_options %}
+                      <option value="{{ value }}" {% if thread.status == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                  </select>
+                  <div class="form-actions" style="margin-top: 12px;"><button type="submit" class="btn btn-secondary">Сменить статус</button></div>
+                </form>
+                <form method="post" action="/admin/support/{{ thread.public_id }}/reply" class="panel-card" style="padding: 12px; background: #fff; border: 1px solid #ececec;">
+                  <input type="hidden" name="next_url" value="/admin/orders/{{ order.public_id }}" />
+                  <label class="label" for="support-reply-{{ thread.public_id }}">Ответ / заметка</label>
+                  <textarea id="support-reply-{{ thread.public_id }}" class="textarea" name="message_text" rows="4" placeholder="Например: проверил статус, песня в очереди, держим заказ под контролем."></textarea>
+                  <label class="label" for="support-reply-status-{{ thread.public_id }}">Статус после ответа</label>
+                  <select id="support-reply-status-{{ thread.public_id }}" name="status" class="input">
+                    {% for value, label in support_status_options %}
+                      <option value="{{ value }}" {% if thread.status == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                  </select>
+                  <div class="form-actions" style="margin-top: 12px;"><button type="submit" class="btn btn-primary">Сохранить ответ</button></div>
+                </form>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="muted">По этому заказу обращений пока нет. Клиент может оставить их на странице поддержки, и они появятся здесь.</p>
+      {% endif %}
+    </div>
+
     {% if security_events %}
       <div class="form-card" style="margin-top: 20px;">
         <h2 class="form-title">Блокировки и подозрительные действия по заказу</h2>
