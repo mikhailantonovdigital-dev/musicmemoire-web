@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import datetime, time, timedelta, timezone
-from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Form, Request
@@ -12,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.db import get_db
 from app.core.security import utcnow
+from app.core.storage import StorageError, ensure_voice_input_local_path
 from app.core.templates import templates
 from app.models import BackgroundJob, LyricsVersion, Order, OrderEvent, OrderPayment, SecurityEvent, SongGeneration, User, VoiceInput
 from app.models.order_payment import build_order_pricing_preview
@@ -142,10 +142,13 @@ def get_voice_inputs(db: Session, order_id: int) -> list[VoiceInput]:
 def build_voice_cards(request: Request, voice_inputs: list[VoiceInput]) -> list[dict]:
     cards: list[dict] = []
     for voice in voice_inputs:
+        storage_backend = (voice.storage_backend or "local").strip() or "local"
         cards.append({
             "voice": voice,
             "size_label": format_size(voice.size_bytes),
             "status_label": humanize_transcription_status(voice.transcription_status),
+            "storage_label": "object storage" if storage_backend == "s3" else "локальный диск",
+            "storage_key": voice.storage_key,
             "stream_url": str(request.url_for("admin_voice_stream", voice_public_id=voice.public_id)),
         })
     return cards
@@ -384,9 +387,10 @@ async def admin_voice_stream(voice_public_id: str, request: Request, db: Session
         set_admin_flash(request, "error", "Голосовой файл не найден.")
         return RedirectResponse(url="/admin/", status_code=303)
 
-    file_path = Path(voice_input.storage_path)
-    if not file_path.exists():
-        set_admin_flash(request, "error", "Файл голосового не найден на диске.")
+    try:
+        file_path = ensure_voice_input_local_path(voice_input)
+    except StorageError:
+        set_admin_flash(request, "error", "Файл голосового не найден на сервере.")
         return RedirectResponse(url=f"/admin/orders/{voice_input.order.public_id}", status_code=303)
 
     return FileResponse(
@@ -957,8 +961,9 @@ async def admin_order_voice_retranscribe(
         set_admin_flash(request, "error", "Голосовое не найдено.")
         return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
 
-    file_path = Path(voice_input.storage_path)
-    if not file_path.exists():
+    try:
+        ensure_voice_input_local_path(voice_input)
+    except StorageError:
         set_admin_flash(request, "error", "Файл голосового не найден на сервере.")
         return RedirectResponse(url=f"/admin/orders/{order.public_id}", status_code=303)
 
