@@ -19,4 +19,8 @@ __all__ = [
     "SongGeneration",
     "SecurityEvent",
     "BackgroundJob",
+    "SupportThread",
+    "SupportMessage",
 ]
+
+from app.models.support_thread import SupportThread, SupportMessage
