@@ -405,6 +405,31 @@ async def account_order_detail(
         return RedirectResponse(url=request.url_for("account_dashboard"), status_code=303)
 
     latest_payment = get_latest_payment(order)
+    refresh_payment = request.query_params.get("refresh_payment") == "1"
+    if refresh_payment and latest_payment and latest_payment.yookassa_payment_id and latest_payment.status not in FINAL_PAYMENT_STATUSES:
+        try:
+            sync_payment_with_remote(
+                db,
+                latest_payment,
+                trigger="account_order_detail_open",
+                event_name="payment_status_synced_from_order_detail",
+            )
+            db.commit()
+            db.refresh(order)
+            latest_payment = get_latest_payment(order)
+        except Exception:
+            db.rollback()
+            order = (
+                db.query(Order)
+                .filter(
+                    Order.public_id == order_public_id,
+                    Order.user_id == user.id,
+                )
+                .first()
+            )
+            if order is None:
+                return RedirectResponse(url=request.url_for("account_dashboard"), status_code=303)
+            latest_payment = get_latest_payment(order)
     latest_song = get_latest_song(order)
     latest_ready_song = get_latest_ready_song(order)
     song_attempts = get_song_attempts(order)
