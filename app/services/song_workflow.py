@@ -600,6 +600,15 @@ def sync_song_job_state(db: Session, song: SongGeneration, *, event_type: str = 
     if song.status not in RUNNING_SONG_STATUSES:
         return song
 
+    if not (song.external_job_id or "").strip():
+        return start_song_job_now(
+            db,
+            song,
+            started_event_type="song_generation_started",
+            failed_event_type="song_generation_start_failed",
+            trigger="status_poll_recover_missing_task_id",
+        )
+
     result = sync_song_generation(
         external_job_id=song.external_job_id,
         started_at=song.started_at,

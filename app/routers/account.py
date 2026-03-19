@@ -23,7 +23,8 @@ from app.services.email_log_service import create_email_log
 from app.services.email_service import EmailServiceError, magic_link_email_subject, send_magic_link_email
 from app.services.payment_workflow import FINAL_PAYMENT_STATUSES, sync_payment_with_remote
 from app.services.rate_limit_service import RateLimitRule, enforce_rate_limit, get_client_ip
-from app.services.song_workflow import get_latest_ready_song, get_latest_song, get_song_attempts
+from app.services.song_workflow import get_latest_ready_song, get_latest_song, get_song_attempts, sync_song_job_state
+from app.services.suno_service import SunoServiceError
 
 router = APIRouter(prefix="/account", tags=["account"])
 
@@ -432,6 +433,28 @@ async def account_order_detail(
                 return RedirectResponse(url=request.url_for("account_dashboard"), status_code=303)
             latest_payment = get_latest_payment(order)
     latest_song = get_latest_song(order)
+    song_sync_error = None
+    if latest_song is not None and latest_song.status in RUNNING_SONG_STATUSES:
+        try:
+            latest_song = sync_song_job_state(db, latest_song, event_type="song_generation_status_changed_from_account_order")
+            db.commit()
+            db.refresh(order)
+            latest_song = get_latest_song(order)
+        except SunoServiceError as exc:
+            song_sync_error = str(exc)
+            db.rollback()
+            order = (
+                db.query(Order)
+                .filter(
+                    Order.public_id == order_public_id,
+                    Order.user_id == user.id,
+                )
+                .first()
+            )
+            if order is None:
+                return RedirectResponse(url=request.url_for("account_dashboard"), status_code=303)
+            latest_song = get_latest_song(order)
+
     latest_ready_song = get_latest_ready_song(order)
     song_attempts = get_song_attempts(order)
     playback_song = latest_ready_song
@@ -470,5 +493,6 @@ async def account_order_detail(
             "suno_stub_mode": settings.SUNO_STUB_MODE,
             "welcome": welcome,
             "welcome_delivery": delivery,
+            "song_sync_error": song_sync_error,
         },
     )
