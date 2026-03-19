@@ -1,8 +1,12 @@
-from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import HTMLResponse, PlainTextResponse, Response
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse, Response
+from sqlalchemy import or_
+from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.db import get_db
 from app.core.templates import templates
+from app.models import Order, OrderEvent, SupportMessage, SupportThread, User
 
 router = APIRouter()
 
@@ -629,12 +633,40 @@ def render_faq_page(request: Request):
     )
 
 
-def render_support_page(request: Request):
+def resolve_support_order(db: Session, raw_reference: str | None) -> Order | None:
+    reference = (raw_reference or "").strip()
+    if not reference:
+        return None
+    return (
+        db.query(Order)
+        .filter(or_(Order.public_id == reference, Order.order_number == reference))
+        .first()
+    )
+
+
+def render_support_page(
+    request: Request,
+    db: Session,
+    *,
+    form_error: str | None = None,
+    form_email: str | None = None,
+    form_order_ref: str | None = None,
+    form_subject: str | None = None,
+    form_message: str | None = None,
+    status_code: int = 200,
+):
     meta = build_public_meta(
         path=request.url.path,
         page_title=SUPPORT_PAGE["page_title"],
         meta_description=SUPPORT_PAGE.get("meta_description", ""),
     )
+
+    requested_order_ref = (form_order_ref or request.query_params.get("order") or "").strip()
+    requested_email = (form_email or request.query_params.get("email") or "").strip()
+    detected_order = resolve_support_order(db, requested_order_ref)
+    detected_email = requested_email
+    if not detected_email and detected_order and detected_order.user and detected_order.user.email:
+        detected_email = detected_order.user.email
 
     return templates.TemplateResponse(
         "public/legal.html",
@@ -643,11 +675,21 @@ def render_support_page(request: Request):
             "legal_page": SUPPORT_PAGE,
             "show_support_card": True,
             "support_title": "Напишите в поддержку Magic Music",
-            "support_text": "Быстрее всего отвечаем в Telegram и MAX. Лучше сразу приложить email, номер заказа или краткое описание вопроса.",
+            "support_text": "Быстрее всего отвечаем в Telegram и MAX. Или оставьте сообщение ниже — оно сразу появится в операторской админке.",
             "support_tg_url": settings.SUPPORT_TG_URL,
             "support_max_url": settings.SUPPORT_MAX_URL,
+            "support_form_enabled": True,
+            "support_form_error": form_error,
+            "support_form_email": detected_email,
+            "support_form_order_ref": detected_order.public_id if detected_order else requested_order_ref,
+            "support_form_subject": form_subject or "",
+            "support_form_message": form_message or "",
+            "support_detected_order": detected_order,
+            "support_sent": request.query_params.get("sent") == "1",
+            "support_thread_public_id": request.query_params.get("thread"),
             **meta,
         },
+        status_code=status_code,
     )
 
 
@@ -682,8 +724,91 @@ async def faq_page(request: Request):
 
 
 @router.get("/support", response_class=HTMLResponse)
-async def support_page(request: Request):
-    return render_support_page(request)
+async def support_page(request: Request, db: Session = Depends(get_db)):
+    return render_support_page(request, db)
+
+
+@router.post("/support/request", response_class=HTMLResponse)
+async def support_request_submit(
+    request: Request,
+    email: str = Form(""),
+    order_ref: str = Form(""),
+    subject: str = Form(""),
+    message_text: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    clean_email = (email or "").strip().lower()
+    clean_order_ref = (order_ref or "").strip()
+    clean_subject = (subject or "").strip()
+    clean_message = (message_text or "").strip()
+
+    if not clean_email:
+        return render_support_page(
+            request,
+            db,
+            form_error="Укажите email, чтобы мы могли ответить вам по заказу.",
+            form_email=clean_email,
+            form_order_ref=clean_order_ref,
+            form_subject=clean_subject,
+            form_message=clean_message,
+            status_code=400,
+        )
+
+    if len(clean_message) < 10:
+        return render_support_page(
+            request,
+            db,
+            form_error="Опишите вопрос чуть подробнее, хотя бы в 10 символов.",
+            form_email=clean_email,
+            form_order_ref=clean_order_ref,
+            form_subject=clean_subject,
+            form_message=clean_message,
+            status_code=400,
+        )
+
+    order = resolve_support_order(db, clean_order_ref)
+    user = db.query(User).filter(User.email == clean_email).first()
+    if user is None and order and order.user and order.user.email == clean_email:
+        user = order.user
+
+    thread = SupportThread(
+        order_id=order.id if order else None,
+        user_id=user.id if user else None,
+        email=clean_email,
+        subject=clean_subject or None,
+        status="new",
+        source="support_page",
+    )
+    db.add(thread)
+    db.flush()
+
+    db.add(
+        SupportMessage(
+            thread_id=thread.id,
+            author_role="user",
+            author_email=clean_email,
+            message_text=clean_message,
+        )
+    )
+
+    if order is not None:
+        db.add(
+            OrderEvent(
+                order_id=order.id,
+                event_type="support_thread_created",
+                payload={
+                    "thread_public_id": thread.public_id,
+                    "source": "support_page",
+                    "email": clean_email,
+                },
+            )
+        )
+
+    db.commit()
+    redirect_url = "/support?sent=1&thread=" + thread.public_id
+    if order is not None:
+        redirect_url += "&order=" + order.public_id
+    return RedirectResponse(url=redirect_url, status_code=303)
 
 
 @router.get("/robots.txt", response_class=PlainTextResponse)
