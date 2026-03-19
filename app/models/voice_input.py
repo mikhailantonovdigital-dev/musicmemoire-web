@@ -50,6 +50,19 @@ class VoiceInput(Base):
         nullable=False,
         default=0,
     )
+    storage_backend: Mapped[str | None] = mapped_column(
+        String(20),
+        nullable=True,
+        default="local",
+    )
+    storage_bucket: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+    storage_key: Mapped[str | None] = mapped_column(
+        String(1024),
+        nullable=True,
+    )
 
     transcription_status: Mapped[str] = mapped_column(
         String(30),
