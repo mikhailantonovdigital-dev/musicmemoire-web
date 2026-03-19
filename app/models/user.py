@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from app.models.order_payment import OrderPayment
     from app.models.song_generation import SongGeneration
     from app.models.support_thread import SupportThread
+    from app.models.email_log import EmailLog
 
 
 class User(Base):
@@ -47,3 +48,4 @@ class User(Base):
     payments: Mapped[list["OrderPayment"]] = relationship(back_populates="user")
     song_generations: Mapped[list["SongGeneration"]] = relationship(back_populates="user")
     support_threads: Mapped[list["SupportThread"]] = relationship(back_populates="user")
+    email_logs: Mapped[list["EmailLog"]] = relationship(back_populates="user")
