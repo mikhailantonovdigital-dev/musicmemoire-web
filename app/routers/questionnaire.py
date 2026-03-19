@@ -17,7 +17,7 @@ from app.core.security import (
     normalize_email,
     utcnow,
 )
-from app.core.storage import StorageError, ensure_voice_input_local_path, save_voice_file
+from app.core.storage import StorageError, ensure_voice_input_local_path, object_storage_enabled, save_voice_file
 from app.core.templates import templates
 from app.models import LyricsVersion, MagicLoginToken, Order, OrderEvent, User, VoiceInput
 from app.models.order_payment import build_order_pricing_preview
@@ -639,6 +639,8 @@ async def questionnaire_voice_upload(
     db.commit()
     db.refresh(voice_input)
 
+    force_sync_transcription = not object_storage_enabled() and not settings.BACKGROUND_JOBS_SYNC_MODE
+
     try:
         enqueue_background_job(
             db,
@@ -654,6 +656,7 @@ async def questionnaire_voice_upload(
                 "failure_event_type": "voice_transcription_failed",
                 "trigger": "questionnaire_voice_upload",
             },
+            force_sync=force_sync_transcription,
         )
         db.commit()
     except BackgroundJobError as exc:
@@ -666,7 +669,8 @@ async def questionnaire_voice_upload(
             status_code=500,
         )
 
-    redirect_url = f"{request.url_for('questionnaire_story')}?voice_uploaded=1&transcription_queued=1"
+    redirect_suffix = "transcription_done=1" if force_sync_transcription else "voice_uploaded=1&transcription_queued=1"
+    redirect_url = f"{request.url_for('questionnaire_story')}?{redirect_suffix}"
     return RedirectResponse(url=redirect_url, status_code=303)
 
 
@@ -719,6 +723,8 @@ async def questionnaire_voice_retranscribe(
     db.add(latest_voice)
     db.commit()
 
+    force_sync_transcription = not object_storage_enabled() and not settings.BACKGROUND_JOBS_SYNC_MODE
+
     try:
         enqueue_background_job(
             db,
@@ -734,6 +740,7 @@ async def questionnaire_voice_retranscribe(
                 "failure_event_type": "voice_transcription_failed",
                 "trigger": "questionnaire_voice_retranscribe",
             },
+            force_sync=force_sync_transcription,
         )
         db.commit()
     except BackgroundJobError as exc:
@@ -744,7 +751,7 @@ async def questionnaire_voice_retranscribe(
             status_code=303,
         )
 
-    redirect_url = str(request.url_for("questionnaire_story")) + "?transcription_queued=1"
+    redirect_url = str(request.url_for("questionnaire_story")) + ("?transcription_done=1" if force_sync_transcription else "?transcription_queued=1")
     return RedirectResponse(url=redirect_url, status_code=303)
 
 
