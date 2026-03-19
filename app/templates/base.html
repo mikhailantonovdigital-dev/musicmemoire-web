@@ -26,12 +26,13 @@
   <link rel="icon" type="image/png" href="/static/img/favicon.png?v=4" />
   <link rel="shortcut icon" href="/static/img/favicon.png?v=4" />
   <link rel="apple-touch-icon" href="/static/img/favicon.png?v=4" />
-  <link rel="stylesheet" href="/static/css/styles.css?v=12667a" />
+  <link rel="stylesheet" href="/static/css/styles.css?v=12668a" />
 </head>
 {% set path = request.url.path %}
 {% set is_marketing_screen = path in ['/', '/portfolio', '/how-it-works', '/reviews'] %}
 {% set is_legal_screen = path in ['/offer', '/policy', '/faq', '/support'] %}
 {% set is_questionnaire_screen = path.startswith('/questionnaire') %}
+{% set uses_marketing_chrome = is_marketing_screen or is_questionnaire_screen %}
 <body class="theme-dark-premium{% if path == '/' %} page-home{% endif %}{% if is_marketing_screen %} page-marketing-screen{% endif %}{% if is_legal_screen %} page-legal-screen{% endif %}{% if is_questionnaire_screen %} page-questionnaire{% endif %}{% if body_class %} {{ body_class }}{% endif %}">
   <div class="page-bg page-bg-dark"></div>
   <div class="page-noise"></div>
@@ -63,8 +64,8 @@
     {% block content %}{% endblock %}
   </main>
 
-  <footer class="site-footer site-footer-dark{% if is_marketing_screen %} site-footer-minimal{% endif %}{% if is_legal_screen %} site-footer-legal{% endif %}">
-    <div class="container footer-bottom {% if is_marketing_screen %}footer-bottom-minimal{% else %}footer-bottom-default{% endif %}">
+  <footer class="site-footer site-footer-dark{% if uses_marketing_chrome %} site-footer-minimal{% endif %}{% if is_legal_screen %} site-footer-legal{% endif %}">
+    <div class="container footer-bottom {% if uses_marketing_chrome %}footer-bottom-minimal{% else %}footer-bottom-default{% endif %}">
       <p>© Magic Music. Копирование и распространение материалов разрешены только при указании активной ссылки на источник.</p>
       <div class="footer-legal-links">
         <a class="footer-legal-btn {% if path == '/offer' %}is-active{% endif %}" href="/offer">Оферта</a>
