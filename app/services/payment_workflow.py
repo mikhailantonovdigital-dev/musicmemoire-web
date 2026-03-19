@@ -190,6 +190,7 @@ def maybe_start_song_generation_after_payment(
                 "failed_event_type": "song_generation_autostart_failed",
                 "trigger": trigger,
             },
+            force_sync=True,
         )
         db.add(
             OrderEvent(
