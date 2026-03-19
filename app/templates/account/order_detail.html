@@ -15,6 +15,7 @@
 
         <div class="dashboard-head-actions">
           <a href="/account/" class="btn btn-secondary">Назад в кабинет</a>
+          <a href="/support?order={{ order.public_id }}{% if order.user and order.user.email %}&email={{ order.user.email }}{% endif %}" class="btn btn-secondary">Поддержка</a>
         </div>
       </div>
 
