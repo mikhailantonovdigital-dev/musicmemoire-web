@@ -5995,3 +5995,228 @@ strong,
     gap: 4px;
   }
 }
+
+
+/* ===== 2026-03-19 checkout + footer alignment polish ===== */
+
+.page-checkout-screen {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.page-checkout-screen .site-header,
+.page-checkout-screen .site-header-upgraded,
+.page-checkout-screen .site-header-dark {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  background: transparent !important;
+  border-bottom: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+.page-questionnaire .site-main,
+.page-checkout-screen .site-main {
+  flex: 0 0 auto;
+  min-height: 0;
+}
+
+.page-checkout-screen .site-main {
+  position: relative;
+  background:
+    radial-gradient(circle at 12% 6%, rgba(118, 132, 255, 0.22), transparent 28%),
+    radial-gradient(circle at 88% 12%, rgba(140, 92, 255, 0.24), transparent 26%),
+    radial-gradient(circle at 52% 100%, rgba(74, 195, 255, 0.14), transparent 34%),
+    linear-gradient(180deg, #060b14 0%, #08101d 44%, #091322 72%, #070d18 100%);
+}
+
+.page-checkout-screen .site-main::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0)),
+    radial-gradient(circle at 18% 22%, rgba(152, 118, 255, 0.12), transparent 18%),
+    radial-gradient(circle at 82% 78%, rgba(76, 193, 255, 0.10), transparent 20%),
+    radial-gradient(circle at 50% 46%, rgba(110, 126, 255, 0.07), transparent 24%);
+}
+
+.page-checkout-screen .container,
+.page-checkout-screen .container.narrow {
+  position: relative;
+  z-index: 1;
+}
+
+.questionnaire-stage {
+  padding-bottom: 24px;
+}
+
+.page-questionnaire .site-footer.site-footer-dark.site-footer-minimal,
+.page-checkout-screen .site-footer.site-footer-dark.site-footer-minimal {
+  position: relative;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  margin-top: 0;
+  padding: 12px 0 20px;
+  background:
+    radial-gradient(circle at 12% 6%, rgba(118, 132, 255, 0.22), transparent 28%),
+    radial-gradient(circle at 88% 12%, rgba(140, 92, 255, 0.24), transparent 26%),
+    radial-gradient(circle at 52% 100%, rgba(74, 195, 255, 0.14), transparent 34%),
+    linear-gradient(180deg, #060b14 0%, #08101d 44%, #091322 72%, #070d18 100%) !important;
+  border-top: 0 !important;
+}
+
+.page-questionnaire .footer-bottom-minimal,
+.page-checkout-screen .footer-bottom-minimal {
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  color: rgba(233, 239, 255, 0.78);
+}
+
+.checkout-status-stage {
+  padding: 108px 0 28px;
+}
+
+.checkout-status-shell {
+  padding-top: 28px;
+}
+
+.checkout-status-head {
+  margin-bottom: 18px;
+}
+
+.checkout-order-title {
+  margin: 6px 0 0;
+  font-size: clamp(24px, 3vw, 30px);
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 760px) {
+  .page-questionnaire .footer-bottom-minimal,
+  .page-checkout-screen .footer-bottom-minimal {
+    min-height: 0;
+    align-items: flex-start;
+    justify-content: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .checkout-status-stage {
+    padding-top: 96px;
+  }
+}
+
+
+/* ===== 2026-03-19 checkout mobile chrome parity ===== */
+@media (max-width: 640px) {
+  .page-checkout-screen {
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .page-checkout-screen .site-header,
+  .page-checkout-screen .site-header-upgraded,
+  .page-checkout-screen .site-header-dark {
+    position: relative;
+    background: linear-gradient(180deg, rgba(8, 14, 28, 0.96), rgba(8, 14, 28, 0.72)) !important;
+    backdrop-filter: blur(18px) saturate(110%) !important;
+  }
+
+  .page-checkout-screen .header-shell {
+    min-height: auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "brand actions"
+      "nav nav";
+    align-items: center;
+    row-gap: 12px;
+    column-gap: 12px;
+    padding: calc(env(safe-area-inset-top, 0px) + 10px) 0 10px;
+  }
+
+  .page-checkout-screen .brand {
+    grid-area: brand;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .page-checkout-screen .logo-badge {
+    width: 52px;
+    height: 52px;
+    border-radius: 18px;
+    font-size: 16px;
+  }
+
+  .page-checkout-screen .brand-copy {
+    gap: 0;
+    min-width: 0;
+  }
+
+  .page-checkout-screen .logo-text {
+    font-size: 15px;
+    line-height: 1.15;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .page-checkout-screen .header-actions {
+    grid-area: actions;
+    width: auto;
+    margin-top: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    justify-self: end;
+    gap: 0;
+  }
+
+  .page-checkout-screen .header-link-btn {
+    width: auto;
+    min-height: 42px;
+    padding: 0 14px;
+    border-radius: 14px;
+    white-space: nowrap;
+    font-size: 15px;
+  }
+
+  .page-checkout-screen .header-cta {
+    display: none;
+  }
+
+  .page-checkout-screen .site-header-upgraded .nav {
+    grid-area: nav;
+    display: flex;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+    width: 100%;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+
+  .page-checkout-screen .site-header-upgraded .nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .page-checkout-screen .nav-horizontal {
+    justify-content: flex-start;
+    gap: 8px;
+  }
+}
