@@ -193,6 +193,7 @@
             </form>
             {% if latest_song and latest_song.status in ["queued", "processing"] %}<form method="post" action="/admin/orders/{{ order.public_id }}/song-sync"><button type="submit" class="btn btn-secondary">Обновить статус песни</button></form>{% endif %}
             {% if can_resend_song_ready_email %}<form method="post" action="/admin/orders/{{ order.public_id }}/song-ready-email-resend"><button type="submit" class="btn btn-secondary">Переотправить письмо о готовой песне</button></form>{% endif %}
+            {% if can_resend_song_failed_email %}<form method="post" action="/admin/orders/{{ order.public_id }}/song-failed-email-resend"><button type="submit" class="btn btn-secondary">Переотправить письмо об ошибке</button></form>{% endif %}
           {% else %}
             <span class="btn btn-secondary">Сначала нужна оплата</span>
           {% endif %}
@@ -431,6 +432,27 @@
 
     {% if order.story_text %}<div class="form-card" style="margin-top: 20px;"><h2 class="form-title">История пользователя</h2><textarea class="textarea textarea-readonly" readonly>{{ order.story_text }}</textarea></div>{% endif %}
     {% if order.custom_lyrics_text %}<div class="form-card" style="margin-top: 20px;"><h2 class="form-title">Свой текст пользователя</h2><textarea class="textarea textarea-readonly" readonly>{{ order.custom_lyrics_text }}</textarea></div>{% endif %}
+
+    {% if email_logs %}
+      <div class="form-card" style="margin-top: 20px;">
+        <h2 class="form-title">Письма по заказу</h2>
+        <div class="admin-events">
+          {% for item in email_logs %}
+            {% set log = item.log %}
+            <div class="admin-event">
+              <div class="admin-event-head"><strong>{{ item.type_label }}</strong><span>{{ log.created_at }}</span></div>
+              <p style="margin: 0 0 8px;"><strong>Статус:</strong> {{ item.status_label }}</p>
+              <p style="margin: 0 0 8px;"><strong>Email:</strong> {{ log.recipient_email }}</p>
+              <p style="margin: 0 0 8px;"><strong>Тема:</strong> {{ log.subject }}</p>
+              <p style="margin: 0 0 8px;"><strong>Режим:</strong> {{ log.delivery_mode }}</p>
+              {% if log.background_job_public_id %}<p style="margin: 0 0 8px;"><strong>Background job:</strong> {{ log.background_job_public_id }}</p>{% endif %}
+              {% if log.error_message %}<div class="notice notice-error" style="margin-top: 8px;">{{ log.error_message }}</div>{% endif %}
+              {% if log.payload %}<pre class="admin-pre">{{ log.payload | tojson(indent=2) }}</pre>{% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
 
     {% if security_events %}
       <div class="form-card" style="margin-top: 20px;">
