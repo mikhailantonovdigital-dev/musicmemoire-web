@@ -12,7 +12,7 @@ from app.models import Order, OrderEvent, SongGeneration
 from app.services.rate_limit_service import RateLimitRule, enforce_rate_limit
 from app.services.song_workflow import (
     RUNNING_SONG_STATUSES,
-    create_song_job,
+    create_song_job_record,
     ensure_song_track_cached,
     get_latest_ready_song,
     get_latest_song,
@@ -23,6 +23,8 @@ from app.services.song_workflow import (
     sync_song_job_state,
 )
 from app.services.suno_service import SunoServiceError
+from app.services.background_jobs import BackgroundJobError, enqueue_background_job, find_active_job_for_order
+from app.tasks import run_song_start_task
 
 router = APIRouter(prefix="/songs", tags=["songs"])
 
@@ -171,10 +173,24 @@ async def song_start(order_public_id: str, request: Request, db: Session = Depen
     db.commit()
 
     try:
-        song = create_song_job(db, order)
+        song = create_song_job_record(db, order, queued_event_type="song_generation_enqueued", trigger="user_start")
+        if find_active_job_for_order(db, order, "song_generation_start") is None:
+            enqueue_background_job(
+            db,
+            order=order,
+            job_type="song_generation_start",
+            func=run_song_start_task,
+            payload={
+                "song_public_id": song.public_id,
+                "order_public_id": order.public_id,
+                "started_event_type": "song_generation_started",
+                "failed_event_type": "song_generation_failed",
+                "trigger": "user_start",
+            },
+            )
         db.commit()
         db.refresh(song)
-    except SunoServiceError as exc:
+    except (SunoServiceError, BackgroundJobError) as exc:
         db.rollback()
         latest_song = get_latest_song(order)
         return templates.TemplateResponse(
@@ -306,10 +322,24 @@ async def song_retry(job_public_id: str, request: Request, db: Session = Depends
     db.commit()
 
     try:
-        new_song = create_song_job(db, song.order)
+        new_song = create_song_job_record(db, song.order, queued_event_type="song_generation_enqueued", trigger="user_retry")
+        if find_active_job_for_order(db, song.order, "song_generation_start") is None:
+            enqueue_background_job(
+            db,
+            order=song.order,
+            job_type="song_generation_start",
+            func=run_song_start_task,
+            payload={
+                "song_public_id": new_song.public_id,
+                "order_public_id": song.order.public_id,
+                "started_event_type": "song_generation_started",
+                "failed_event_type": "song_generation_failed",
+                "trigger": "user_retry",
+            },
+            )
         db.commit()
         db.refresh(new_song)
-    except SunoServiceError as exc:
+    except (SunoServiceError, BackgroundJobError) as exc:
         db.rollback()
         return templates.TemplateResponse(
             "songs/status.html",
