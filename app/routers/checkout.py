@@ -97,7 +97,10 @@ async def _checkout_start(order_public_id: str, request: Request, db: Session):
         return RedirectResponse(url=latest_payment.confirmation_url, status_code=303)
 
     if latest_payment and latest_payment.status == "succeeded":
-        return RedirectResponse(url=f"/checkout/status?payment={latest_payment.public_id}", status_code=303)
+        return RedirectResponse(
+            url=f"/account/orders/{order.public_id}?welcome=1&delivery=payment_success&refresh_payment=1",
+            status_code=303,
+        )
 
     pricing = build_order_pricing_preview(db, order)
 
@@ -192,7 +195,10 @@ async def _checkout_start(order_public_id: str, request: Request, db: Session):
     db.commit()
 
     if payment.status == "succeeded":
-        return RedirectResponse(url=f"/checkout/status?payment={payment.public_id}", status_code=303)
+        return RedirectResponse(
+            url=f"/account/orders/{order.public_id}?welcome=1&delivery=payment_success&refresh_payment=1",
+            status_code=303,
+        )
 
     if not payment.confirmation_url:
         raise HTTPException(status_code=500, detail="ЮKassa не вернула ссылку на оплату.")
@@ -255,6 +261,10 @@ async def checkout_status(payment: str, request: Request, db: Session = Depends(
         )
         db.commit()
         db.refresh(payment_obj)
+        return RedirectResponse(
+            url=f"/account/orders/{payment_obj.order.public_id}?welcome=1&delivery=payment_success&refresh_payment=1",
+            status_code=303,
+        )
 
     latest_song = get_latest_song(payment_obj.order)
 
