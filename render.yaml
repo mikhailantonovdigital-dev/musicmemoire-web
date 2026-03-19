@@ -28,6 +28,8 @@ services:
         sync: false
       - key: REDIS_URL
         sync: false
+      - key: BACKGROUND_QUEUE_NAME
+        value: default
 
       - key: OPENAI_API_KEY
         sync: false
@@ -97,3 +99,82 @@ services:
 
       - key: ADMIN_TOKEN
         sync: false
+
+  - type: worker
+    name: magic-music-worker
+    runtime: python
+    plan: starter
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python -m app.worker"
+    autoDeploy: true
+    disk:
+      name: uploads
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+
+      - key: APP_ENV
+        value: production
+      - key: APP_NAME
+        value: Magic Music
+      - key: BASE_URL
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: BACKGROUND_QUEUE_NAME
+        value: default
+
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        sync: false
+      - key: OPENAI_TRANSCRIBE_MODEL
+        value: gpt-4o-mini-transcribe
+      - key: AUDIO_TRANSCRIBE_LANGUAGE
+        value: ru
+
+      - key: SUNO_API_KEY
+        sync: false
+      - key: SUNO_API_BASE_URL
+        value: https://api.sunoapi.org
+      - key: SUNO_MODEL
+        sync: false
+      - key: SUNO_STUB_MODE
+        value: true
+      - key: SUNO_STUB_DELAY_SECONDS
+        value: 12
+      - key: SUNO_STUB_AUDIO_URL
+        sync: false
+      - key: SUNO_REQUEST_TIMEOUT_SECONDS
+        value: 60
+      - key: SUNO_CALLBACK_TOKEN
+        sync: false
+
+      - key: PRICE_RUB
+        value: 990
+      - key: UPLOADS_DIR
+        value: /var/data/musicmemoire/uploads
+      - key: MAX_VOICE_FILE_MB
+        value: 25
+      - key: MAX_SONG_FILE_MB
+        value: 80
+
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: 465
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM_EMAIL
+        sync: false
+      - key: SMTP_FROM_NAME
+        value: Magic Music
+      - key: SMTP_TIMEOUT_SECONDS
+        value: 20
+
