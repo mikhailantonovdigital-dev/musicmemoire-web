@@ -46,6 +46,14 @@ class Settings(BaseSettings):
     MAX_VOICE_FILE_MB: int = 25
     MAX_SONG_FILE_MB: int = 80
 
+    OBJECT_STORAGE_BUCKET: str | None = None
+    OBJECT_STORAGE_ENDPOINT_URL: str | None = None
+    OBJECT_STORAGE_REGION: str | None = None
+    OBJECT_STORAGE_ACCESS_KEY_ID: str | None = None
+    OBJECT_STORAGE_SECRET_ACCESS_KEY: str | None = None
+    OBJECT_STORAGE_PREFIX: str = "musicmemoire"
+    OBJECT_STORAGE_FORCE_PATH_STYLE: bool = False
+
     SMTP_HOST: str | None = None
     SMTP_PORT: int = 465
     SMTP_USER: str | None = None
