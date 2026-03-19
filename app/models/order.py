@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from app.models.song_generation import SongGeneration
     from app.models.security_event import SecurityEvent
     from app.models.background_job import BackgroundJob
+    from app.models.support_thread import SupportThread
 
 
 def generate_order_number() -> str:
@@ -140,6 +141,11 @@ class Order(Base):
         back_populates="order",
         cascade="all, delete-orphan",
         order_by="BackgroundJob.id.desc()",
+    )
+    support_threads: Mapped[list["SupportThread"]] = relationship(
+        back_populates="order",
+        cascade="all, delete-orphan",
+        order_by="SupportThread.id.desc()",
     )
 
 
