@@ -31,7 +31,9 @@
 
       {% if welcome %}
         <div class="notice notice-success" style="margin-top: 18px;">
-          {% if welcome_delivery == "email" %}
+          {% if welcome_delivery == "payment_success" %}
+            Оплата прошла успешно. Генерация песни уже запущена автоматически.
+          {% elif welcome_delivery == "email" %}
             Кабинет создан. Ссылку для входа мы отправили на почту, а этот заказ уже открыт сразу здесь.
           {% elif welcome_delivery == "stub" %}
             Кабинет создан. Письмо сейчас в stub-режиме, но заказ уже открыт в кабинете.
