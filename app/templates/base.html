@@ -26,7 +26,7 @@
   <link rel="icon" type="image/png" href="/static/img/favicon.png?v=4" />
   <link rel="shortcut icon" href="/static/img/favicon.png?v=4" />
   <link rel="apple-touch-icon" href="/static/img/favicon.png?v=4" />
-  <link rel="stylesheet" href="/static/css/styles.css?v=12670a" />
+  <link rel="stylesheet" href="/static/css/styles.css?v=12671a" />
 </head>
 {% set path = request.url.path %}
 {% set is_marketing_screen = path in ['/', '/portfolio', '/how-it-works', '/reviews'] %}
@@ -35,7 +35,7 @@
 {% set is_checkout_screen = path.startswith('/checkout') %}
 {% set is_account_screen = path.startswith('/account') %}
 {% set is_admin_login_screen = path == '/admin/login' %}
-{% set uses_marketing_chrome = is_marketing_screen or is_questionnaire_screen or is_checkout_screen or is_account_screen or is_admin_login_screen %}
+{% set uses_marketing_chrome = is_marketing_screen or is_legal_screen or is_questionnaire_screen or is_checkout_screen or is_account_screen or is_admin_login_screen %}
 <body class="theme-dark-premium{% if path == '/' %} page-home{% endif %}{% if is_marketing_screen %} page-marketing-screen{% endif %}{% if is_legal_screen %} page-legal-screen{% endif %}{% if is_questionnaire_screen %} page-questionnaire{% endif %}{% if is_checkout_screen %} page-checkout-screen{% endif %}{% if is_account_screen %} page-account-screen{% endif %}{% if is_admin_login_screen %} page-admin-login{% endif %}{% if body_class %} {{ body_class }}{% endif %}">
   <div class="page-bg page-bg-dark"></div>
   <div class="page-noise"></div>
