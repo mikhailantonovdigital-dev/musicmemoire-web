@@ -7,6 +7,7 @@ from app.core.db import engine, get_db
 from app.core.templates import templates
 from app.models import Order, OrderEvent, SupportMessage, SupportThread, User
 from app.services.background_jobs import get_redis_connection
+from app.services.telegram_report_service import notify_new_support_thread, telegram_reporting_enabled
 
 router = APIRouter()
 
@@ -621,6 +622,7 @@ def build_support_template_context(
         "support_success": success,
         "support_thread_public_id": thread_public_id,
         "support_order": order,
+        "telegram_reporting_enabled": telegram_reporting_enabled(),
         **meta,
     }
 
@@ -831,6 +833,8 @@ async def support_page_submit(
         )
 
     db.commit()
+
+    notify_new_support_thread(thread, thread.messages[0])
     redirect_url = request.url_for("support_page")
     params = ["sent=1", f"thread={thread.public_id}"]
     if normalized_order_ref:

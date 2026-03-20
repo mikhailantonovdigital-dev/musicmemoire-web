@@ -478,6 +478,7 @@ def start_song_job_now(
             song_style=order.song_style,
             song_style_custom=order.song_style_custom,
             singer_gender=order.singer_gender,
+            song_mood=order.song_mood,
         )
     except SunoServiceError as exc:
         song.status = "failed"
@@ -599,6 +600,15 @@ def apply_song_sync_result(
 def sync_song_job_state(db: Session, song: SongGeneration, *, event_type: str = "song_generation_status_changed") -> SongGeneration:
     if song.status not in RUNNING_SONG_STATUSES:
         return song
+
+    if not (song.external_job_id or "").strip():
+        return start_song_job_now(
+            db,
+            song,
+            started_event_type="song_generation_started",
+            failed_event_type="song_generation_start_failed",
+            trigger="status_poll_recover_missing_task_id",
+        )
 
     result = sync_song_generation(
         external_job_id=song.external_job_id,
