@@ -6446,9 +6446,12 @@ strong,
 
 .account-summary-actions-card .account-summary-actions {
   display: flex;
-  flex-wrap: wrap;
   gap: 12px;
-  margin-top: 14px;
+}
+
+.account-summary-actions-card .account-summary-actions .btn {
+  flex: 1 1 0;
+  justify-content: center;
 }
 
 .account-orders-stack {
@@ -6477,6 +6480,38 @@ strong,
   margin: 10px 0 0;
 }
 
+.account-order-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.account-order-title-edit {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: rgba(184, 200, 255, 0.82);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.account-expand-label-open {
+  display: none;
+}
+
+.account-order-accordion[open] .account-expand-label-collapsed {
+  display: none;
+}
+
+.account-order-accordion[open] .account-expand-label-open {
+  display: inline;
+}
+
+.account-order-preview {
+  margin-top: 18px;
+}
+
 .account-order-accordion-body {
   display: grid;
   gap: 18px;
@@ -6485,7 +6520,7 @@ strong,
 
 .account-dashboard-order-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
   gap: 18px;
 }
 
@@ -6501,8 +6536,7 @@ strong,
     grid-template-columns: 1fr;
   }
 
-  .account-discount-banner,
-  .account-order-discount-inline {
+  .account-discount-banner {
     flex-direction: column;
     align-items: flex-start;
   }
@@ -6510,6 +6544,11 @@ strong,
   .account-order-summary {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .account-summary-actions-card .account-summary-actions {
+    width: 100%;
+    flex-direction: column;
   }
 }
 

@@ -29,7 +29,6 @@
         </article>
 
         <article class="summary-card summary-card-dark account-summary-actions-card">
-          <span>Путь</span>
           <div class="account-summary-actions">
             <a class="btn btn-secondary" href="/account/login">Сменить вход</a>
             <a class="btn btn-primary" href="/questionnaire/">Новый заказ</a>
@@ -43,76 +42,82 @@
             {% set order = card.order %}
             {% set playback_song = card.playback_song %}
             {% set latest_song = card.latest_song %}
-            <details class="panel-card account-order-accordion panel-card-dark" {% if loop.first %}open{% endif %}>
+            <details class="panel-card account-order-accordion panel-card-dark">
               <summary class="account-order-summary">
                 <div>
                   <div class="order-card-meta">
-                    <span class="status-badge">{{ order.order_number }}</span>
-                    {% if card.ready_variants_count %}
-                      <span class="status-badge status-badge-soft">{{ card.ready_variants_count }} вариант(а)</span>
-                    {% endif %}
+                    <span class="status-badge">Заказ № {{ order.order_number }}</span>
                   </div>
-                  <h2>{{ order.title or "Персональная песня" }}</h2>
+                  <h2 class="account-order-title">
+                    <span>{{ order.title or "Персональная песня" }}</span>
+                    <button type="button" class="account-order-title-edit" aria-label="Переименовать заказ">✎</button>
+                  </h2>
                 </div>
-                <span class="btn btn-secondary account-order-expand-btn">Показать полностью</span>
+                <span class="btn btn-secondary account-order-expand-btn">
+                  <span class="account-expand-label-collapsed">Показать полностью</span>
+                  <span class="account-expand-label-open">Скрыть</span>
+                </span>
               </summary>
 
-              <div class="account-order-accordion-body">
-                <div class="notice notice-success account-order-discount-inline">
-                  Следующие заказы в течение дня — со скидкой 50%.
-                  <a href="/questionnaire/" class="btn btn-primary">Создать песню</a>
-                </div>
-
-                <div class="account-dashboard-order-grid">
-                  <div class="panel-card panel-card-dark">
-                    <div class="mini-label">Песня</div>
-                    {% if playback_song and playback_song.audio_variants %}
-                      <div class="account-song-results">
-                        {% for track in playback_song.audio_variants %}
-                          {% set playable_url = request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=loop.index0) %}
-                          {% set download_url = request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=loop.index0) ~ '?download=1' %}
-                          <div class="account-song-result-item">
-                            <p class="account-song-result-title">Вариант {{ loop.index }}</p>
-                            <audio class="audio-player" controls preload="none" data-exclusive-audio-group="dashboard-order-{{ order.public_id }}" src="{{ playable_url }}"></audio>
-                            <div class="form-actions" style="margin-top: 12px;">
-                              <a href="{{ download_url }}" class="btn btn-secondary">Скачать mp3</a>
-                            </div>
+              <div class="account-order-preview">
+                <div class="panel-card panel-card-dark">
+                  <div class="mini-label">Песня</div>
+                  {% if playback_song and playback_song.audio_variants %}
+                    <div class="account-song-results">
+                      {% for track in playback_song.audio_variants %}
+                        {% set playable_url = request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=loop.index0) %}
+                        {% set download_url = request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=loop.index0) ~ '?download=1' %}
+                        <div class="account-song-result-item">
+                          <p class="account-song-result-title">Вариант {{ loop.index }}</p>
+                          <audio class="audio-player" controls preload="none" data-exclusive-audio-group="dashboard-order-{{ order.public_id }}" src="{{ playable_url }}"></audio>
+                          <div class="form-actions" style="margin-top: 12px;">
+                            <a href="{{ download_url }}" class="btn btn-secondary">Скачать mp3</a>
                           </div>
-                        {% endfor %}
-                      </div>
-                    {% elif playback_song and playback_song.audio_url %}
-                      <div class="account-song-result-item">
-                        <audio class="audio-player" controls preload="none" data-exclusive-audio-group="dashboard-order-{{ order.public_id }}" src="{{ request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=0) }}"></audio>
-                        <div class="form-actions" style="margin-top: 12px;">
-                          <a href="{{ request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=0) }}?download=1" class="btn btn-secondary">Скачать mp3</a>
                         </div>
-                      </div>
-                    {% elif latest_song and card.song_is_running %}
-                      <div class="generation-overlay-card account-song-spinner-card">
-                        <div class="generation-spinner"></div>
-                        <h2>Готовим песню</h2>
-                        <p>Песня ещё генерируется. Можно открыть заказ и дождаться результата там.</p>
-                      </div>
-                    {% else %}
-                      <p class="muted" style="margin: 0;">Варианты песни пока не готовы.</p>
-                    {% endif %}
-
-                    <div class="form-actions" style="margin-top: 16px;">
-                      <a class="btn btn-secondary" href="/account/orders/{{ order.public_id }}">Открыть заказ</a>
+                      {% endfor %}
                     </div>
-                  </div>
+                  {% elif playback_song and playback_song.audio_url %}
+                    <div class="account-song-result-item">
+                      <audio class="audio-player" controls preload="none" data-exclusive-audio-group="dashboard-order-{{ order.public_id }}" src="{{ request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=0) }}"></audio>
+                      <div class="form-actions" style="margin-top: 12px;">
+                        <a href="{{ request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=0) }}?download=1" class="btn btn-secondary">Скачать mp3</a>
+                      </div>
+                    </div>
+                  {% elif latest_song and card.song_is_running %}
+                    <div class="generation-overlay-card account-song-spinner-card">
+                      <div class="generation-spinner"></div>
+                      <h2>Готовим песню</h2>
+                      <p>Генерация уже запущена. Как только песня будет готова, она появится здесь автоматически. Не закрывайте данную страницу. Необходимо пару минут.</p>
+                    </div>
+                  {% else %}
+                    <p class="muted" style="margin: 0;">Варианты песни пока не готовы.</p>
+                  {% endif %}
 
+                  <div class="form-actions" style="margin-top: 16px;">
+                    <a class="btn btn-secondary" href="/account/orders/{{ order.public_id }}">Открыть заказ</a>
+                  </div>
+                </div>
+              </div>
+
+              {% if playback_song and (playback_song.audio_variants or playback_song.audio_url) %}
+              <div class="account-order-accordion-body">
+                <div class="account-dashboard-order-grid">
                   <div class="panel-card panel-card-dark">
                     <div class="mini-label">Параметры песни</div>
                     <div class="detail-list account-song-meta-list">
                       <div class="detail-list-item"><span class="detail-label">Стиль</span><strong class="detail-value">{{ card.song_style_label }}</strong></div>
                       <div class="detail-list-item"><span class="detail-label">Настроение</span><strong class="detail-value">{{ card.mood_label }}</strong></div>
                       <div class="detail-list-item"><span class="detail-label">Исполнение</span><strong class="detail-value">{{ card.singer_label }}</strong></div>
-                      <div class="detail-list-item"><span class="detail-label">Текст песни</span><div class="account-song-lyrics">{{ order.final_lyrics_text or "Текст песни пока не сохранён." }}</div></div>
                     </div>
+                  </div>
+
+                  <div class="panel-card panel-card-dark">
+                    <div class="mini-label">Текст песни</div>
+                    <div class="account-song-lyrics">{{ order.final_lyrics_text or "Текст песни пока не сохранён." }}</div>
                   </div>
                 </div>
               </div>
+              {% endif %}
             </details>
           {% endfor %}
         </div>
