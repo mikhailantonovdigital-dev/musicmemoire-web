@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.db import get_db
 from app.core.security import utcnow
-from app.core.storage import StorageError, ensure_voice_input_local_path, object_storage_enabled
+from app.core.storage import StorageError, ensure_support_attachment_local_path, ensure_voice_input_local_path, object_storage_enabled
 from app.core.templates import templates
 from app.models import BackgroundJob, EmailLog, LyricsVersion, Order, OrderEvent, OrderPayment, SecurityEvent, SongGeneration, SupportMessage, SupportThread, User, VoiceInput
 from app.models.order_payment import build_order_pricing_preview
@@ -34,6 +34,7 @@ from app.services.background_jobs import BackgroundJobError, get_job_label, enqu
 from app.services.email_log_service import humanize_email_status, humanize_email_type
 from app.tasks import run_admin_lyrics_regeneration_task, run_song_start_task, run_voice_transcription_task
 from app.services.yookassa_service import YooKassaError
+from app.services.telegram_report_service import build_test_report, notify_admin_support_reply, send_telegram_report, telegram_reporting_enabled
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -1285,6 +1286,7 @@ async def admin_support_dashboard(
             "status_options": SUPPORT_STATUS_OPTIONS,
             "thread_cards": [build_support_thread_card(item) for item in threads],
             "selected_thread": build_support_thread_card(selected_thread) if selected_thread else None,
+            "telegram_reporting_enabled": telegram_reporting_enabled(),
         },
     )
 
@@ -1341,5 +1343,30 @@ async def admin_support_reply(
     if thread.order is not None:
         db.add(OrderEvent(order=thread.order, event_type="support_thread_admin_reply_added", payload={"thread_public_id": thread.public_id, "is_internal": bool(is_internal)}))
     db.commit()
+    notify_admin_support_reply(thread, message)
     set_admin_flash(request, "success", "Сообщение в обращение добавлено.")
     return RedirectResponse(url=f"/admin/support?thread={thread.public_id}", status_code=303)
+
+
+@router.post("/support/telegram-report/test")
+async def admin_support_telegram_report_test(request: Request):
+    if not has_admin_access(request):
+        return RedirectResponse(url="/admin/login", status_code=303)
+    result = send_telegram_report(build_test_report())
+    set_admin_flash(request, "success" if result.ok else "error", result.detail)
+    return RedirectResponse(url="/admin/support", status_code=303)
+
+
+@router.get("/support/attachments/{message_id}")
+async def admin_support_attachment_download(message_id: int, request: Request, db: Session = Depends(get_db)):
+    if not has_admin_access(request):
+        return RedirectResponse(url="/admin/login", status_code=303)
+    message = db.query(SupportMessage).filter(SupportMessage.id == message_id).first()
+    if message is None or not message.attachment_relative_path:
+        return RedirectResponse(url="/admin/support", status_code=303)
+    try:
+        local_path = ensure_support_attachment_local_path(message)
+    except StorageError as exc:
+        set_admin_flash(request, "error", str(exc))
+        return RedirectResponse(url="/admin/support", status_code=303)
+    return FileResponse(path=local_path, filename=message.attachment_original_filename or local_path.name, media_type=message.attachment_content_type or "application/octet-stream")
