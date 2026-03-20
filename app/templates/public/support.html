@@ -19,7 +19,7 @@
     <div class="legal-main-card legal-main-card-single">
       <section class="legal-section" id="support-form">
         <h2>Написать в поддержку</h2>
-        <p>Опишите вопрос в форме ниже. Если у вас уже есть заказ, сразу укажите номер заказа или public id — так мы быстрее найдём кейс и проверим статус.</p>
+        <p>Опишите вопрос в форме ниже. Если у вас уже есть заказ, сразу укажите номер заказа — так мы быстрее найдём кейс и проверим статус.</p>
         {% if support_order %}
           <div class="notice" style="margin-bottom: 16px;">
             Обращение будет привязано к заказу <strong>{{ support_order.order_number }}</strong>.
@@ -27,7 +27,7 @@
         {% endif %}
         <form class="form-card" method="post" action="/support" enctype="multipart/form-data" style="margin-top: 16px;">
           <label class="form-label" for="support-order-ref">
-            Номер заказа или public id
+            Номер заказа
             <a href="/account/" target="_blank" rel="noopener" class="support-inline-link">Где взять номер заказа?</a>
           </label>
           <input id="support-order-ref" name="order_ref" type="text" class="text-input" value="{{ support_order_ref }}" placeholder="Например: MM-260319-ABC123" />
@@ -41,8 +41,8 @@
           <label class="form-label" for="support-message" style="margin-top: 14px;">Сообщение</label>
           <textarea id="support-message" name="message" class="textarea" rows="8" placeholder="Опишите, что произошло и на каком шаге возникла проблема." required>{{ support_message }}</textarea>
 
-          <label class="form-label" for="support-attachment" style="margin-top: 14px;">Скриншот ошибки или PDF (необязательно)</label>
-          <input id="support-attachment" name="attachment" type="file" class="text-input" accept=".png,.jpg,.jpeg,.webp,.pdf,image/png,image/jpeg,image/webp,application/pdf" />
+          <label class="form-label" for="support-attachment" style="margin-top: 14px;">Скриншот ошибки (необязательно)</label>
+          <input id="support-attachment" name="attachment" type="file" class="text-input" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" />
 
           <div class="form-actions" style="margin-top: 16px;">
             <button type="submit" class="btn btn-primary">Отправить обращение</button>
@@ -54,14 +54,13 @@
         <h2>Что указать сразу</h2>
         <ul class="legal-list">
           <li>email, на который оформлялся заказ;</li>
-          <li>номер заказа или public id, если он уже есть;</li>
+          <li>номер заказа, если он уже есть;</li>
           <li>краткое описание проблемы и шаг, на котором она возникла;</li>
           <li>скриншот ошибки, если она видна на экране.</li>
         </ul>
       </section>
     </div>
 
-    {% include "partials/support_card.html" with context %}
   </div>
 </section>
 {% endblock %}

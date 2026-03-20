@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.db import engine, get_db
 from app.core.templates import templates
-from app.core.storage import save_support_file
+from app.core.storage import StorageError, save_support_file
 from app.models import Order, OrderEvent, SupportMessage, SupportThread, User
 from app.services.background_jobs import get_redis_connection
 from app.services.telegram_report_service import notify_new_support_thread, telegram_reporting_enabled
@@ -801,7 +801,7 @@ async def support_page_submit(
     if attachment is not None and (attachment.filename or "").strip():
         try:
             stored_attachment = save_support_file(attachment)
-        except ValueError as exc:
+        except (ValueError, StorageError) as exc:
             return templates.TemplateResponse(
                 "public/support.html",
                 build_support_template_context(
@@ -860,7 +860,11 @@ async def support_page_submit(
 
     db.commit()
 
-    notify_new_support_thread(thread, thread.messages[0])
+    try:
+        notify_new_support_thread(thread, thread.messages[0])
+    except Exception:
+        pass
+
     redirect_url = request.url_for("support_page")
     params = ["sent=1", f"thread={thread.public_id}"]
     if normalized_order_ref:
