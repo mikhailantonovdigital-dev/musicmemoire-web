@@ -1,12 +1,14 @@
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.db import engine, get_db
 from app.core.templates import templates
+from app.core.storage import save_support_file
 from app.models import Order, OrderEvent, SupportMessage, SupportThread, User
 from app.services.background_jobs import get_redis_connection
+from app.services.telegram_report_service import notify_new_support_thread, telegram_reporting_enabled
 
 router = APIRouter()
 
@@ -512,10 +514,10 @@ FAQ_PAGE = {
 
 SUPPORT_PAGE = {
     "page_title": "Поддержка - Magic Music",
-    "meta_description": "Поддержка Magic Music: контакты Telegram и MAX, помощь по анкете, кабинету, оплате и готовому заказу.",
+    "meta_description": "Поддержка Magic Music: форма обращения по анкете, кабинету, оплате и готовому заказу.",
     "eyebrow": "Поддержка",
     "title": "Связаться с поддержкой Magic Music",
-    "lead": "Если возник вопрос по анкете, кабинету, оплате или готовому заказу, напишите нам в удобный канал связи.",
+    "lead": "Если возник вопрос по анкете, кабинету, оплате или готовому заказу, отправьте обращение через форму ниже.",
     "updated_at": "Актуально на 18.03.2026",
     "sections": [
         {
@@ -544,10 +546,10 @@ SUPPORT_PAGE = {
             ],
         },
         {
-            "title": "Какие каналы связи доступны",
+            "title": "Как написать в поддержку",
             "paragraphs": [
-                "Для связи доступны Telegram и MAX. На странице выше размещены быстрые кнопки перехода в оба канала.",
-                "Можно выбрать любой удобный вариант и написать туда напрямую."
+                "Все обращения на этой странице отправляются через встроенную форму поддержки и сразу попадают в операторскую админку.",
+                "Так мы быстрее связываем сообщение с заказом, видим историю обращения и можем точнее проверить статус."
             ],
             "bullet_items": [],
         },
@@ -611,8 +613,6 @@ def build_support_template_context(
     return {
         "request": request,
         "support_page": SUPPORT_PAGE,
-        "support_tg_url": settings.SUPPORT_TG_URL,
-        "support_max_url": settings.SUPPORT_MAX_URL,
         "support_order_ref": order_ref,
         "support_email": email,
         "support_subject": subject,
@@ -621,6 +621,7 @@ def build_support_template_context(
         "support_success": success,
         "support_thread_public_id": thread_public_id,
         "support_order": order,
+        "telegram_reporting_enabled": telegram_reporting_enabled(),
         **meta,
     }
 
@@ -754,6 +755,7 @@ async def support_page_submit(
     subject: str = Form(""),
     message: str = Form(""),
     order_ref: str = Form(""),
+    attachment: UploadFile | None = File(None),
     db: Session = Depends(get_db),
 ):
     normalized_email = (email or "").strip().lower()
@@ -795,6 +797,25 @@ async def support_page_submit(
             status_code=400,
         )
 
+    stored_attachment = None
+    if attachment is not None and (attachment.filename or "").strip():
+        try:
+            stored_attachment = save_support_file(attachment)
+        except ValueError as exc:
+            return templates.TemplateResponse(
+                "public/support.html",
+                build_support_template_context(
+                    request,
+                    order_ref=normalized_order_ref,
+                    email=normalized_email,
+                    subject=normalized_subject,
+                    message=normalized_message,
+                    error=str(exc),
+                    order=linked_order,
+                ),
+                status_code=400,
+            )
+
     linked_user = db.query(User).filter(User.email == normalized_email).first()
     if linked_order and linked_order.user_id and linked_user is None:
         linked_user = linked_order.user
@@ -811,6 +832,13 @@ async def support_page_submit(
         SupportMessage(
             sender_role="user",
             body=normalized_message,
+            attachment_original_filename=stored_attachment.original_filename if stored_attachment else None,
+            attachment_content_type=stored_attachment.content_type if stored_attachment else None,
+            attachment_size_bytes=stored_attachment.size_bytes if stored_attachment else None,
+            attachment_relative_path=stored_attachment.relative_path if stored_attachment else None,
+            attachment_storage_backend=stored_attachment.storage_backend if stored_attachment else None,
+            attachment_storage_bucket=stored_attachment.storage_bucket if stored_attachment else None,
+            attachment_storage_key=stored_attachment.storage_key if stored_attachment else None,
             is_internal=False,
         )
     )
@@ -831,6 +859,8 @@ async def support_page_submit(
         )
 
     db.commit()
+
+    notify_new_support_thread(thread, thread.messages[0])
     redirect_url = request.url_for("support_page")
     params = ["sent=1", f"thread={thread.public_id}"]
     if normalized_order_ref:
