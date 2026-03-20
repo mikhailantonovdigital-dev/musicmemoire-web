@@ -6508,6 +6508,11 @@ strong,
   gap: 16px;
 }
 
+#order-song-panel-root {
+  display: grid;
+  gap: 18px;
+}
+
 .account-summary-actions-card .account-summary-actions {
   display: flex;
   gap: 12px;
