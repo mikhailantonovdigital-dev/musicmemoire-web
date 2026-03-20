@@ -85,6 +85,10 @@ class Order(Base):
         Text,
         nullable=True,
     )
+    title: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
     song_style: Mapped[str | None] = mapped_column(
         String(32),
         nullable=True,
@@ -95,6 +99,10 @@ class Order(Base):
     )
     singer_gender: Mapped[str | None] = mapped_column(
         String(16),
+        nullable=True,
+    )
+    song_mood: Mapped[str | None] = mapped_column(
+        String(32),
         nullable=True,
     )
 

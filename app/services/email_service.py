@@ -200,7 +200,7 @@ def send_payment_success_email(*, recipient_email: str, order_number: str, order
         </div>
 
         <p style="margin:0;font-size:13px;line-height:1.6;color:#9fb0d9;">
-          Заказ сохранён в кабинете. Ссылка ведёт прямо в карточку заказа.
+          Заказ сохранён в кабинете. На следующие заказы в течение дня действует скидка 50%.
         </p>
       </div>
     </div>
@@ -219,28 +219,17 @@ def send_payment_success_email(*, recipient_email: str, order_number: str, order
 def send_song_ready_email(*, recipient_email: str, order_number: str, order_url: str, audio_url: str | None = None) -> None:
     subject = song_ready_email_subject(order_number)
 
-    extra_text = f"\nСсылка на аудио:\n{audio_url}\n" if audio_url else ""
-
     text_body = f"""Здравствуйте!
 
 Песня по заказу {order_number} готова.
 
-Открыть заказ:
-{order_url}{extra_text}
-В кабинете можно прослушать результат и перейти к деталям заказа.
-"""
+Открыть кабинет:
+{order_url}
 
-    audio_link_block = (
-        f"""
-        <p style="margin:0 0 18px;font-size:14px;line-height:1.6;color:#c8d6fb;">
-          Прямая ссылка на аудио:
-          <br />
-          <a href="{audio_url}" style="color:#a9beff;word-break:break-all;">{audio_url}</a>
-        </p>
-        """
-        if audio_url
-        else ""
-    )
+В кабинете можно прослушать результат и открыть нужный заказ.
+
+На следующие заказы в течение дня действует скидка 50%.
+"""
 
     html_body = f"""\
 <!doctype html>
@@ -262,14 +251,12 @@ def send_song_ready_email(*, recipient_email: str, order_number: str, order_url:
 
         <div style="margin:24px 0 22px;">
           <a href="{order_url}" style="display:inline-block;padding:14px 22px;border-radius:14px;background:linear-gradient(135deg,#6d7cff 0%,#8d66ff 100%);color:#ffffff;text-decoration:none;font-size:16px;font-weight:700;">
-            Открыть заказ
+            Открыть кабинет
           </a>
         </div>
 
-        {audio_link_block}
-
         <p style="margin:0;font-size:13px;line-height:1.6;color:#9fb0d9;">
-          В кабинете можно прослушать готовую песню и открыть карточку заказа.
+          В кабинете можно прослушать готовую песню и открыть нужный заказ. Следующие заказы в течение дня — со скидкой 50%.
         </p>
       </div>
     </div>
@@ -283,7 +270,6 @@ def send_song_ready_email(*, recipient_email: str, order_number: str, order_url:
         text_body=text_body,
         html_body=html_body,
     )
-
 
 def send_song_failed_email(*, recipient_email: str, order_number: str, order_url: str, error_message: str | None = None) -> None:
     subject = song_failed_email_subject(order_number)
