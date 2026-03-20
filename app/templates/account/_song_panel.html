@@ -1,0 +1,105 @@
+<div id="order-song-panel-root" data-song-running="{{ 'true' if latest_song and song_is_running and not playback_song and not suno_stub_mode and not song_sync_error else 'false' }}" data-poll-url="/account/orders/{{ order.public_id }}/song-panel">
+  <div class="panel-card account-song-card">
+    <div class="mini-label">Песня</div>
+
+    {% if playback_song and playback_song.audio_variants %}
+      <div class="account-song-results">
+        {% for track in playback_song.audio_variants %}
+          {% set playable_url = request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=loop.index0) %}
+          {% set download_url = request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=loop.index0) ~ '?download=1' %}
+          <div class="account-song-result-item">
+            <p class="account-song-result-title">Вариант {{ loop.index }}</p>
+            {% if playable_url %}
+              <audio class="audio-player" controls preload="none" data-exclusive-audio-group="order-{{ order.public_id }}" src="{{ playable_url }}"></audio>
+            {% endif %}
+            <div class="form-actions" style="margin-top: 12px;">
+              {% if track.audio_url or track.stream_audio_url %}
+                <a href="{{ download_url }}" class="btn btn-secondary">Скачать mp3</a>
+              {% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% elif playback_song and playback_song.audio_url %}
+      <div class="account-song-result-item">
+        <audio class="audio-player" controls preload="none" data-exclusive-audio-group="order-{{ order.public_id }}" src="{{ request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=0) }}"></audio>
+        <div class="form-actions" style="margin-top: 12px;">
+          <a href="{{ request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=0) }}?download=1" class="btn btn-secondary">Скачать mp3</a>
+        </div>
+      </div>
+    {% elif latest_song and song_is_ready and suno_stub_mode %}
+      <p class="muted" style="margin: 0;">Тестовый режим завершён. Для боевого результата нужен реальный аудиофайл.</p>
+    {% elif latest_song and song_is_running %}
+      <div class="generation-overlay-card account-song-spinner-card">
+        <div class="generation-spinner"></div>
+        <h2>Готовим песню</h2>
+        <p>Генерация уже запущена. Как только песня будет готова, она появится здесь автоматически. Не закрывайте данную страницу. Необходимо пару минут.</p>
+      </div>
+      {% if song_sync_error %}
+        <div class="notice notice-warning" style="margin-top: 16px;">Не удалось обновить статус генерации: {{ song_sync_error }}</div>
+      {% elif latest_song and song_is_failed and latest_song.error_message %}
+        <div class="notice notice-warning" style="margin-top: 16px;">{{ latest_song.error_message }}</div>
+      {% endif %}
+    {% elif latest_song and song_is_failed and latest_song.error_message %}
+      <div class="notice notice-warning">{{ latest_song.error_message }}</div>
+      {% if can_start_song %}
+        <div class="form-actions" style="margin-top: 16px;">
+          <form method="post" action="/songs/start/{{ order.public_id }}">
+            <button type="submit" class="btn btn-primary">Попробовать ещё раз</button>
+          </form>
+        </div>
+      {% endif %}
+    {% elif can_pay_order %}
+      <p class="muted" style="margin: 0;">Чтобы запустить генерацию песни, сначала нужно оплатить заказ.</p>
+      <div class="form-actions" style="margin-top: 16px;">
+        <form method="post" action="/checkout/start/{{ order.public_id }}">
+          <button type="submit" class="btn btn-primary">{{ payment_cta_label }}</button>
+        </form>
+      </div>
+    {% elif can_start_song %}
+      <p class="muted" style="margin: 0;">Текст уже готов. Можно запускать генерацию песни.</p>
+      <div class="form-actions" style="margin-top: 16px;">
+        <form method="post" action="/songs/start/{{ order.public_id }}">
+          <button type="submit" class="btn btn-primary">Сгенерировать песню</button>
+        </form>
+      </div>
+    {% else %}
+      <p class="muted" style="margin: 0;">Генерация песни станет доступна после оплаты.</p>
+    {% endif %}
+  </div>
+
+  {% if playback_song and (playback_song.audio_variants or playback_song.audio_url) %}
+  <div class="notice notice-success account-discount-banner">
+    На следующие заказы в течение дня действует скидка 50%.
+    <a href="/questionnaire/" class="btn btn-primary">Создать песню</a>
+  </div>
+
+  <div class="account-song-meta-card panel-card">
+    <div class="mini-label">Параметры песни</div>
+    <div class="detail-list account-song-meta-list">
+      <div class="detail-list-item">
+        <span class="detail-label">Стиль</span>
+        <strong class="detail-value">{{ song_style_label }}</strong>
+      </div>
+      {% if song_style_details %}
+      <div class="detail-list-item">
+        <span class="detail-label">Уточнение</span>
+        <strong class="detail-value">{{ song_style_details }}</strong>
+      </div>
+      {% endif %}
+      <div class="detail-list-item">
+        <span class="detail-label">Настроение</span>
+        <strong class="detail-value">{{ mood_label }}</strong>
+      </div>
+      <div class="detail-list-item">
+        <span class="detail-label">Исполнение</span>
+        <strong class="detail-value">{{ singer_label }}</strong>
+      </div>
+      <div class="detail-list-item">
+        <span class="detail-label">Текст песни</span>
+        <div class="account-song-lyrics">{{ order.final_lyrics_text or "Текст песни пока не сохранён." }}</div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>

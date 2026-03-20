@@ -146,6 +146,45 @@ def can_start_song(order: Order) -> bool:
     return settings.SUNO_STUB_MODE or order.status == "paid"
 
 
+def build_order_detail_context(request: Request, db: Session, order: Order, latest_payment, latest_song, *, welcome: bool = False, delivery: str = "", song_sync_error: str | None = None) -> dict:
+    latest_ready_song = get_latest_ready_song(order)
+    song_attempts = get_song_attempts(order)
+    playback_song = latest_ready_song
+    has_previous_ready_song = bool(playback_song and latest_song and playback_song.public_id != latest_song.public_id)
+    song_profile = build_song_profile(order)
+    pricing = get_order_pricing_context(db, order)
+
+    return {
+        "request": request,
+        "page_title": f"Заказ {order.order_number}",
+        "order": order,
+        "latest_payment": latest_payment,
+        "latest_song": latest_song,
+        "latest_ready_song": latest_ready_song,
+        "playback_song": playback_song,
+        "song_attempts": song_attempts,
+        "has_previous_ready_song": has_previous_ready_song,
+        "payment_status_label": humanize_payment_status(latest_payment.status if latest_payment else None),
+        "song_status_label": humanize_song_status(latest_song.status if latest_song else None),
+        "song_style_label": song_profile["style_label"],
+        "song_style_details": song_profile["style_details"],
+        "singer_label": song_profile["singer_label"],
+        "mood_label": song_profile["mood_label"],
+        "can_pay_order": can_pay_order(order),
+        "payment_cta_label": get_payment_cta_label(db, order),
+        **pricing,
+        "can_start_song": can_start_song(order),
+        "song_is_running": latest_song is not None and latest_song.status in RUNNING_SONG_STATUSES,
+        "song_is_ready": latest_song is not None and latest_song.status == "succeeded",
+        "song_is_failed": latest_song is not None and latest_song.status == "failed",
+        "suno_stub_mode": settings.SUNO_STUB_MODE,
+        "welcome": welcome,
+        "welcome_delivery": delivery,
+        "song_sync_error": song_sync_error,
+        "metrica_counter_id": settings.METRICA_COUNTER_ID,
+    }
+
+
 def build_magic_login_url(raw_token: str) -> str:
     return f"{settings.BASE_URL.rstrip('/')}/account/magic-login?token={raw_token}"
 
@@ -501,46 +540,75 @@ async def account_order_detail(
                 return RedirectResponse(url=request.url_for("account_dashboard"), status_code=303)
             latest_song = get_latest_song(order)
 
-    latest_ready_song = get_latest_ready_song(order)
-    song_attempts = get_song_attempts(order)
-    playback_song = latest_ready_song
-    has_previous_ready_song = bool(playback_song and latest_song and playback_song.public_id != latest_song.public_id)
-    song_profile = build_song_profile(order)
-    pricing = get_order_pricing_context(db, order)
-
     welcome = request.query_params.get("welcome") == "1"
     delivery = (request.query_params.get("delivery") or "").strip().lower()
-
-    return templates.TemplateResponse(
-        "account/order_detail.html",
-        {
-            "request": request,
-            "page_title": f"Заказ {order.order_number}",
-            "user": user,
-            "order": order,
-            "latest_payment": latest_payment,
-            "latest_song": latest_song,
-            "latest_ready_song": latest_ready_song,
-            "playback_song": playback_song,
-            "song_attempts": song_attempts,
-            "has_previous_ready_song": has_previous_ready_song,
-            "payment_status_label": humanize_payment_status(latest_payment.status if latest_payment else None),
-            "song_status_label": humanize_song_status(latest_song.status if latest_song else None),
-            "song_style_label": song_profile["style_label"],
-            "song_style_details": song_profile["style_details"],
-            "singer_label": song_profile["singer_label"],
-            "mood_label": song_profile["mood_label"],
-            "can_pay_order": can_pay_order(order),
-            "payment_cta_label": get_payment_cta_label(db, order),
-            **pricing,
-            "can_start_song": can_start_song(order),
-            "song_is_running": latest_song is not None and latest_song.status in RUNNING_SONG_STATUSES,
-            "song_is_ready": latest_song is not None and latest_song.status == "succeeded",
-            "song_is_failed": latest_song is not None and latest_song.status == "failed",
-            "suno_stub_mode": settings.SUNO_STUB_MODE,
-            "welcome": welcome,
-            "welcome_delivery": delivery,
-            "song_sync_error": song_sync_error,
-            "metrica_counter_id": settings.METRICA_COUNTER_ID,
-        },
+    context = build_order_detail_context(
+        request,
+        db,
+        order,
+        latest_payment,
+        latest_song,
+        welcome=welcome,
+        delivery=delivery,
+        song_sync_error=song_sync_error,
     )
+    context["user"] = user
+
+    return templates.TemplateResponse("account/order_detail.html", context)
+
+
+@router.get("/orders/{order_public_id}/song-panel", response_class=HTMLResponse)
+async def account_order_song_panel(
+    order_public_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    user = get_session_user(request, db)
+    if user is None:
+        raise HTTPException(status_code=403, detail="Требуется авторизация.")
+
+    order = (
+        db.query(Order)
+        .filter(
+            Order.public_id == order_public_id,
+            Order.user_id == user.id,
+        )
+        .first()
+    )
+    if order is None:
+        raise HTTPException(status_code=404, detail="Заказ не найден.")
+
+    latest_payment = get_latest_payment(order)
+    latest_song = get_latest_song(order)
+    song_sync_error = None
+    if latest_song is not None and latest_song.status in RUNNING_SONG_STATUSES:
+        try:
+            latest_song = sync_song_job_state(db, latest_song, event_type="song_generation_status_changed_from_account_order")
+            db.commit()
+            db.refresh(order)
+            latest_song = get_latest_song(order)
+        except SunoServiceError as exc:
+            song_sync_error = str(exc)
+            db.rollback()
+            order = (
+                db.query(Order)
+                .filter(
+                    Order.public_id == order_public_id,
+                    Order.user_id == user.id,
+                )
+                .first()
+            )
+            if order is None:
+                raise HTTPException(status_code=404, detail="Заказ не найден.")
+            latest_payment = get_latest_payment(order)
+            latest_song = get_latest_song(order)
+
+    context = build_order_detail_context(
+        request,
+        db,
+        order,
+        latest_payment,
+        latest_song,
+        song_sync_error=song_sync_error,
+    )
+    return templates.TemplateResponse("account/_song_panel.html", context)
