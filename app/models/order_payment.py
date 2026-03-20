@@ -56,6 +56,12 @@ def build_pricing_snapshot(*, base_price_rub: int, discount_rub: int = 0) -> dic
     }
 
 
+
+
+def payment_success_at_expr():
+    return func.coalesce(OrderPayment.paid_at, OrderPayment.updated_at, OrderPayment.created_at)
+
+
 def build_order_pricing_preview(db: Session, order: 'Order') -> dict[str, int | str | bool]:
     base_price_rub = int(settings.PRICE_RUB)
 
@@ -64,16 +70,16 @@ def build_order_pricing_preview(db: Session, order: 'Order') -> dict[str, int | 
         return build_pricing_snapshot(base_price_rub=base_price_rub)
 
     since = utcnow() - timedelta(hours=24)
+    success_at = payment_success_at_expr()
     recent_success = (
         db.query(OrderPayment)
         .filter(
             OrderPayment.user_id == user_id,
             OrderPayment.order_id != order.id,
             OrderPayment.status == 'succeeded',
-            OrderPayment.paid_at.is_not(None),
-            OrderPayment.paid_at >= since,
+            success_at >= since,
         )
-        .order_by(OrderPayment.paid_at.desc(), OrderPayment.id.desc())
+        .order_by(success_at.desc(), OrderPayment.id.desc())
         .first()
     )
 

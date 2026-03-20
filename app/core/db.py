@@ -57,6 +57,9 @@ def run_bootstrap_migrations() -> None:
             if "final_lyrics_text" not in order_columns:
                 conn.execute(text("ALTER TABLE orders ADD COLUMN final_lyrics_text TEXT"))
 
+            if "title" not in order_columns:
+                conn.execute(text("ALTER TABLE orders ADD COLUMN title VARCHAR(255)"))
+
             if "song_style" not in order_columns:
                 conn.execute(text("ALTER TABLE orders ADD COLUMN song_style VARCHAR(32)"))
 
@@ -66,12 +69,29 @@ def run_bootstrap_migrations() -> None:
             if "singer_gender" not in order_columns:
                 conn.execute(text("ALTER TABLE orders ADD COLUMN singer_gender VARCHAR(16)"))
 
+            if "song_mood" not in order_columns:
+                conn.execute(text("ALTER TABLE orders ADD COLUMN song_mood VARCHAR(32)"))
+
     if "song_generations" in inspector.get_table_names():
         song_columns = {col["name"] for col in inspector.get_columns("song_generations")}
 
         with engine.begin() as conn:
             if "result_tracks" not in song_columns:
                 conn.execute(text("ALTER TABLE song_generations ADD COLUMN result_tracks JSON"))
+    if "order_payments" in inspector.get_table_names():
+        payment_columns = {col["name"] for col in inspector.get_columns("order_payments")}
+
+        with engine.begin() as conn:
+            if "paid_at" not in payment_columns:
+                conn.execute(text("ALTER TABLE order_payments ADD COLUMN paid_at TIMESTAMP WITH TIME ZONE"))
+
+            conn.execute(text("""
+                UPDATE order_payments
+                SET paid_at = COALESCE(updated_at, created_at)
+                WHERE status = 'succeeded' AND paid_at IS NULL
+            """))
+
+
 
     if "voice_inputs" in inspector.get_table_names():
         voice_columns = {col["name"] for col in inspector.get_columns("voice_inputs")}
@@ -83,6 +103,26 @@ def run_bootstrap_migrations() -> None:
                 conn.execute(text("ALTER TABLE voice_inputs ADD COLUMN storage_bucket VARCHAR(255)"))
             if "storage_key" not in voice_columns:
                 conn.execute(text("ALTER TABLE voice_inputs ADD COLUMN storage_key VARCHAR(1024)"))
+
+
+    if "support_messages" in inspector.get_table_names():
+        support_columns = {col["name"] for col in inspector.get_columns("support_messages")}
+
+        with engine.begin() as conn:
+            if "attachment_original_filename" not in support_columns:
+                conn.execute(text("ALTER TABLE support_messages ADD COLUMN attachment_original_filename VARCHAR(255)"))
+            if "attachment_content_type" not in support_columns:
+                conn.execute(text("ALTER TABLE support_messages ADD COLUMN attachment_content_type VARCHAR(255)"))
+            if "attachment_size_bytes" not in support_columns:
+                conn.execute(text("ALTER TABLE support_messages ADD COLUMN attachment_size_bytes INTEGER"))
+            if "attachment_relative_path" not in support_columns:
+                conn.execute(text("ALTER TABLE support_messages ADD COLUMN attachment_relative_path VARCHAR(1024)"))
+            if "attachment_storage_backend" not in support_columns:
+                conn.execute(text("ALTER TABLE support_messages ADD COLUMN attachment_storage_backend VARCHAR(20)"))
+            if "attachment_storage_bucket" not in support_columns:
+                conn.execute(text("ALTER TABLE support_messages ADD COLUMN attachment_storage_bucket VARCHAR(255)"))
+            if "attachment_storage_key" not in support_columns:
+                conn.execute(text("ALTER TABLE support_messages ADD COLUMN attachment_storage_key VARCHAR(1024)"))
 
     if "magic_login_tokens" not in inspector.get_table_names():
         pass
