@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.db import engine, get_db
 from app.core.templates import templates
+from app.core.storage import save_support_file
 from app.models import Order, OrderEvent, SupportMessage, SupportThread, User
 from app.services.background_jobs import get_redis_connection
 from app.services.telegram_report_service import notify_new_support_thread, telegram_reporting_enabled
@@ -756,6 +757,7 @@ async def support_page_submit(
     subject: str = Form(""),
     message: str = Form(""),
     order_ref: str = Form(""),
+    attachment: UploadFile | None = File(None),
     db: Session = Depends(get_db),
 ):
     normalized_email = (email or "").strip().lower()
@@ -797,6 +799,25 @@ async def support_page_submit(
             status_code=400,
         )
 
+    stored_attachment = None
+    if attachment is not None and (attachment.filename or "").strip():
+        try:
+            stored_attachment = save_support_file(attachment)
+        except ValueError as exc:
+            return templates.TemplateResponse(
+                "public/support.html",
+                build_support_template_context(
+                    request,
+                    order_ref=normalized_order_ref,
+                    email=normalized_email,
+                    subject=normalized_subject,
+                    message=normalized_message,
+                    error=str(exc),
+                    order=linked_order,
+                ),
+                status_code=400,
+            )
+
     linked_user = db.query(User).filter(User.email == normalized_email).first()
     if linked_order and linked_order.user_id and linked_user is None:
         linked_user = linked_order.user
@@ -813,6 +834,13 @@ async def support_page_submit(
         SupportMessage(
             sender_role="user",
             body=normalized_message,
+            attachment_original_filename=stored_attachment.original_filename if stored_attachment else None,
+            attachment_content_type=stored_attachment.content_type if stored_attachment else None,
+            attachment_size_bytes=stored_attachment.size_bytes if stored_attachment else None,
+            attachment_relative_path=stored_attachment.relative_path if stored_attachment else None,
+            attachment_storage_backend=stored_attachment.storage_backend if stored_attachment else None,
+            attachment_storage_bucket=stored_attachment.storage_bucket if stored_attachment else None,
+            attachment_storage_key=stored_attachment.storage_key if stored_attachment else None,
             is_internal=False,
         )
     )

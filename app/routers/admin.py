@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.db import get_db
 from app.core.security import utcnow
-from app.core.storage import StorageError, ensure_voice_input_local_path, object_storage_enabled
+from app.core.storage import StorageError, ensure_support_attachment_local_path, ensure_voice_input_local_path, object_storage_enabled
 from app.core.templates import templates
 from app.models import BackgroundJob, EmailLog, LyricsVersion, Order, OrderEvent, OrderPayment, SecurityEvent, SongGeneration, SupportMessage, SupportThread, User, VoiceInput
 from app.models.order_payment import build_order_pricing_preview
@@ -1355,3 +1355,18 @@ async def admin_support_telegram_report_test(request: Request):
     result = send_telegram_report(build_test_report())
     set_admin_flash(request, "success" if result.ok else "error", result.detail)
     return RedirectResponse(url="/admin/support", status_code=303)
+
+
+@router.get("/support/attachments/{message_id}")
+async def admin_support_attachment_download(message_id: int, request: Request, db: Session = Depends(get_db)):
+    if not has_admin_access(request):
+        return RedirectResponse(url="/admin/login", status_code=303)
+    message = db.query(SupportMessage).filter(SupportMessage.id == message_id).first()
+    if message is None or not message.attachment_relative_path:
+        return RedirectResponse(url="/admin/support", status_code=303)
+    try:
+        local_path = ensure_support_attachment_local_path(message)
+    except StorageError as exc:
+        set_admin_flash(request, "error", str(exc))
+        return RedirectResponse(url="/admin/support", status_code=303)
+    return FileResponse(path=local_path, filename=message.attachment_original_filename or local_path.name, media_type=message.attachment_content_type or "application/octet-stream")

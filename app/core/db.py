@@ -90,6 +90,26 @@ def run_bootstrap_migrations() -> None:
             if "storage_key" not in voice_columns:
                 conn.execute(text("ALTER TABLE voice_inputs ADD COLUMN storage_key VARCHAR(1024)"))
 
+
+    if "support_messages" in inspector.get_table_names():
+        support_columns = {col["name"] for col in inspector.get_columns("support_messages")}
+
+        with engine.begin() as conn:
+            if "attachment_original_filename" not in support_columns:
+                conn.execute(text("ALTER TABLE support_messages ADD COLUMN attachment_original_filename VARCHAR(255)"))
+            if "attachment_content_type" not in support_columns:
+                conn.execute(text("ALTER TABLE support_messages ADD COLUMN attachment_content_type VARCHAR(255)"))
+            if "attachment_size_bytes" not in support_columns:
+                conn.execute(text("ALTER TABLE support_messages ADD COLUMN attachment_size_bytes INTEGER"))
+            if "attachment_relative_path" not in support_columns:
+                conn.execute(text("ALTER TABLE support_messages ADD COLUMN attachment_relative_path VARCHAR(1024)"))
+            if "attachment_storage_backend" not in support_columns:
+                conn.execute(text("ALTER TABLE support_messages ADD COLUMN attachment_storage_backend VARCHAR(20)"))
+            if "attachment_storage_bucket" not in support_columns:
+                conn.execute(text("ALTER TABLE support_messages ADD COLUMN attachment_storage_bucket VARCHAR(255)"))
+            if "attachment_storage_key" not in support_columns:
+                conn.execute(text("ALTER TABLE support_messages ADD COLUMN attachment_storage_key VARCHAR(1024)"))
+
     if "magic_login_tokens" not in inspector.get_table_names():
         pass
 

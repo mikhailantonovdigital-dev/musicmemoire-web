@@ -57,7 +57,18 @@ class SupportMessage(Base):
     thread_id: Mapped[int] = mapped_column(ForeignKey("support_threads.id"), nullable=False, index=True)
     sender_role: Mapped[str] = mapped_column(String(20), nullable=False, default="user", index=True)
     body: Mapped[str] = mapped_column(Text, nullable=False)
+    attachment_original_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    attachment_content_type: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    attachment_size_bytes: Mapped[int | None] = mapped_column(nullable=True)
+    attachment_relative_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    attachment_storage_backend: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    attachment_storage_bucket: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    attachment_storage_key: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     is_internal: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     thread: Mapped["SupportThread"] = relationship(back_populates="messages")
+
+    @property
+    def has_attachment(self) -> bool:
+        return bool(self.attachment_relative_path)

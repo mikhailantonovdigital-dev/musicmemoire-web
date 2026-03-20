@@ -26,6 +26,8 @@ ALLOWED_AUDIO_EXTENSIONS = {
     ".mp4",
 }
 
+ALLOWED_SUPPORT_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".pdf"}
+
 
 @dataclass(slots=True)
 class StoredFile:
@@ -392,3 +394,84 @@ def cache_remote_song_file(remote_url: str, *, order_number: str, song_public_id
         stored.storage_key = storage_key
 
     return stored
+
+
+def _guess_support_extension(upload: UploadFile) -> str:
+    suffix = Path(upload.filename or "").suffix.lower()
+    if suffix in ALLOWED_SUPPORT_EXTENSIONS:
+        return suffix
+
+    content_type = (upload.content_type or "").lower()
+    mapping = {
+        "image/png": ".png",
+        "image/jpeg": ".jpg",
+        "image/webp": ".webp",
+        "application/pdf": ".pdf",
+    }
+    return mapping.get(content_type, ".bin")
+
+
+def save_support_file(upload: UploadFile) -> StoredFile:
+    if not upload.filename:
+        raise ValueError("Выберите файл со скриншотом.")
+
+    content_type = (upload.content_type or "").lower()
+    ext = _guess_support_extension(upload)
+    size_bytes = _get_upload_size_bytes(upload)
+    if not (content_type.startswith("image/") or content_type == "application/pdf" or ext in ALLOWED_SUPPORT_EXTENSIONS):
+        raise ValueError("Поддерживаются PNG, JPG, WEBP и PDF.")
+
+    max_bytes = settings.MAX_SUPPORT_FILE_MB * 1024 * 1024
+    if size_bytes > max_bytes:
+        raise ValueError(f"Файл слишком большой. Максимум — {settings.MAX_SUPPORT_FILE_MB} МБ.")
+
+    now = datetime.utcnow()
+    relative_path = Path("support") / str(now.year) / f"{now.month:02d}" / f"{uuid4().hex}{ext}"
+    absolute_path = Path(settings.UPLOADS_DIR) / relative_path
+    absolute_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with absolute_path.open("wb") as out_file:
+        shutil.copyfileobj(upload.file, out_file)
+
+    stored = StoredFile(
+        original_filename=upload.filename,
+        content_type=content_type or "application/octet-stream",
+        size_bytes=size_bytes,
+        absolute_path=str(absolute_path),
+        relative_path=relative_path.as_posix(),
+        storage_backend="local",
+        storage_bucket=None,
+        storage_key=None,
+    )
+
+    if object_storage_enabled():
+        bucket, storage_key = _upload_local_file_to_object_storage(
+            local_path=absolute_path,
+            relative_path=stored.relative_path,
+            content_type=stored.content_type,
+        )
+        stored.storage_backend = "s3"
+        stored.storage_bucket = bucket
+        stored.storage_key = storage_key
+
+    return stored
+
+
+def ensure_support_attachment_local_path(message) -> Path:
+    relative_path = (getattr(message, "attachment_relative_path", None) or "").strip()
+    if not relative_path:
+        raise StorageError("У сообщения нет вложения.")
+
+    local_path = resolve_storage_path(relative_path)
+    if local_path.exists():
+        return local_path
+
+    backend = (getattr(message, "attachment_storage_backend", None) or "local").strip() or "local"
+    if backend != "s3":
+        raise StorageError("Файл вложения не найден на сервере.")
+
+    return ensure_local_cache_from_object_storage(
+        storage_key=(getattr(message, "attachment_storage_key", None) or "").strip() or None,
+        relative_path=relative_path,
+        max_bytes=settings.MAX_SUPPORT_FILE_MB * 1024 * 1024,
+    )

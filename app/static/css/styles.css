@@ -6965,3 +6965,44 @@ strong,
     margin: 8px 0 0;
   }
 }
+
+
+/* ===== 2026-03-20 support attachment + admin fixes ===== */
+.page-admin-screen .page-bg-dark {
+  background:
+    radial-gradient(circle at 14% 18%, rgba(95, 121, 255, 0.28), transparent 24%),
+    radial-gradient(circle at 83% 16%, rgba(105, 224, 255, 0.18), transparent 18%),
+    radial-gradient(circle at 75% 74%, rgba(133, 87, 255, 0.2), transparent 24%),
+    radial-gradient(circle at 28% 88%, rgba(53, 119, 255, 0.18), transparent 22%),
+    linear-gradient(180deg, #07111f 0%, #0b1730 36%, #07111f 100%);
+}
+
+.admin-screen-section .step-meta span {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(184, 198, 255, 0.16);
+  color: #eef3ff;
+  box-shadow: none;
+}
+
+.admin-screen-section .step-meta span strong {
+  color: #ffffff;
+}
+
+.admin-screen-section .admin-event-head {
+  align-items: flex-start;
+}
+
+.admin-screen-section .admin-event-head span {
+  color: rgba(210, 221, 255, 0.7);
+  word-break: break-word;
+}
+
+.admin-screen-section .admin-events {
+  display: grid;
+  gap: 14px;
+}
+
+.admin-screen-section .notice.notice-error {
+  white-space: pre-wrap;
+  word-break: break-word;
+}

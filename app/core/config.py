@@ -50,6 +50,7 @@ class Settings(BaseSettings):
     UPLOADS_DIR: str = "/var/data/musicmemoire/uploads"
     MAX_VOICE_FILE_MB: int = 25
     MAX_SONG_FILE_MB: int = 80
+    MAX_SUPPORT_FILE_MB: int = 15
 
     OBJECT_STORAGE_BUCKET: str | None = None
     OBJECT_STORAGE_ENDPOINT_URL: str | None = None

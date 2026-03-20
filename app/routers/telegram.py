@@ -44,8 +44,9 @@ async def telegram_webhook(
         return {"ok": True}
 
     text = _message_text(update)
-    if text in {"/start", "/menu", "/report", "/otchet", "Отчёт", "Отчет"}:
-        if text in {"/start", "/menu"}:
+    normalized = text.casefold()
+    if text.startswith("/start") or normalized in {"/menu", "/report", "/otchet", "отчёт", "отчет"}:
+        if text.startswith("/start") or normalized == "/menu":
             send_telegram_message(
                 chat_id=chat_id,
                 text="Нажмите кнопку «Отчёт», и я пришлю сводку по заказам, оплатам и пользователям за сегодня.",

@@ -96,6 +96,8 @@ def notify_new_support_thread(thread: SupportThread, message: SupportMessage) ->
     lines = _base_lines(thread)
     if thread.subject:
         lines.append(f"Subject: {_escape(thread.subject)}")
+    if message.attachment_original_filename:
+        lines.append(f"Attachment: {_escape(message.attachment_original_filename)}")
     lines.extend([
         "",
         "<b>New support message</b>",

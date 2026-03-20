@@ -25,7 +25,7 @@
             Обращение будет привязано к заказу <strong>{{ support_order.order_number }}</strong>.
           </div>
         {% endif %}
-        <form class="form-card" method="post" action="/support" style="margin-top: 16px;">
+        <form class="form-card" method="post" action="/support" enctype="multipart/form-data" style="margin-top: 16px;">
           <label class="form-label" for="support-order-ref">
             Номер заказа или public id
             <a href="/account/" target="_blank" rel="noopener" class="support-inline-link">Где взять номер заказа?</a>
@@ -40,6 +40,9 @@
 
           <label class="form-label" for="support-message" style="margin-top: 14px;">Сообщение</label>
           <textarea id="support-message" name="message" class="textarea" rows="8" placeholder="Опишите, что произошло и на каком шаге возникла проблема." required>{{ support_message }}</textarea>
+
+          <label class="form-label" for="support-attachment" style="margin-top: 14px;">Скриншот ошибки или PDF (необязательно)</label>
+          <input id="support-attachment" name="attachment" type="file" class="text-input" accept=".png,.jpg,.jpeg,.webp,.pdf,image/png,image/jpeg,image/webp,application/pdf" />
 
           <div class="form-actions" style="margin-top: 16px;">
             <button type="submit" class="btn btn-primary">Отправить обращение</button>
