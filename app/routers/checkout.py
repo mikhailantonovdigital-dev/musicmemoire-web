@@ -263,6 +263,8 @@ async def checkout_status(payment: str, request: Request, db: Session = Depends(
                 db.commit()
                 payment_obj = get_checkout_payment(request, db, payment)
 
+    has_account_access = get_checkout_order(request, db, payment_obj.order.public_id) is not None
+
     if payment_obj is not None and payment_obj.status == "succeeded":
         finalize_successful_payment(
             db,
@@ -271,6 +273,12 @@ async def checkout_status(payment: str, request: Request, db: Session = Depends(
         )
         db.commit()
         db.refresh(payment_obj)
+
+        if has_account_access:
+            return RedirectResponse(
+                url=f"/account/orders/{payment_obj.order.public_id}?welcome=1&delivery=payment_success&refresh_payment=1",
+                status_code=303,
+            )
 
     latest_song = get_latest_song(payment_obj.order)
 
@@ -290,7 +298,7 @@ async def checkout_status(payment: str, request: Request, db: Session = Depends(
             "error": status_sync_error,
             "metrica_counter_id": settings.METRICA_COUNTER_ID,
             "checkout_access_token": build_checkout_access_token(payment_obj.public_id),
-            "has_account_access": get_checkout_order(request, db, payment_obj.order.public_id) is not None,
+            "has_account_access": has_account_access,
             **build_payment_template_context(payment_obj),
         },
     )
