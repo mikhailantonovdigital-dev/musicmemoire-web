@@ -34,7 +34,7 @@ def build_checkout_access_token(payment_public_id: str) -> str:
     from app.core.config import settings
 
     return hmac.new(
-        settings.SECRET_KEY.encode("utf-8"),
+        settings.SESSION_SECRET.encode("utf-8"),
         payment_public_id.encode("utf-8"),
         hashlib.sha256,
     ).hexdigest()
