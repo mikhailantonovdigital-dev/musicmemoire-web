@@ -370,26 +370,29 @@ function initSongStylePicker() {
 }
 
 function initExclusiveAudioPlayers() {
-  const players = Array.from(document.querySelectorAll('[data-exclusive-audio-group]'));
-  if (!players.length) return;
+  if (document.body.dataset.exclusiveAudioPlayersInitialized === "true") return;
+  document.body.dataset.exclusiveAudioPlayersInitialized = "true";
 
-  players.forEach((player) => {
-    player.addEventListener('play', () => {
-      const group = player.dataset.exclusiveAudioGroup;
+  document.addEventListener('play', (event) => {
+    const player = event.target;
+    if (!(player instanceof HTMLMediaElement)) return;
 
-      players.forEach((otherPlayer) => {
-        if (otherPlayer === player) return;
-        if (otherPlayer.dataset.exclusiveAudioGroup !== group) return;
+    const group = player.dataset.exclusiveAudioGroup;
+    if (!group) return;
 
-        otherPlayer.pause();
-        try {
-          otherPlayer.currentTime = 0;
-        } catch (error) {
-          // noop
-        }
-      });
+    const players = Array.from(document.querySelectorAll('[data-exclusive-audio-group]'));
+    players.forEach((otherPlayer) => {
+      if (otherPlayer === player) return;
+      if (otherPlayer.dataset.exclusiveAudioGroup !== group) return;
+
+      otherPlayer.pause();
+      try {
+        otherPlayer.currentTime = 0;
+      } catch (error) {
+        // noop
+      }
     });
-  });
+  }, true);
 }
 
 function initQuestionnaireGenerationState() {
