@@ -5133,7 +5133,7 @@ strong,
 }
 
 .questionnaire-stage {
-  padding: 108px 0 76px;
+  padding: 128px 0 112px;
 }
 
 .questionnaire-shell {
@@ -5232,7 +5232,7 @@ strong,
 
 .questionnaire-stack {
   display: grid;
-  gap: 18px;
+  gap: 22px;
 }
 
 .questionnaire-shell .consultant-box {
@@ -5376,8 +5376,8 @@ strong,
 
 @media (max-width: 980px) {
   .questionnaire-stage {
-    padding-top: 92px;
-    padding-bottom: 64px;
+    padding-top: 104px;
+    padding-bottom: 84px;
   }
 
   .questionnaire-shell {
@@ -5388,8 +5388,8 @@ strong,
 
 @media (max-width: 640px) {
   .questionnaire-stage {
-    padding-top: 82px;
-    padding-bottom: 52px;
+    padding-top: 92px;
+    padding-bottom: 68px;
   }
 
   .questionnaire-shell {
@@ -5966,17 +5966,16 @@ strong,
   margin-top: 0;
   padding-top: 6px;
   padding-bottom: 18px;
-  background:
-    radial-gradient(circle at 12% 6%, rgba(118, 132, 255, 0.22), transparent 28%),
-    radial-gradient(circle at 88% 12%, rgba(140, 92, 255, 0.24), transparent 26%),
-    radial-gradient(circle at 52% 100%, rgba(74, 195, 255, 0.14), transparent 34%),
-    linear-gradient(180deg, #060b14 0%, #08101d 44%, #091322 72%, #070d18 100%) !important;
+  background: transparent !important;
   border-top: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
 }
 
 .page-questionnaire .footer-bottom-minimal {
   min-height: 34px;
   color: rgba(233, 239, 255, 0.78);
+  background: transparent !important;
 }
 
 @media (max-width: 640px) {
@@ -6026,6 +6025,18 @@ strong,
   min-height: 0;
 }
 
+.page-questionnaire {
+  background:
+    radial-gradient(circle at 12% 6%, rgba(118, 132, 255, 0.22), transparent 28%),
+    radial-gradient(circle at 88% 12%, rgba(140, 92, 255, 0.24), transparent 26%),
+    radial-gradient(circle at 52% 100%, rgba(74, 195, 255, 0.14), transparent 34%),
+    linear-gradient(180deg, #060b14 0%, #08101d 44%, #091322 72%, #070d18 100%);
+}
+
+.page-questionnaire .site-main {
+  background: transparent;
+}
+
 .page-checkout-screen .site-main {
   position: relative;
   background:
@@ -6061,12 +6072,10 @@ strong,
   bottom: auto;
   margin-top: 0;
   padding: 0 0 18px;
-  background:
-    radial-gradient(circle at 12% 6%, rgba(118, 132, 255, 0.22), transparent 28%),
-    radial-gradient(circle at 88% 12%, rgba(140, 92, 255, 0.24), transparent 26%),
-    radial-gradient(circle at 52% 100%, rgba(74, 195, 255, 0.14), transparent 34%),
-    linear-gradient(180deg, #060b14 0%, #08101d 44%, #091322 72%, #070d18 100%) !important;
+  background: transparent !important;
   border-top: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
 }
 
 .page-questionnaire .footer-bottom-minimal,
@@ -6077,6 +6086,7 @@ strong,
   justify-content: space-between;
   gap: 18px;
   color: rgba(233, 239, 255, 0.78);
+  background: transparent !important;
 }
 
 .checkout-status-stage {
@@ -6224,6 +6234,11 @@ strong,
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  background:
+    radial-gradient(circle at 12% 6%, rgba(118, 132, 255, 0.22), transparent 28%),
+    radial-gradient(circle at 88% 12%, rgba(140, 92, 255, 0.24), transparent 26%),
+    radial-gradient(circle at 52% 100%, rgba(74, 195, 255, 0.14), transparent 34%),
+    linear-gradient(180deg, #060b14 0%, #08101d 44%, #091322 72%, #070d18 100%);
 }
 
 .page-account-screen .site-header,
@@ -6244,11 +6259,7 @@ strong,
   flex: 1 0 auto;
   min-height: calc(100vh - 180px);
   position: relative;
-  background:
-    radial-gradient(circle at 12% 6%, rgba(118, 132, 255, 0.22), transparent 28%),
-    radial-gradient(circle at 88% 12%, rgba(140, 92, 255, 0.24), transparent 26%),
-    radial-gradient(circle at 52% 100%, rgba(74, 195, 255, 0.14), transparent 34%),
-    linear-gradient(180deg, #060b14 0%, #08101d 44%, #091322 72%, #070d18 100%);
+  background: transparent;
 }
 
 .page-account-screen .site-main::before {
@@ -6272,12 +6283,10 @@ strong,
 .page-account-screen .site-footer.site-footer-dark.site-footer-minimal {
   margin-top: 0;
   padding: 0 0 18px;
-  background:
-    radial-gradient(circle at 12% 6%, rgba(118, 132, 255, 0.22), transparent 28%),
-    radial-gradient(circle at 88% 12%, rgba(140, 92, 255, 0.24), transparent 26%),
-    radial-gradient(circle at 52% 100%, rgba(74, 195, 255, 0.14), transparent 34%),
-    linear-gradient(180deg, #060b14 0%, #08101d 44%, #091322 72%, #070d18 100%) !important;
+  background: transparent !important;
   border-top: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
 }
 
 .page-account-screen .footer-bottom-minimal {
@@ -6287,6 +6296,7 @@ strong,
   justify-content: space-between;
   gap: 18px;
   color: rgba(233, 239, 255, 0.78);
+  background: transparent !important;
 }
 
 .account-order-stage {
@@ -6298,12 +6308,21 @@ strong,
   gap: 18px;
 }
 
+.account-order-stage-spacious {
+  padding-bottom: 118px;
+}
+
+.account-order-shell-premium {
+  display: grid;
+  gap: 28px;
+}
+
 .account-order-head {
   margin-bottom: 0;
 }
 
 .account-order-number {
-  font-size: clamp(26px, 3.2vw, 34px) !important;
+  font-size: clamp(20px, 2.2vw, 26px) !important;
   line-height: 1.08;
   letter-spacing: -0.035em;
   white-space: nowrap;
@@ -6315,10 +6334,28 @@ strong,
 .account-song-card {
   position: relative;
   z-index: 1;
+  background:
+    linear-gradient(180deg, rgba(15, 24, 40, 0.86), rgba(9, 16, 28, 0.88));
+  border: 1px solid rgba(160, 181, 220, 0.16);
+  box-shadow:
+    var(--shadow),
+    0 0 48px rgba(92, 124, 255, 0.06);
+  backdrop-filter: blur(18px);
 }
 
 .account-song-meta-list {
-  margin-top: 14px;
+  margin-top: 18px;
+  padding: 6px 4px 4px;
+}
+
+.account-song-meta-card {
+  margin-top: 0;
+  padding: 26px 24px;
+}
+
+.account-song-card {
+  padding: 24px;
+  overflow: hidden;
 }
 
 .account-song-meta-list .detail-list-item + .detail-list-item {
@@ -6332,11 +6369,17 @@ strong,
   gap: 14px;
 }
 
+.account-song-card .notice {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .account-song-result-item {
-  padding: 16px;
-  border: 1px solid rgba(255,255,255,.08);
-  border-radius: 18px;
-  background: rgba(255,255,255,.03);
+  padding: 18px;
+  border: 1px solid rgba(160, 181, 220, 0.16);
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(12, 20, 34, 0.86), rgba(9, 16, 28, 0.92));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
 .account-song-result-title {
@@ -6348,13 +6391,197 @@ strong,
 
 .account-song-spinner-card {
   width: 100%;
-  margin-top: 12px;
+  max-width: 100%;
+  margin-top: 8px;
+  min-height: 260px;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  row-gap: 14px;
+  padding: 44px 32px;
+  text-align: center;
+  overflow: hidden;
+}
+
+.account-song-spinner-card .generation-spinner {
+  margin: 0 auto 2px;
+}
+
+.account-song-spinner-card h2 {
+  margin: 0;
+  max-width: 100%;
+}
+
+.account-song-spinner-card p {
+  max-width: 620px;
+  margin: 0;
+}
+
+.account-song-lyrics {
+  white-space: pre-wrap;
+  color: rgba(238, 244, 255, 0.92);
+  line-height: 1.7;
+  margin-top: 6px;
+  padding: 6px 4px 4px;
 }
 
 .page-account-screen .dashboard-hero-dark,
 .page-account-screen .page-shell-dark {
   background: transparent;
   box-shadow: none;
+}
+
+.page-account-screen .dashboard-hero-dark {
+  padding-top: 10px;
+}
+
+.account-dashboard-shell {
+  display: grid;
+  gap: 26px;
+}
+
+.account-discount-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.account-summary-actions-card .account-summary-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.account-summary-actions-card .account-summary-actions .btn {
+  flex: 1 1 0;
+  justify-content: center;
+}
+
+.account-orders-stack {
+  display: grid;
+  gap: 18px;
+}
+
+.account-order-accordion {
+  padding: 24px;
+}
+
+.account-order-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.account-order-summary::-webkit-details-marker {
+  display: none;
+}
+
+.account-order-summary h2 {
+  margin: 10px 0 0;
+}
+
+.account-order-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.account-order-title-edit {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: rgba(184, 200, 255, 0.82);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.account-order-title-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+  margin-bottom: 4px;
+}
+
+.account-order-title-form[hidden] {
+  display: none;
+}
+
+.account-order-title-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.account-expand-label-open {
+  display: none;
+}
+
+.account-order-accordion[open] .account-expand-label-collapsed {
+  display: none;
+}
+
+.account-order-accordion[open] .account-expand-label-open {
+  display: inline;
+}
+
+.account-order-preview {
+  margin-top: 18px;
+}
+
+.account-order-accordion-body {
+  display: grid;
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.account-dashboard-order-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 18px;
+}
+
+.account-order-discount-inline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+@media (max-width: 900px) {
+  .account-dashboard-order-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .account-discount-banner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .account-order-summary {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .account-summary-actions-card .account-summary-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+}
+
+.page-account-screen .summary-card-dark,
+.page-account-screen .order-card-dark,
+.page-account-screen .panel-card-dark {
+  background:
+    linear-gradient(180deg, rgba(15, 24, 40, 0.86), rgba(9, 16, 28, 0.88));
+  border-color: rgba(160, 181, 220, 0.16);
+  box-shadow:
+    var(--shadow),
+    0 0 48px rgba(92, 124, 255, 0.06);
+  backdrop-filter: blur(18px);
 }
 
 @media (max-width: 760px) {
@@ -6405,5 +6632,7 @@ strong,
   .page-account-screen .site-header-upgraded .nav::-webkit-scrollbar { display: none; }
   .page-account-screen .nav-horizontal { justify-content: flex-start; gap: 8px; }
   .account-order-stage { padding-top: 88px; padding-bottom: 56px; }
+  .account-song-meta-card,
+  .account-song-card { padding: 20px; }
   .account-order-number { font-size: 24px !important; }
 }
