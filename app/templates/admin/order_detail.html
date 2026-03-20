@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="section">
-  <div class="container">
+<section class="section admin-screen-section">
+  <div class="container admin-shell">
     <div class="admin-toolbar">
       <div>
         <p class="eyebrow">Админка</p>
@@ -367,6 +367,8 @@
               <p style="margin: 0 0 8px;"><strong>Статус:</strong> {{ item.status_label }}</p>
               <p style="margin: 0 0 8px;"><strong>Email:</strong> {{ item.email }}</p>
               {% if thread.subject %}<p style="margin: 0 0 8px;"><strong>Тема:</strong> {{ thread.subject }}</p>{% endif %}
+              {% set first_message = thread.messages[0] if thread.messages else None %}
+              {% if first_message and first_message.attachment_relative_path %}<p style="margin: 0 0 8px;"><strong>Вложение:</strong> {{ first_message.attachment_original_filename or "файл" }}</p>{% endif %}
               <div class="form-actions" style="margin-top: 12px;">
                 <a href="/admin/support?thread={{ thread.public_id }}" class="btn btn-secondary">Открыть обращение</a>
               </div>

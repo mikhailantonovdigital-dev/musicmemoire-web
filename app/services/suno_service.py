@@ -41,11 +41,19 @@ class SongCallbackResult:
 
 
 STYLE_MAP = {
-    "pop": "Поп, современная поп-баллада",
-    "rap": "Рэп, мелодичный хип-хоп",
-    "rock": "Рок, эмоциональный рок",
-    "chanson": "Шансон, душевная авторская песня",
-    "indie": "Инди-поп, атмосферная авторская песня",
+    "pop": "Modern chart pop, big chorus, polished topline, radio-ready production",
+    "rap": "Modern melodic rap, catchy flow, streaming-ready hooks, crisp low end",
+    "rock": "Modern pop rock, anthemic chorus, emotional guitars, stadium energy",
+    "chanson": "Modern heartfelt chanson, memorable hook, cinematic warmth, rich storytelling",
+    "indie": "Modern indie pop, atmospheric texture, intimate vocals, tasteful hook",
+}
+
+MOOD_MAP = {
+    "romantic": "romantic, warm, intimate, in love",
+    "uplifting": "uplifting, inspiring, bright, hopeful",
+    "nostalgic": "nostalgic, heartfelt, bittersweet, reflective",
+    "dramatic": "dramatic, emotionally powerful, cinematic, intense",
+    "party": "celebratory, energetic, feel-good, danceable",
 }
 
 
@@ -65,6 +73,35 @@ def _base_url() -> str:
     return (settings.SUNO_API_BASE_URL or "https://api.sunoapi.org").rstrip("/")
 
 
+def _build_request_headers() -> dict[str, str]:
+    return {
+        "Authorization": f"Bearer {settings.SUNO_API_KEY}",
+        "Accept": "application/json",
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/145.0.0.0 Safari/537.36"
+        ),
+        "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Cache-Control": "no-cache",
+    }
+
+
+def _humanize_http_error(exc: HTTPError, raw_text: str) -> str:
+    parsed = _safe_json_loads(raw_text)
+    if isinstance(parsed, dict):
+        error_name = str(parsed.get("error_name") or "").strip().lower()
+        detail = str(parsed.get("detail") or parsed.get("message") or parsed.get("msg") or "").strip()
+        if exc.code == 403 and error_name == "browser_signature_banned":
+            return (
+                "Сервис генерации отклонил запрос через защиту Cloudflare (403). "
+                "Похоже, провайдер блокирует текущую сигнатуру HTTP-клиента."
+            )
+        if detail:
+            return detail
+    return raw_text.strip() or str(exc)
+
+
 def _api_request(method: str, path: str, *, payload: dict[str, Any] | None = None, query: dict[str, str] | None = None) -> dict[str, Any]:
     _ensure_api_ready()
 
@@ -73,10 +110,7 @@ def _api_request(method: str, path: str, *, payload: dict[str, Any] | None = Non
         url = f"{url}?{urlencode(query)}"
 
     body = None
-    headers = {
-        "Authorization": f"Bearer {settings.SUNO_API_KEY}",
-        "Accept": "application/json",
-    }
+    headers = _build_request_headers()
 
     if payload is not None:
         body = json.dumps(payload).encode("utf-8")
@@ -89,11 +123,7 @@ def _api_request(method: str, path: str, *, payload: dict[str, Any] | None = Non
             raw_text = response.read().decode("utf-8")
     except HTTPError as exc:
         raw_text = exc.read().decode("utf-8", errors="replace")
-        parsed = _safe_json_loads(raw_text)
-        if isinstance(parsed, dict):
-            msg = str(parsed.get("msg") or parsed.get("message") or raw_text).strip()
-        else:
-            msg = raw_text.strip() or str(exc)
+        msg = _humanize_http_error(exc, raw_text)
         raise SunoServiceError(f"Ошибка сервиса генерации ({exc.code}): {msg}") from exc
     except URLError as exc:
         raise SunoServiceError(f"Не удалось связаться с сервисом генерации: {exc.reason}") from exc
@@ -116,23 +146,27 @@ def build_song_style(
     *,
     song_style: str | None,
     song_style_custom: str | None,
+    song_mood: str | None = None,
 ) -> str:
     style_code = (song_style or "").strip().lower()
     style_custom = (song_style_custom or "").strip()
 
+    mood_hint = MOOD_MAP.get((song_mood or "").strip().lower())
+
     if style_code == "multi" and style_custom:
-        return f"Смешение стилей: {style_custom}"
+        base_style = f"Mixed styles: {style_custom}"
+        return f"{base_style}. Mood: {mood_hint}" if mood_hint else base_style
 
     if style_code == "custom" and style_custom:
-        return style_custom
+        base_style = style_custom
+    elif style_code in STYLE_MAP:
+        base_style = STYLE_MAP[style_code]
+    elif style_custom:
+        base_style = style_custom
+    else:
+        base_style = "Modern chart pop, emotional personalized song, memorable hook"
 
-    if style_code in STYLE_MAP:
-        return STYLE_MAP[style_code]
-
-    if style_custom:
-        return style_custom
-
-    return "Поп, эмоциональная персональная песня"
+    return f"{base_style}. Mood: {mood_hint}" if mood_hint else base_style
 
 
 def build_song_title(order_number: str) -> str:
@@ -228,10 +262,12 @@ def start_song_generation(
     song_style: str | None = None,
     song_style_custom: str | None = None,
     singer_gender: str | None = None,
+    song_mood: str | None = None,
 ) -> SongStartResult:
     style_text = build_song_style(
         song_style=song_style,
         song_style_custom=song_style_custom,
+        song_mood=song_mood,
     )
     lyrics = (lyrics_text or "").strip()
 
@@ -251,6 +287,7 @@ def start_song_generation(
                 "song_style": song_style,
                 "song_style_custom": song_style_custom,
                 "singer_gender": singer_gender,
+                "song_mood": song_mood,
                 "style_text": style_text,
             },
         )
