@@ -719,179 +719,13 @@ async def faq_page(request: Request):
 
 
 @router.get("/support", response_class=HTMLResponse)
-async def support_page(
-    request: Request,
-    order: str | None = None,
-    email: str | None = None,
-    subject: str | None = None,
-    message: str | None = None,
-    sent: int = 0,
-    thread: str | None = None,
-    db: Session = Depends(get_db),
-):
-    linked_order = find_order_for_support(db, order)
-    resolved_email = (email or "").strip()
-    if not resolved_email and linked_order and linked_order.user and linked_order.user.email:
-        resolved_email = linked_order.user.email
-    success = None
-    if sent:
-        success = "Обращение отправлено. Мы увидим его в админке и сможем быстро найти заказ."
-    return templates.TemplateResponse(
-        "public/support.html",
-        build_support_template_context(
-            request,
-            order_ref=normalize_support_order_ref(order),
-            email=resolved_email,
-            subject=(subject or "").strip(),
-            message=(message or "").strip(),
-            success=success,
-            thread_public_id=(thread or "").strip() or None,
-            order=linked_order,
-        ),
-    )
+async def support_page():
+    return RedirectResponse(url="/", status_code=303)
 
 
 @router.post("/support", response_class=HTMLResponse)
-async def support_page_submit(
-    request: Request,
-    email: str = Form(""),
-    subject: str = Form(""),
-    message: str = Form(""),
-    order_ref: str = Form(""),
-    attachment: UploadFile | None = File(None),
-    db: Session = Depends(get_db),
-):
-    normalized_email = (email or "").strip().lower()
-    normalized_subject = (subject or "").strip()
-    normalized_message = (message or "").strip()
-    normalized_order_ref = normalize_support_order_ref(order_ref)
-    linked_order = find_order_for_support(db, normalized_order_ref)
-
-    if linked_order and not normalized_email and linked_order.user and linked_order.user.email:
-        normalized_email = linked_order.user.email
-
-    if not normalized_email or "@" not in normalized_email:
-        return templates.TemplateResponse(
-            "public/support.html",
-            build_support_template_context(
-                request,
-                order_ref=normalized_order_ref,
-                email=normalized_email,
-                subject=normalized_subject,
-                message=normalized_message,
-                error="Укажите email, чтобы мы могли связаться с вами по обращению.",
-                order=linked_order,
-            ),
-            status_code=400,
-        )
-
-    if len(normalized_message) < 10:
-        return templates.TemplateResponse(
-            "public/support.html",
-            build_support_template_context(
-                request,
-                order_ref=normalized_order_ref,
-                email=normalized_email,
-                subject=normalized_subject,
-                message=normalized_message,
-                error="Опишите ситуацию чуть подробнее, хотя бы в нескольких словах.",
-                order=linked_order,
-            ),
-            status_code=400,
-        )
-
-    stored_attachment = None
-    if attachment is not None and (attachment.filename or "").strip():
-        try:
-            stored_attachment = save_support_file(attachment)
-        except (ValueError, StorageError) as exc:
-            return templates.TemplateResponse(
-                "public/support.html",
-                build_support_template_context(
-                    request,
-                    order_ref=normalized_order_ref,
-                    email=normalized_email,
-                    subject=normalized_subject,
-                    message=normalized_message,
-                    error=str(exc),
-                    order=linked_order,
-                ),
-                status_code=400,
-            )
-
-    linked_user = db.query(User).filter(User.email == normalized_email).first()
-    if linked_order and linked_order.user_id and linked_user is None:
-        linked_user = linked_order.user
-
-    try:
-        thread = SupportThread(
-            order=linked_order,
-            user=linked_user,
-            email=normalized_email,
-            subject=normalized_subject or None,
-            status="new",
-            source="site",
-        )
-        thread.messages.append(
-            SupportMessage(
-                sender_role="user",
-                body=normalized_message,
-                attachment_original_filename=stored_attachment.original_filename if stored_attachment else None,
-                attachment_content_type=stored_attachment.content_type if stored_attachment else None,
-                attachment_size_bytes=stored_attachment.size_bytes if stored_attachment else None,
-                attachment_relative_path=stored_attachment.relative_path if stored_attachment else None,
-                attachment_storage_backend=stored_attachment.storage_backend if stored_attachment else None,
-                attachment_storage_bucket=stored_attachment.storage_bucket if stored_attachment else None,
-                attachment_storage_key=stored_attachment.storage_key if stored_attachment else None,
-                is_internal=False,
-            )
-        )
-        db.add(thread)
-        db.flush()
-
-        if linked_order is not None:
-            db.add(
-                OrderEvent(
-                    order=linked_order,
-                    event_type="support_thread_created",
-                    payload={
-                        "thread_public_id": thread.public_id,
-                        "source": "site",
-                        "email": normalized_email,
-                    },
-                )
-            )
-
-        thread_public_id = thread.public_id
-        first_message = thread.messages[0]
-        db.commit()
-    except SQLAlchemyError:
-        db.rollback()
-        return templates.TemplateResponse(
-            "public/support.html",
-            build_support_template_context(
-                request,
-                order_ref=normalized_order_ref,
-                email=normalized_email,
-                subject=normalized_subject,
-                message=normalized_message,
-                error="Не удалось отправить обращение. Попробуйте ещё раз чуть позже или напишите повторно без вложения.",
-                order=linked_order,
-            ),
-            status_code=500,
-        )
-
-    if telegram_reporting_enabled():
-        try:
-            notify_new_support_thread(thread, first_message)
-        except Exception:
-            pass
-
-    redirect_url = request.url_for("support_page")
-    params = {"sent": 1, "thread": thread_public_id}
-    if normalized_order_ref:
-        params["order"] = normalized_order_ref
-    return RedirectResponse(url=f"{redirect_url}?{urlencode(params)}", status_code=303)
+async def support_page_submit():
+    return RedirectResponse(url="/", status_code=303)
 
 
 @router.get("/robots.txt", response_class=PlainTextResponse)
@@ -920,7 +754,6 @@ async def sitemap_xml():
         f"{base_url}/offer",
         f"{base_url}/policy",
         f"{base_url}/faq",
-        f"{base_url}/support",
     ]
     xml = (
         '<?xml version="1.0" encoding="UTF-8"?>'
