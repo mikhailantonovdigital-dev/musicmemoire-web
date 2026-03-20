@@ -6,143 +6,52 @@
     <p class="eyebrow">Генерация песни</p>
     <h1>{{ order.order_number }}</h1>
 
-    <div class="step-meta">
-      <span>Статус заказа: <strong>{{ order.status }}</strong></span>
-      <span>Статус генерации: <strong>{{ song_status_label }}</strong></span>
-      {% if song %}
-        <span>Попытка: <strong>{{ song.attempt_no }}</strong></span>
-      {% endif %}
-    </div>
-
-    {% if is_ready %}
-      <div class="notice notice-success">
-        Песня готова. Ниже доступны оба варианта mp3.
-      </div>
-    {% elif is_running %}
-      <div class="notice">
-        Генерация уже идёт. Страница обновится автоматически.
-      </div>
-    {% elif is_failed %}
-      <div class="notice notice-warning">
-        Генерация завершилась ошибкой.
-      </div>
-      {% if fallback_ready_song %}
-        <div class="notice" style="margin-top: 12px;">
-          Но у вас уже есть предыдущий готовый результат из попытки {{ fallback_ready_song.attempt_no }} — он доступен ниже.
-        </div>
-      {% endif %}
-    {% endif %}
-
-    {% if error %}
-      <div class="notice notice-error">{{ error }}</div>
-      {% if is_running %}
-        <div class="notice">Статус временно не удалось обновить. Задача не помечена как ошибочная, попробуйте проверить ещё раз чуть позже.</div>
-      {% endif %}
-    {% endif %}
-
-    {% if song and song.error_message and not error %}
-      <div class="notice notice-error">{{ song.error_message }}</div>
-    {% endif %}
-
-    <div class="form-card">
-      <h2 class="form-title">Финальный текст</h2>
-      <textarea class="textarea textarea-readonly" readonly>{{ order.final_lyrics_text or "Финальный текст пока не сохранён." }}</textarea>
-    </div>
-
-    <div class="form-card" style="margin-top: 20px;">
-      <h2 class="form-title">Результат</h2>
-
-      {% if song and song.audio_variants %}
-        <div style="display: grid; gap: 16px;">
-          {% for track in song.audio_variants %}
-            {% set playable_url = request.url_for('song_track_file', job_public_id=song.public_id, track_index=loop.index0) %}
-            {% set download_url = request.url_for('song_track_file', job_public_id=song.public_id, track_index=loop.index0) ~ '?download=1' %}
-            <div class="panel-card" style="padding: 16px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08);">
-              <p class="eyebrow" style="margin-bottom: 8px;">Вариант {{ loop.index }}</p>
-              {% if track.title %}
-                <p style="margin: 0 0 8px;"><strong>{{ track.title }}</strong></p>
-              {% endif %}
-              {% if playable_url %}
-                <audio class="audio-player" controls preload="none" src="{{ playable_url }}"></audio>
-              {% else %}
-                <p class="muted">Аудио для этого варианта ещё не выдано.</p>
-              {% endif %}
-              <div class="form-actions" style="margin-top: 12px;">
-                {% if track.audio_url or track.stream_audio_url %}
-                  <a href="{{ download_url }}" class="btn btn-secondary">Скачать mp3</a>
-                {% endif %}
-              </div>
-            </div>
-          {% endfor %}
-        </div>
-      {% elif song and song.audio_url %}
-        <div class="panel-card" style="padding: 16px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08);">
-          <p class="muted" style="margin: 0 0 8px;">Готовый результат из попытки {{ song.attempt_no }}</p>
-          <audio class="audio-player" controls preload="none" src="{{ request.url_for('song_track_file', job_public_id=song.public_id, track_index=0) }}"></audio>
-          <div class="form-actions" style="margin-top: 12px;">
-            <a href="{{ request.url_for('song_track_file', job_public_id=song.public_id, track_index=0) }}?download=1" class="btn btn-secondary">Скачать mp3</a>
-          </div>
-        </div>
-      {% elif fallback_ready_song and fallback_ready_song.audio_variants %}
-        <div style="display: grid; gap: 16px;">
-          {% for track in fallback_ready_song.audio_variants %}
-            {% set playable_url = request.url_for('song_track_file', job_public_id=fallback_ready_song.public_id, track_index=loop.index0) %}
-            {% set download_url = request.url_for('song_track_file', job_public_id=fallback_ready_song.public_id, track_index=loop.index0) ~ '?download=1' %}
-            <div class="panel-card" style="padding: 16px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08);">
-              <p class="eyebrow" style="margin-bottom: 8px;">Готовый вариант {{ loop.index }}</p>
-              <p class="muted" style="margin: 0 0 8px;">Попытка {{ fallback_ready_song.attempt_no }}</p>
-              {% if playable_url %}
-                <audio class="audio-player" controls preload="none" src="{{ playable_url }}"></audio>
-              {% else %}
-                <p class="muted">Аудио для этого варианта ещё не выдано.</p>
-              {% endif %}
-              <div class="form-actions" style="margin-top: 12px;">
-                {% if track.audio_url or track.stream_audio_url %}
-                  <a href="{{ download_url }}" class="btn btn-secondary">Скачать mp3</a>
-                {% endif %}
-              </div>
-            </div>
-          {% endfor %}
-        </div>
-      {% elif fallback_ready_song and fallback_ready_song.audio_url %}
-        <div class="panel-card" style="padding: 16px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08);">
-          <p class="muted" style="margin: 0 0 8px;">Готовый результат из попытки {{ fallback_ready_song.attempt_no }}</p>
-          <audio class="audio-player" controls preload="none" src="{{ request.url_for('song_track_file', job_public_id=fallback_ready_song.public_id, track_index=0) }}"></audio>
-          <div class="form-actions" style="margin-top: 12px;">
-            <a href="{{ request.url_for('song_track_file', job_public_id=fallback_ready_song.public_id, track_index=0) }}?download=1" class="btn btn-secondary">Скачать mp3</a>
-          </div>
-        </div>
-      {% elif is_ready and suno_stub_mode %}
-        <p class="muted">Тестовый режим завершён успешно. Для боевого результата нужен реальный аудиофайл.</p>
-      {% elif is_running %}
-        <p class="muted">Подожди немного. Мы проверим статус ещё раз автоматически.</p>
-      {% else %}
-        <p class="muted">Аудиорезультат пока не доступен.</p>
-      {% endif %}
-    </div>
-
-    <div class="form-actions">
-      <a href="/account/orders/{{ order.public_id }}" class="btn btn-secondary">Вернуться к заказу</a>
-
-      {% if is_running and song %}
-        <a href="/songs/status?job={{ song.public_id }}" class="btn btn-primary">Обновить статус</a>
-      {% elif is_failed and song %}
-        <form method="post" action="/songs/retry/{{ song.public_id }}">
-          <button type="submit" class="btn btn-primary">Повторить генерацию</button>
-        </form>
-        {% if fallback_ready_song %}
-          <a href="/songs/status?job={{ fallback_ready_song.public_id }}" class="btn btn-secondary">Открыть прошлый готовый результат</a>
-        {% endif %}
-      {% endif %}
-    </div>
+    {% include "songs/_status_content.html" %}
   </div>
 </section>
 
-{% if auto_refresh_enabled and song %}
 <script>
-  setTimeout(function () {
-    window.location.href = "/songs/status?job={{ song.public_id }}";
-  }, 5000);
+  (function () {
+    var pollHandle = null;
+
+    function scheduleNextPoll() {
+      window.clearTimeout(pollHandle);
+      pollHandle = window.setTimeout(runPoll, 5000);
+    }
+
+    function runPoll() {
+      var container = document.getElementById("song-status-content");
+      if (!container || container.dataset.songRunning !== "true") {
+        return;
+      }
+
+      fetch(container.dataset.pollUrl, {
+        headers: {
+          "X-Requested-With": "fetch"
+        },
+        credentials: "same-origin"
+      })
+        .then(function (response) {
+          if (!response.ok) {
+            throw new Error("song status request failed");
+          }
+          return response.text();
+        })
+        .then(function (html) {
+          container.outerHTML = html;
+          var updatedContainer = document.getElementById("song-status-content");
+          if (updatedContainer && updatedContainer.dataset.songRunning === "true") {
+            scheduleNextPoll();
+          }
+        })
+        .catch(function () {
+          scheduleNextPoll();
+        });
+    }
+
+    if (document.getElementById("song-status-content")?.dataset.songRunning === "true") {
+      scheduleNextPoll();
+    }
+  })();
 </script>
-{% endif %}
 {% endblock %}

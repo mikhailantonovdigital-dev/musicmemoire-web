@@ -29,6 +29,24 @@ from app.tasks import run_song_start_task
 router = APIRouter(prefix="/songs", tags=["songs"])
 
 
+def build_song_status_context(request: Request, song: SongGeneration, *, fallback_ready_song: SongGeneration | None, error: str | None, auto_refresh_enabled: bool) -> dict:
+    return {
+        "request": request,
+        "page_title": "Генерация песни",
+        "order": song.order,
+        "song": song,
+        "fallback_ready_song": fallback_ready_song,
+        "song_status_label": humanize_song_status(song.status),
+        "fallback_song_status_label": humanize_song_status(fallback_ready_song.status if fallback_ready_song else None),
+        "is_ready": song.status == "succeeded",
+        "is_running": song.status in RUNNING_SONG_STATUSES,
+        "is_failed": song.status == "failed",
+        "error": error,
+        "auto_refresh_enabled": auto_refresh_enabled and song.status in RUNNING_SONG_STATUSES,
+        "suno_stub_mode": settings.SUNO_STUB_MODE,
+    }
+
+
 def has_admin_access(request: Request) -> bool:
     return bool(request.session.get("admin_access"))
 
@@ -260,24 +278,59 @@ async def song_status(job: str, request: Request, db: Session = Depends(get_db))
     if latest_ready_song is not None and latest_ready_song.public_id != song.public_id:
         fallback_ready_song = latest_ready_song
 
-    return templates.TemplateResponse(
-        "songs/status.html",
-        {
-            "request": request,
-            "page_title": "Генерация песни",
-            "order": song.order,
-            "song": song,
-            "fallback_ready_song": fallback_ready_song,
-            "song_status_label": humanize_song_status(song.status),
-            "fallback_song_status_label": humanize_song_status(fallback_ready_song.status if fallback_ready_song else None),
-            "is_ready": song.status == "succeeded",
-            "is_running": song.status in RUNNING_SONG_STATUSES,
-            "is_failed": song.status == "failed",
-            "error": error,
-            "auto_refresh_enabled": auto_refresh_enabled and song.status in RUNNING_SONG_STATUSES,
-            "suno_stub_mode": settings.SUNO_STUB_MODE,
-        },
+    return templates.TemplateResponse("songs/status.html", build_song_status_context(request, song, fallback_ready_song=fallback_ready_song, error=error, auto_refresh_enabled=auto_refresh_enabled))
+
+
+@router.get("/status-fragment", response_class=HTMLResponse)
+async def song_status_fragment(job: str, request: Request, db: Session = Depends(get_db)):
+    song = get_song_job(request, db, job)
+    if song is None:
+        raise HTTPException(status_code=404, detail="Задача генерации не найдена.")
+
+    error = None
+    auto_refresh_enabled = song.status in RUNNING_SONG_STATUSES
+    if song.status in RUNNING_SONG_STATUSES:
+        try:
+            song = sync_song_job_state(db, song)
+            db.commit()
+            db.refresh(song)
+        except SunoServiceError as exc:
+            error = str(exc)
+            auto_refresh_enabled = False
+            db.rollback()
+
+            song = get_song_job(request, db, job)
+            if song is None:
+                raise HTTPException(status_code=404, detail="Задача генерации не найдена.")
+
+            db.add(
+                OrderEvent(
+                    order=song.order,
+                    event_type="song_generation_status_sync_failed",
+                    payload={
+                        "song_job_id": song.public_id,
+                        "external_job_id": song.external_job_id,
+                        "error": error,
+                        "source": "status_fragment",
+                    },
+                )
+            )
+            db.commit()
+            db.refresh(song)
+
+    latest_ready_song = get_latest_ready_song(song.order)
+    fallback_ready_song = None
+    if latest_ready_song is not None and latest_ready_song.public_id != song.public_id:
+        fallback_ready_song = latest_ready_song
+
+    context = build_song_status_context(
+        request,
+        song,
+        fallback_ready_song=fallback_ready_song,
+        error=error,
+        auto_refresh_enabled=auto_refresh_enabled,
     )
+    return templates.TemplateResponse("songs/_status_content.html", context)
 
 
 @router.post("/retry/{job_public_id}")
