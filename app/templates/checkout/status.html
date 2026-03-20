@@ -115,15 +115,33 @@
 
 {% if is_success and metrica_counter_id %}
 <script>
-  const goalKey = "payment_goal_sent_{{ payment.public_id }}";
-  if (!sessionStorage.getItem(goalKey) && typeof window.ym === "function") {
-    ym({{ metrica_counter_id }}, "reachGoal", "payment_success", {
-      order_number: "{{ order.order_number }}",
-      amount: {{ price_rub }},
-      currency: "RUB"
-    });
-    sessionStorage.setItem(goalKey, "1");
-  }
+  (function () {
+    var goalKey = "payment_goal_sent_{{ payment.public_id }}";
+
+    function sendPaymentSuccessGoal(attemptsLeft) {
+      if (window.sessionStorage.getItem(goalKey)) {
+        return;
+      }
+
+      if (typeof window.ym === "function") {
+        window.ym({{ metrica_counter_id }}, "reachGoal", "payment_success", {
+          order_number: "{{ order.order_number }}",
+          amount: {{ price_rub }},
+          currency: "RUB"
+        });
+        window.sessionStorage.setItem(goalKey, "1");
+        return;
+      }
+
+      if (attemptsLeft > 0) {
+        window.setTimeout(function () {
+          sendPaymentSuccessGoal(attemptsLeft - 1);
+        }, 300);
+      }
+    }
+
+    sendPaymentSuccessGoal(20);
+  })();
 </script>
 {% endif %}
 {% endblock %}
