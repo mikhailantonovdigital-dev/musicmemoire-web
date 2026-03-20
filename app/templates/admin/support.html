@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="section">
-  <div class="container">
+<section class="section admin-screen-section">
+  <div class="container admin-shell">
     <div class="admin-toolbar">
       <div>
         <p class="eyebrow">Админка</p>
@@ -10,11 +10,18 @@
       </div>
       <div class="form-actions">
         <a href="/admin/" class="btn btn-secondary">Назад в админку</a>
+        <form method="post" action="/admin/support/telegram-report/test" style="display: inline;">
+          <button type="submit" class="btn btn-secondary">Тест Telegram-отчёта</button>
+        </form>
         {% if admin_token_enabled %}<a href="/admin/logout" class="btn btn-secondary">Выйти</a>{% endif %}
       </div>
     </div>
 
     {% if flash %}<div class="notice notice-{{ flash.kind }}">{{ flash.text }}</div>{% endif %}
+
+    {% if not telegram_reporting_enabled %}
+      <div class="notice">Telegram-отчёты выключены: добавьте TELEGRAM_BOT_TOKEN и TELEGRAM_REPORT_CHAT_ID в env.</div>
+    {% endif %}
 
     <form class="form-card admin-search-form" method="get" action="/admin/support">
       <h2 class="form-title">Поиск обращений</h2>
