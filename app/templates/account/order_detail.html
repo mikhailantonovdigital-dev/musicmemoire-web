@@ -153,4 +153,36 @@
   }, 5000);
 </script>
 {% endif %}
+
+{% if welcome and welcome_delivery == "payment_success" and metrica_counter_id and latest_payment and latest_payment.status == "succeeded" %}
+<script>
+  (function () {
+    var goalKey = "payment_goal_sent_{{ latest_payment.public_id }}";
+
+    function sendPaymentSuccessGoal(attemptsLeft) {
+      if (window.sessionStorage.getItem(goalKey)) {
+        return;
+      }
+
+      if (typeof window.ym === "function") {
+        window.ym({{ metrica_counter_id }}, "reachGoal", "payment_success", {
+          order_number: "{{ order.order_number }}",
+          amount: {{ price_rub }},
+          currency: "RUB"
+        });
+        window.sessionStorage.setItem(goalKey, "1");
+        return;
+      }
+
+      if (attemptsLeft > 0) {
+        window.setTimeout(function () {
+          sendPaymentSuccessGoal(attemptsLeft - 1);
+        }, 300);
+      }
+    }
+
+    sendPaymentSuccessGoal(20);
+  })();
+</script>
+{% endif %}
 {% endblock %}
