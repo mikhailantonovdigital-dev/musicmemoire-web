@@ -1,8 +1,51 @@
-<div id="order-song-panel-root" data-song-running="{{ 'true' if latest_song and song_is_running and not playback_song and not suno_stub_mode and not song_sync_error else 'false' }}" data-poll-url="/account/orders/{{ order.public_id }}/song-panel" data-welcome-message="{% if playback_song and (playback_song.audio_variants or playback_song.audio_url) %}Ваша песня готова в двух вариантах. Послушайте оба, и выберите лучший. Или заберите оба 💖{% elif welcome and welcome_delivery == 'payment_success' %}Оплата прошла успешно. Генерация песни уже запущена автоматически.{% elif welcome and welcome_delivery == 'email' %}Заказ открыт в кабинете. Ссылку для входа мы отправили на почту.{% elif welcome and welcome_delivery == 'stub' %}Заказ открыт в кабинете. Письмо сейчас в тестовом режиме.{% elif welcome %}Заказ уже привязан к вашему профилю.{% endif %}">
+<div id="order-song-panel-root" data-song-running="{{ 'true' if latest_song and song_is_running and not suno_stub_mode and not song_sync_error else 'false' }}" data-poll-url="/account/orders/{{ order.public_id }}/song-panel" data-welcome-message="{% if latest_song and song_is_running %}Оплата прошла успешно. Генерация песни уже запущена автоматически.{% elif playback_song and (playback_song.audio_variants or playback_song.audio_url) %}Ваша песня готова в двух вариантах. Послушайте оба, и выберите лучший. Или заберите оба 💖{% elif welcome and welcome_delivery == 'payment_success' %}Оплата прошла успешно. Генерация песни уже запущена автоматически.{% elif welcome and welcome_delivery == 'email' %}Заказ открыт в кабинете. Ссылку для входа мы отправили на почту.{% elif welcome and welcome_delivery == 'stub' %}Заказ открыт в кабинете. Письмо сейчас в тестовом режиме.{% elif welcome %}Заказ уже привязан к вашему профилю.{% endif %}">
   <div class="panel-card account-song-card">
     <div class="mini-label">Песня</div>
 
-    {% if playback_song and playback_song.audio_variants %}
+    {% if latest_song and song_is_running %}
+      <div class="generation-overlay-card account-song-spinner-card">
+        <div class="generation-spinner"></div>
+        <h2>Готовим песню</h2>
+        <p>Генерация уже запущена. Как только песня будет готова, она появится здесь автоматически. Не закрывайте данную страницу. Необходимо пару минут.</p>
+      </div>
+      {% if has_previous_ready_song and playback_song %}
+        <div class="notice notice-success">
+          Пока новая песня готовится, ниже доступен прошлый готовый результат из попытки {{ playback_song.attempt_no }}.
+        </div>
+        {% if playback_song.audio_variants %}
+          <div class="account-song-results">
+            {% for track in playback_song.audio_variants %}
+              {% set playable_url = request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=loop.index0) %}
+              {% set download_url = request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=loop.index0) ~ '?download=1' %}
+              <div class="account-song-result-item">
+                <p class="account-song-result-title">Прошлый вариант {{ loop.index }}</p>
+                {% if playable_url %}
+                  <audio class="audio-player" controls preload="none" data-exclusive-audio-group="order-{{ order.public_id }}" src="{{ playable_url }}"></audio>
+                {% endif %}
+                <div class="form-actions" style="margin-top: 12px;">
+                  {% if track.audio_url or track.stream_audio_url %}
+                    <a href="{{ download_url }}" class="btn btn-secondary">Скачать mp3</a>
+                  {% endif %}
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% elif playback_song.audio_url %}
+          <div class="account-song-result-item">
+            <p class="account-song-result-title">Прошлый готовый результат</p>
+            <audio class="audio-player" controls preload="none" data-exclusive-audio-group="order-{{ order.public_id }}" src="{{ request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=0) }}"></audio>
+            <div class="form-actions" style="margin-top: 12px;">
+              <a href="{{ request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=0) }}?download=1" class="btn btn-secondary">Скачать mp3</a>
+            </div>
+          </div>
+        {% endif %}
+      {% endif %}
+      {% if song_sync_error %}
+        <div class="notice notice-warning" style="margin-top: 16px;">Не удалось обновить статус генерации: {{ song_sync_error }}</div>
+      {% elif latest_song and song_is_failed and latest_song.error_message %}
+        <div class="notice notice-warning" style="margin-top: 16px;">{{ latest_song.error_message }}</div>
+      {% endif %}
+    {% elif playback_song and playback_song.audio_variants %}
       <div class="account-song-results">
         {% for track in playback_song.audio_variants %}
           {% set playable_url = request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=loop.index0) %}
@@ -29,17 +72,6 @@
       </div>
     {% elif latest_song and song_is_ready and suno_stub_mode %}
       <p class="muted" style="margin: 0;">Тестовый режим завершён. Для боевого результата нужен реальный аудиофайл.</p>
-    {% elif latest_song and song_is_running %}
-      <div class="generation-overlay-card account-song-spinner-card">
-        <div class="generation-spinner"></div>
-        <h2>Готовим песню</h2>
-        <p>Генерация уже запущена. Как только песня будет готова, она появится здесь автоматически. Не закрывайте данную страницу. Необходимо пару минут.</p>
-      </div>
-      {% if song_sync_error %}
-        <div class="notice notice-warning" style="margin-top: 16px;">Не удалось обновить статус генерации: {{ song_sync_error }}</div>
-      {% elif latest_song and song_is_failed and latest_song.error_message %}
-        <div class="notice notice-warning" style="margin-top: 16px;">{{ latest_song.error_message }}</div>
-      {% endif %}
     {% elif latest_song and song_is_failed and latest_song.error_message %}
       <div class="notice notice-warning">{{ latest_song.error_message }}</div>
       {% if can_start_song %}
