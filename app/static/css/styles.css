@@ -6345,6 +6345,7 @@ strong,
 
 .account-song-meta-list {
   margin-top: 18px;
+  padding: 6px 4px 4px;
 }
 
 .account-song-meta-card {
@@ -6420,6 +6421,8 @@ strong,
   white-space: pre-wrap;
   color: rgba(238, 244, 255, 0.92);
   line-height: 1.7;
+  margin-top: 6px;
+  padding: 6px 4px 4px;
 }
 
 .page-account-screen .dashboard-hero-dark,
@@ -6500,6 +6503,11 @@ strong,
   display: grid;
   gap: 12px;
   margin-top: 12px;
+  margin-bottom: 4px;
+}
+
+.account-order-title-form[hidden] {
+  display: none;
 }
 
 .account-order-title-actions {

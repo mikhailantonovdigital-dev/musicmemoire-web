@@ -9,7 +9,9 @@
         <h1 class="account-order-number">{{ order.order_number }}</h1>
         {% if welcome %}
           <p class="questionnaire-stage-lead">
-            {% if welcome_delivery == "payment_success" %}
+            {% if playback_song and (playback_song.audio_variants or playback_song.audio_url) %}
+              Ваша песня готова в двух вариантах. Послушайте оба, и выберите лучший. Или заберите оба 💖
+            {% elif welcome_delivery == "payment_success" %}
               Оплата прошла успешно. Генерация песни уже запущена автоматически.
             {% elif welcome_delivery == "email" %}
               Заказ открыт в кабинете. Ссылку для входа мы отправили на почту.

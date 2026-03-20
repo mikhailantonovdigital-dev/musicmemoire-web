@@ -59,33 +59,34 @@
                       ✎
                     </button>
                   </h2>
-                  <form
-                    class="account-order-title-form"
-                    method="post"
-                    action="/account/orders/{{ order.public_id }}/title"
-                    hidden
-                    data-title-edit-form
-                  >
-                    <input
-                      type="text"
-                      name="title"
-                      class="text-input"
-                      value="{{ order.title or '' }}"
-                      maxlength="255"
-                      placeholder="Например: Песня для мамы"
-                      data-title-edit-input
-                    />
-                    <div class="account-order-title-actions">
-                      <button type="submit" class="btn btn-primary">Сохранить</button>
-                      <button type="button" class="btn btn-secondary" data-title-edit-cancel>Отмена</button>
-                    </div>
-                  </form>
                 </div>
                 <span class="btn btn-secondary account-order-expand-btn">
                   <span class="account-expand-label-collapsed">Показать полностью</span>
                   <span class="account-expand-label-open">Скрыть</span>
                 </span>
               </summary>
+
+              <form
+                class="account-order-title-form"
+                method="post"
+                action="/account/orders/{{ order.public_id }}/title"
+                hidden
+                data-title-edit-form
+              >
+                <input
+                  type="text"
+                  name="title"
+                  class="text-input"
+                  value="{{ order.title or '' }}"
+                  maxlength="255"
+                  placeholder="Например: Песня для мамы"
+                  data-title-edit-input
+                />
+                <div class="account-order-title-actions">
+                  <button type="submit" class="btn btn-primary">Сохранить</button>
+                  <button type="button" class="btn btn-secondary" data-title-edit-cancel>Отмена</button>
+                </div>
+              </form>
 
               <div class="account-order-preview">
                 <div class="panel-card panel-card-dark">
@@ -183,19 +184,19 @@
     var toggles = document.querySelectorAll("[data-title-edit-toggle]");
 
     toggles.forEach(function (toggleButton) {
-      var cardHeader = toggleButton.closest(".account-order-summary");
-      var titleWrap = toggleButton.closest("div");
-      var form = titleWrap ? titleWrap.querySelector("[data-title-edit-form]") : null;
-      var titleText = titleWrap ? titleWrap.querySelector(".account-order-title-text") : null;
+      var accordion = toggleButton.closest(".account-order-accordion");
+      var titleText = accordion ? accordion.querySelector(".account-order-title-text") : null;
+      var titleHeading = accordion ? accordion.querySelector(".account-order-title") : null;
+      var form = accordion ? accordion.querySelector("[data-title-edit-form]") : null;
       var cancelButton = form ? form.querySelector("[data-title-edit-cancel]") : null;
       var input = form ? form.querySelector("[data-title-edit-input]") : null;
 
-      if (!form || !titleText) {
+      if (!form || !titleText || !titleHeading) {
         return;
       }
 
       var openEditor = function () {
-        titleText.closest(".account-order-title").hidden = true;
+        titleHeading.hidden = true;
         form.hidden = false;
         if (input) {
           input.focus();
@@ -205,7 +206,7 @@
 
       var closeEditor = function () {
         form.hidden = true;
-        titleText.closest(".account-order-title").hidden = false;
+        titleHeading.hidden = false;
       };
 
       toggleButton.addEventListener("click", function (event) {
@@ -214,11 +215,9 @@
         openEditor();
       });
 
-      if (cardHeader) {
-        form.addEventListener("click", function (event) {
-          event.stopPropagation();
-        });
-      }
+      form.addEventListener("click", function (event) {
+        event.stopPropagation();
+      });
 
       if (cancelButton) {
         cancelButton.addEventListener("click", function (event) {
