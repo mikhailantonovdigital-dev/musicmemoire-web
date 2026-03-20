@@ -3,24 +3,15 @@
     <div class="mini-label">Поддержка</div>
     <strong>{{ support_title or "Нужна помощь?" }}</strong>
     <p>
-      {{ support_text or "Если что-то непонятно или что-то пошло не так, напишите нам — поможем на любом этапе." }}
+      {{ support_text or "Если что-то непонятно или что-то пошло не так, отправьте обращение через форму поддержки — поможем разобраться по заказу и статусу." }}
     </p>
   </div>
 
   <div class="support-card-actions">
     <a
-      href="{{ support_tg_url or 'https://t.me/mikhailantonov19' }}"
-      target="_blank"
-      rel="noopener"
+      href="{{ support_href or '/support' }}"
       class="btn btn-secondary"
-      data-support-link="telegram"
-    >Telegram</a>
-    <a
-      href="{{ support_max_url or 'https://max.ru/u/f9LHodD0cOKg36L-baFKeBJquxSx5xydupa2AYOKdl7BUFipfVYS5FVVV80' }}"
-      target="_blank"
-      rel="noopener"
-      class="btn btn-secondary"
-      data-support-link="max"
-    >MAX</a>
+      data-support-link="support-form"
+    >Открыть поддержку</a>
   </div>
 </div>

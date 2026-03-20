@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime, time, timedelta, timezone
+from zoneinfo import ZoneInfo
 import json
 from urllib import error, request
 
@@ -127,11 +128,14 @@ def build_test_report() -> str:
     )
 
 
+REPORT_TZ = ZoneInfo("Europe/Berlin")
+
+
 def _today_range_utc() -> tuple[datetime, datetime]:
-    now_utc = datetime.now(timezone.utc)
-    start_utc = datetime.combine(now_utc.date(), time.min, tzinfo=timezone.utc)
-    end_utc = start_utc + timedelta(days=1)
-    return start_utc, end_utc
+    now_local = datetime.now(REPORT_TZ)
+    start_local = datetime.combine(now_local.date(), time.min, tzinfo=REPORT_TZ)
+    end_local = start_local + timedelta(days=1)
+    return start_local.astimezone(timezone.utc), end_local.astimezone(timezone.utc)
 
 
 def build_daily_metrics_report(db: Session) -> str:
@@ -146,7 +150,7 @@ def build_daily_metrics_report(db: Session) -> str:
 
     return "\n".join([
         "<b>Magic Music · отчёт за сегодня</b>",
-        f"Дата (UTC): {start_utc.strftime('%Y-%m-%d')}",
+        f"Дата ({REPORT_TZ.key}): {start_utc.astimezone(REPORT_TZ).strftime('%Y-%m-%d')}",
         "",
         f"Заказов сегодня: <b>{int(orders_today)}</b>",
         f"Успешных оплат сегодня: <b>{int(successful_payments_today)}</b>",
