@@ -28,6 +28,16 @@ def _message_text(update: dict) -> str:
     return text.strip() if isinstance(text, str) else ""
 
 
+def _allowed_chat_id() -> int | None:
+    raw = (settings.TELEGRAM_BOT_ALLOWED_CHAT_ID or "").strip()
+    if not raw:
+        return None
+    try:
+        return int(raw)
+    except ValueError:
+        return None
+
+
 @router.post("/webhook")
 async def telegram_webhook(
     request: Request,
@@ -41,6 +51,14 @@ async def telegram_webhook(
     update = await request.json()
     chat_id = _message_chat_id(update)
     if chat_id is None:
+        return {"ok": True}
+
+    allowed_chat_id = _allowed_chat_id()
+    if allowed_chat_id is not None and chat_id != allowed_chat_id:
+        send_telegram_message(
+            chat_id=chat_id,
+            text="Доступ к этому боту ограничен. Обратитесь к владельцу сервиса.",
+        )
         return {"ok": True}
 
     text = _message_text(update)
