@@ -49,9 +49,37 @@
                     <span class="status-badge">Заказ № {{ order.order_number }}</span>
                   </div>
                   <h2 class="account-order-title">
-                    <span>{{ order.title or "Персональная песня" }}</span>
-                    <button type="button" class="account-order-title-edit" aria-label="Переименовать заказ">✎</button>
+                    <span class="account-order-title-text">{{ order.title or "Персональная песня" }}</span>
+                    <button
+                      type="button"
+                      class="account-order-title-edit"
+                      aria-label="Переименовать заказ"
+                      data-title-edit-toggle
+                    >
+                      ✎
+                    </button>
                   </h2>
+                  <form
+                    class="account-order-title-form"
+                    method="post"
+                    action="/account/orders/{{ order.public_id }}/title"
+                    hidden
+                    data-title-edit-form
+                  >
+                    <input
+                      type="text"
+                      name="title"
+                      class="text-input"
+                      value="{{ order.title or '' }}"
+                      maxlength="255"
+                      placeholder="Например: Песня для мамы"
+                      data-title-edit-input
+                    />
+                    <div class="account-order-title-actions">
+                      <button type="submit" class="btn btn-primary">Сохранить</button>
+                      <button type="button" class="btn btn-secondary" data-title-edit-cancel>Отмена</button>
+                    </div>
+                  </form>
                 </div>
                 <span class="btn btn-secondary account-order-expand-btn">
                   <span class="account-expand-label-collapsed">Показать полностью</span>
@@ -134,4 +162,56 @@
     </div>
   </div>
 </section>
+
+<script>
+  (function () {
+    var toggles = document.querySelectorAll("[data-title-edit-toggle]");
+
+    toggles.forEach(function (toggleButton) {
+      var cardHeader = toggleButton.closest(".account-order-summary");
+      var titleWrap = toggleButton.closest("div");
+      var form = titleWrap ? titleWrap.querySelector("[data-title-edit-form]") : null;
+      var titleText = titleWrap ? titleWrap.querySelector(".account-order-title-text") : null;
+      var cancelButton = form ? form.querySelector("[data-title-edit-cancel]") : null;
+      var input = form ? form.querySelector("[data-title-edit-input]") : null;
+
+      if (!form || !titleText) {
+        return;
+      }
+
+      var openEditor = function () {
+        titleText.closest(".account-order-title").hidden = true;
+        form.hidden = false;
+        if (input) {
+          input.focus();
+          input.select();
+        }
+      };
+
+      var closeEditor = function () {
+        form.hidden = true;
+        titleText.closest(".account-order-title").hidden = false;
+      };
+
+      toggleButton.addEventListener("click", function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        openEditor();
+      });
+
+      if (cardHeader) {
+        form.addEventListener("click", function (event) {
+          event.stopPropagation();
+        });
+      }
+
+      if (cancelButton) {
+        cancelButton.addEventListener("click", function (event) {
+          event.preventDefault();
+          closeEditor();
+        });
+      }
+    });
+  })();
+</script>
 {% endblock %}

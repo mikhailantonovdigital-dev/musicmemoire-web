@@ -6496,6 +6496,18 @@ strong,
   cursor: pointer;
 }
 
+.account-order-title-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.account-order-title-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .account-expand-label-open {
   display: none;
 }

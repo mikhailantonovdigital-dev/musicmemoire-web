@@ -146,6 +146,10 @@ def can_start_song(order: Order) -> bool:
     return settings.SUNO_STUB_MODE or order.status == "paid"
 
 
+def build_magic_login_url(raw_token: str) -> str:
+    return f"{settings.BASE_URL.rstrip('/')}/account/magic-login?token={raw_token}"
+
+
 @router.get("/login", response_class=HTMLResponse)
 async def account_login_page(request: Request):
     sent = request.query_params.get("sent") == "1"
@@ -229,7 +233,7 @@ async def account_login_submit(
         )
         db.commit()
 
-        login_url = f"{settings.BASE_URL}/account/magic-login?token={raw_token}"
+        login_url = build_magic_login_url(raw_token)
 
         try:
             delivery = send_magic_link_email(
@@ -325,6 +329,35 @@ async def account_magic_login(
 async def account_logout(request: Request):
     request.session.pop("account_user_id", None)
     return RedirectResponse(url="/", status_code=303)
+
+
+@router.post("/orders/{order_public_id}/title")
+async def account_update_order_title(
+    order_public_id: str,
+    request: Request,
+    title: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    user = get_session_user(request, db)
+    if user is None:
+        return RedirectResponse(url=request.url_for("account_login_page"), status_code=303)
+
+    order = (
+        db.query(Order)
+        .filter(
+            Order.public_id == order_public_id,
+            Order.user_id == user.id,
+        )
+        .first()
+    )
+    if order is None:
+        return RedirectResponse(url=request.url_for("account_dashboard"), status_code=303)
+
+    normalized_title = " ".join((title or "").strip().split())
+    order.title = normalized_title[:255] if normalized_title else None
+    db.commit()
+
+    return RedirectResponse(url=request.url_for("account_dashboard"), status_code=303)
 
 
 @router.get("/", response_class=HTMLResponse)

@@ -85,6 +85,10 @@ class Order(Base):
         Text,
         nullable=True,
     )
+    title: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
     song_style: Mapped[str | None] = mapped_column(
         String(32),
         nullable=True,
