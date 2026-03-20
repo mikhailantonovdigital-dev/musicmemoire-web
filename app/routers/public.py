@@ -1,11 +1,14 @@
+from urllib.parse import urlencode
+
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.db import engine, get_db
 from app.core.templates import templates
-from app.core.storage import save_support_file
+from app.core.storage import StorageError, save_support_file
 from app.models import Order, OrderEvent, SupportMessage, SupportThread, User
 from app.services.background_jobs import get_redis_connection
 from app.services.telegram_report_service import notify_new_support_thread, telegram_reporting_enabled
@@ -801,7 +804,7 @@ async def support_page_submit(
     if attachment is not None and (attachment.filename or "").strip():
         try:
             stored_attachment = save_support_file(attachment)
-        except ValueError as exc:
+        except (ValueError, StorageError) as exc:
             return templates.TemplateResponse(
                 "public/support.html",
                 build_support_template_context(
@@ -820,52 +823,75 @@ async def support_page_submit(
     if linked_order and linked_order.user_id and linked_user is None:
         linked_user = linked_order.user
 
-    thread = SupportThread(
-        order=linked_order,
-        user=linked_user,
-        email=normalized_email,
-        subject=normalized_subject or None,
-        status="new",
-        source="site",
-    )
-    thread.messages.append(
-        SupportMessage(
-            sender_role="user",
-            body=normalized_message,
-            attachment_original_filename=stored_attachment.original_filename if stored_attachment else None,
-            attachment_content_type=stored_attachment.content_type if stored_attachment else None,
-            attachment_size_bytes=stored_attachment.size_bytes if stored_attachment else None,
-            attachment_relative_path=stored_attachment.relative_path if stored_attachment else None,
-            attachment_storage_backend=stored_attachment.storage_backend if stored_attachment else None,
-            attachment_storage_bucket=stored_attachment.storage_bucket if stored_attachment else None,
-            attachment_storage_key=stored_attachment.storage_key if stored_attachment else None,
-            is_internal=False,
+    try:
+        thread = SupportThread(
+            order=linked_order,
+            user=linked_user,
+            email=normalized_email,
+            subject=normalized_subject or None,
+            status="new",
+            source="site",
         )
-    )
-    db.add(thread)
-    db.flush()
-
-    if linked_order is not None:
-        db.add(
-            OrderEvent(
-                order=linked_order,
-                event_type="support_thread_created",
-                payload={
-                    "thread_public_id": thread.public_id,
-                    "source": "site",
-                    "email": normalized_email,
-                },
+        thread.messages.append(
+            SupportMessage(
+                sender_role="user",
+                body=normalized_message,
+                attachment_original_filename=stored_attachment.original_filename if stored_attachment else None,
+                attachment_content_type=stored_attachment.content_type if stored_attachment else None,
+                attachment_size_bytes=stored_attachment.size_bytes if stored_attachment else None,
+                attachment_relative_path=stored_attachment.relative_path if stored_attachment else None,
+                attachment_storage_backend=stored_attachment.storage_backend if stored_attachment else None,
+                attachment_storage_bucket=stored_attachment.storage_bucket if stored_attachment else None,
+                attachment_storage_key=stored_attachment.storage_key if stored_attachment else None,
+                is_internal=False,
             )
         )
+        db.add(thread)
+        db.flush()
 
-    db.commit()
+        if linked_order is not None:
+            db.add(
+                OrderEvent(
+                    order=linked_order,
+                    event_type="support_thread_created",
+                    payload={
+                        "thread_public_id": thread.public_id,
+                        "source": "site",
+                        "email": normalized_email,
+                    },
+                )
+            )
 
-    notify_new_support_thread(thread, thread.messages[0])
+        thread_public_id = thread.public_id
+        first_message = thread.messages[0]
+        db.commit()
+    except SQLAlchemyError:
+        db.rollback()
+        return templates.TemplateResponse(
+            "public/support.html",
+            build_support_template_context(
+                request,
+                order_ref=normalized_order_ref,
+                email=normalized_email,
+                subject=normalized_subject,
+                message=normalized_message,
+                error="Не удалось отправить обращение. Попробуйте ещё раз чуть позже или напишите повторно без вложения.",
+                order=linked_order,
+            ),
+            status_code=500,
+        )
+
+    if telegram_reporting_enabled():
+        try:
+            notify_new_support_thread(thread, first_message)
+        except Exception:
+            pass
+
     redirect_url = request.url_for("support_page")
-    params = ["sent=1", f"thread={thread.public_id}"]
+    params = {"sent": 1, "thread": thread_public_id}
     if normalized_order_ref:
-        params.append(f"order={normalized_order_ref}")
-    return RedirectResponse(url=f"{redirect_url}?{'&'.join(params)}", status_code=303)
+        params["order"] = normalized_order_ref
+    return RedirectResponse(url=f"{redirect_url}?{urlencode(params)}", status_code=303)
 
 
 @router.get("/robots.txt", response_class=PlainTextResponse)
