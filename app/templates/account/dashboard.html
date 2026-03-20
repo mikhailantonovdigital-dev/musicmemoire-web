@@ -117,11 +117,26 @@
                       <h2>Готовим песню</h2>
                       <p>Генерация уже запущена. Как только песня будет готова, она появится здесь автоматически. Не закрывайте данную страницу. Необходимо пару минут.</p>
                     </div>
+                  {% elif latest_song and card.song_is_failed and latest_song.error_message %}
+                    <div class="notice notice-warning">{{ latest_song.error_message }}</div>
+                  {% elif card.can_pay_order %}
+                    <p class="muted" style="margin: 0;">Чтобы запустить генерацию песни, сначала нужно оплатить заказ.</p>
+                  {% elif card.can_start_song %}
+                    <p class="muted" style="margin: 0;">Текст уже готов. Можно запускать генерацию песни.</p>
                   {% else %}
-                    <p class="muted" style="margin: 0;">Варианты песни пока не готовы.</p>
+                    <p class="muted" style="margin: 0;">Генерация песни станет доступна после оплаты.</p>
                   {% endif %}
 
                   <div class="form-actions" style="margin-top: 16px;">
+                    {% if card.can_pay_order %}
+                      <form method="post" action="/checkout/start/{{ order.public_id }}">
+                        <button type="submit" class="btn btn-primary">{{ card.payment_cta_label }}</button>
+                      </form>
+                    {% elif card.can_start_song and not card.song_is_running and not card.has_ready_song %}
+                      <form method="post" action="/songs/start/{{ order.public_id }}">
+                        <button type="submit" class="btn btn-primary">Сгенерировать песню</button>
+                      </form>
+                    {% endif %}
                     <a class="btn btn-secondary" href="/account/orders/{{ order.public_id }}">Открыть заказ</a>
                   </div>
                 </div>
