@@ -1,35 +1,32 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="section">
+<section class="section questionnaire-stage admin-login-stage">
   <div class="container narrow">
-    <p class="eyebrow">Админка</p>
-    <h1>Вход</h1>
+    <div class="questionnaire-shell admin-login-shell">
+      <div class="questionnaire-stack">
+        <p class="eyebrow">Админка</p>
 
-    <div class="consultant-box">
-      <strong>Доступ к панели</strong>
-      <p>Введите ADMIN_TOKEN из Render env.</p>
-    </div>
+        {% if error %}
+          <div class="notice notice-error">{{ error }}</div>
+        {% endif %}
 
-    {% if error %}
-      <div class="notice notice-error">{{ error }}</div>
-    {% endif %}
+        <form class="form-card admin-login-form" method="post" action="/admin/login">
+          <input
+            id="token"
+            name="token"
+            type="password"
+            class="text-input"
+            placeholder="Введите токен"
+            required
+          />
 
-    <form class="form-card" method="post" action="/admin/login">
-      <label class="form-label" for="token">ADMIN_TOKEN</label>
-      <input
-        id="token"
-        name="token"
-        type="password"
-        class="text-input"
-        placeholder="Введите токен"
-        required
-      />
-
-      <div class="form-actions">
-        <button type="submit" class="btn btn-primary">Войти</button>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Войти</button>
+          </div>
+        </form>
       </div>
-    </form>
+    </div>
   </div>
 </section>
 {% endblock %}
