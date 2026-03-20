@@ -166,6 +166,8 @@ async def _checkout_start(order_public_id: str, request: Request, db: Session):
                 "is_canceled": False,
                 "error": str(exc),
                 "metrica_counter_id": settings.METRICA_COUNTER_ID,
+                "checkout_access_token": build_checkout_access_token(payment.public_id),
+                "has_account_access": get_checkout_order(request, db, order.public_id) is not None,
                 **build_payment_template_context(payment),
             },
             status_code=400,
