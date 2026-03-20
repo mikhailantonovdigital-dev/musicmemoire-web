@@ -44,6 +44,8 @@ class Settings(BaseSettings):
     TELEGRAM_BOT_TOKEN: str | None = None
     TELEGRAM_REPORT_CHAT_ID: str | None = None
 
+    TELEGRAM_BOT_WEBHOOK_SECRET: str | None = None
+
     PRICE_RUB: int = 990
     UPLOADS_DIR: str = "/var/data/musicmemoire/uploads"
     MAX_VOICE_FILE_MB: int = 25
