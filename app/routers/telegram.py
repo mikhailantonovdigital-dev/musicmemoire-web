@@ -53,9 +53,13 @@ async def telegram_webhook(
                 reply_markup=TELEGRAM_REPORT_KEYBOARD,
             )
         else:
+            try:
+                report_text = build_daily_metrics_report(db)
+            except Exception as exc:  # noqa: BLE001
+                report_text = f"Не удалось собрать отчёт: {exc}"
             send_telegram_message(
                 chat_id=chat_id,
-                text=build_daily_metrics_report(db),
+                text=report_text,
                 reply_markup=TELEGRAM_REPORT_KEYBOARD,
             )
         return {"ok": True}

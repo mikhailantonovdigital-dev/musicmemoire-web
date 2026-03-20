@@ -140,8 +140,9 @@ def build_daily_metrics_report(db: Session) -> str:
     orders_today = db.query(func.count(Order.id)).filter(Order.created_at >= start_utc, Order.created_at < end_utc).scalar() or 0
     users_today = db.query(func.count(User.id)).filter(User.created_at >= start_utc, User.created_at < end_utc).scalar() or 0
     total_users = db.query(func.count(User.id)).scalar() or 0
-    successful_payments_today = db.query(func.count(OrderPayment.id)).filter(OrderPayment.status == "succeeded", OrderPayment.paid_at.is_not(None), OrderPayment.paid_at >= start_utc, OrderPayment.paid_at < end_utc).scalar() or 0
-    payments_sum_today = db.query(func.coalesce(func.sum(OrderPayment.final_amount_rub), 0)).filter(OrderPayment.status == "succeeded", OrderPayment.paid_at.is_not(None), OrderPayment.paid_at >= start_utc, OrderPayment.paid_at < end_utc).scalar() or 0
+    payments_today = db.query(OrderPayment).filter(OrderPayment.status == "succeeded", OrderPayment.paid_at.is_not(None), OrderPayment.paid_at >= start_utc, OrderPayment.paid_at < end_utc).all()
+    successful_payments_today = len(payments_today)
+    payments_sum_today = sum(item.final_amount_rub for item in payments_today)
 
     return "\n".join([
         "<b>Magic Music · отчёт за сегодня</b>",
