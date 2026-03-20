@@ -8,7 +8,7 @@ from app.core.config import settings
 from app.core.db import init_db
 from app.core.storage import ensure_storage_dirs
 from app.core.templates import templates
-from app.routers import public, questionnaire, account, admin, songs, checkout
+from app.routers import public, questionnaire, account, admin, songs, checkout, telegram
 
 
 @asynccontextmanager
@@ -39,6 +39,7 @@ app.include_router(account.router)
 app.include_router(checkout.router)
 app.include_router(songs.router)
 app.include_router(admin.router)
+app.include_router(telegram.router)
 
 
 @app.exception_handler(404)

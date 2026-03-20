@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="section">
-  <div class="container">
+<section class="section admin-screen-section">
+  <div class="container admin-shell">
     <div class="admin-toolbar">
       <div>
         <p class="eyebrow">Админка</p>
@@ -132,46 +132,45 @@
       </div>
     </div>
 
-    <div class="admin-status-grid" style="margin-top: 20px;">
-      <div class="form-card">
-        <h2 class="form-title">Последние ошибки генерации</h2>
-        {% if recent_failed_songs %}
-          <div class="admin-events">
-            {% for song in recent_failed_songs %}
-              <div class="admin-event">
-                <div class="admin-event-head"><strong>{{ song.order.order_number if song.order else song.public_id }}</strong><span>{{ song.updated_at }}</span></div>
-                <p style="margin: 0 0 8px;"><strong>Статус:</strong> {{ song.status }}</p>
-                <p style="margin: 0 0 8px;"><strong>Попытка:</strong> {{ song.attempt_no }}</p>
-                {% if song.error_message %}<div class="notice notice-error" style="margin-top: 8px;">{{ song.error_message }}</div>{% endif %}
-                {% if song.order %}<div class="form-actions" style="margin-top: 12px;"><a href="/admin/orders/{{ song.order.public_id }}" class="btn btn-secondary">Открыть заказ</a></div>{% endif %}
+    <div class="form-card" style="margin-top: 20px;">
+      <h2 class="form-title">Последние ошибки генерации</h2>
+      {% if recent_failed_songs %}
+        <div class="admin-events">
+          {% for song in recent_failed_songs %}
+            <div class="admin-event">
+              <div class="admin-event-head"><strong>{{ song.order.order_number if song.order else song.public_id }}</strong><span>{{ song.updated_at }}</span></div>
+              <p style="margin: 0 0 8px;"><strong>Статус:</strong> {{ song.status }}</p>
+              <p style="margin: 0 0 8px;"><strong>Попытка:</strong> {{ song.attempt_no }}</p>
+              {% if song.error_message %}<div class="notice notice-error" style="margin-top: 8px; white-space: pre-wrap; word-break: break-word;">{{ song.error_message }}</div>{% endif %}
+              {% if song.order %}<div class="form-actions" style="margin-top: 12px;"><a href="/admin/orders/{{ song.order.public_id }}" class="btn btn-secondary">Открыть заказ</a></div>{% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="muted">Ошибок генерации пока нет.</p>
+      {% endif %}
+    </div>
+
+    <div class="form-card" style="margin-top: 20px;">
+      <h2 class="form-title">Последние проблемные платежи</h2>
+      {% if recent_problem_payments %}
+        <div class="admin-events">
+          {% for payment in recent_problem_payments %}
+            <div class="admin-event">
+              <div class="admin-event-head"><strong>{{ payment.order.order_number if payment.order else payment.public_id }}</strong><span>{{ payment.updated_at }}</span></div>
+              <p style="margin: 0 0 8px;"><strong>Статус:</strong> {{ payment.status }}</p>
+              <p style="margin: 0 0 8px;"><strong>Сумма:</strong> {{ payment.final_amount_rub }} ₽</p>
+              {% if payment.confirmation_url %}<p class="helper-text" style="margin: 0 0 8px;">Ссылка оплаты доступна</p>{% endif %}
+              <div class="form-actions" style="margin-top: 12px;">
+                {% if payment.order %}<a href="/admin/orders/{{ payment.order.public_id }}" class="btn btn-secondary">Открыть заказ</a>{% endif %}
+                {% if payment.confirmation_url %}<a href="{{ payment.confirmation_url }}" class="btn btn-secondary" target="_blank" rel="noopener">Открыть оплату</a>{% endif %}
               </div>
-            {% endfor %}
-          </div>
-        {% else %}
-          <p class="muted">Ошибок генерации пока нет.</p>
-        {% endif %}
-      </div>
-      <div class="form-card">
-        <h2 class="form-title">Последние проблемные платежи</h2>
-        {% if recent_problem_payments %}
-          <div class="admin-events">
-            {% for payment in recent_problem_payments %}
-              <div class="admin-event">
-                <div class="admin-event-head"><strong>{{ payment.order.order_number if payment.order else payment.public_id }}</strong><span>{{ payment.updated_at }}</span></div>
-                <p style="margin: 0 0 8px;"><strong>Статус:</strong> {{ payment.status }}</p>
-                <p style="margin: 0 0 8px;"><strong>Сумма:</strong> {{ payment.final_amount_rub }} ₽</p>
-                {% if payment.confirmation_url %}<p class="helper-text" style="margin: 0 0 8px;">Ссылка оплаты доступна</p>{% endif %}
-                <div class="form-actions" style="margin-top: 12px;">
-                  {% if payment.order %}<a href="/admin/orders/{{ payment.order.public_id }}" class="btn btn-secondary">Открыть заказ</a>{% endif %}
-                  {% if payment.confirmation_url %}<a href="{{ payment.confirmation_url }}" class="btn btn-secondary" target="_blank" rel="noopener">Открыть оплату</a>{% endif %}
-                </div>
-              </div>
-            {% endfor %}
-          </div>
-        {% else %}
-          <p class="muted">Проблемных платежей сейчас нет.</p>
-        {% endif %}
-      </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="muted">Проблемных платежей сейчас нет.</p>
+      {% endif %}
     </div>
 
     <div class="form-card" style="margin-top: 20px;">
