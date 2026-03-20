@@ -20,33 +20,27 @@
       <div class="notice notice-error">{{ support_error }}</div>
     {% endif %}
 
-    {% include "partials/support_card.html" with context %}
-
     <div class="legal-layout">
-      <aside class="legal-side-card">
-        <div class="legal-side-kicker">Что лучше указать</div>
-        <nav class="legal-nav">
-          <a href="#support-form">Форма обращения</a>
-          <a href="#support-details">Что написать</a>
-          <a href="#support-channels">Где отвечаем</a>
-        </nav>
-      </aside>
-
       <div class="legal-main-card">
         <section class="legal-section" id="support-form">
-          <h2>Отправить обращение</h2>
-          <p>Если у вас уже есть заказ, лучше сразу укажите номер заказа или public id. Так оператор быстрее найдёт нужный кейс.</p>
+          <h2>Написать в поддержку</h2>
+          <p>Если у вас уже есть заказ, сразу укажите номер заказа или public id — так мы быстрее найдём кейс и проверим статус.</p>
           {% if support_order %}
             <div class="notice" style="margin-bottom: 16px;">
               Обращение будет привязано к заказу <strong>{{ support_order.order_number }}</strong>.
             </div>
           {% endif %}
           <form class="form-card" method="post" action="/support" style="margin-top: 16px;">
-            <label class="form-label" for="support-order-ref">Номер заказа или public id</label>
-            <input id="support-order-ref" name="order_ref" type="text" class="text-input" value="{{ support_order_ref }}" placeholder="Например: MM-260319-ABC123" />
-
-            <label class="form-label" for="support-email" style="margin-top: 14px;">Email</label>
-            <input id="support-email" name="email" type="email" class="text-input" value="{{ support_email }}" placeholder="client@example.com" required />
+            <div class="form-grid form-grid-2">
+              <div>
+                <label class="form-label" for="support-order-ref">Номер заказа или public id</label>
+                <input id="support-order-ref" name="order_ref" type="text" class="text-input" value="{{ support_order_ref }}" placeholder="Например: MM-260319-ABC123" />
+              </div>
+              <div>
+                <label class="form-label" for="support-email">Email</label>
+                <input id="support-email" name="email" type="email" class="text-input" value="{{ support_email }}" placeholder="client@example.com" required />
+              </div>
+            </div>
 
             <label class="form-label" for="support-subject" style="margin-top: 14px;">Тема</label>
             <input id="support-subject" name="subject" type="text" class="text-input" value="{{ support_subject }}" placeholder="Например: не пришла песня или не открывается кабинет" />
@@ -61,20 +55,24 @@
         </section>
 
         <section class="legal-section" id="support-details">
-          <h2>Что написать, чтобы мы ответили быстрее</h2>
+          <h2>Что указать сразу</h2>
           <ul class="legal-list">
             <li>email, на который оформлялся заказ;</li>
             <li>номер заказа или public id, если он уже есть;</li>
-            <li>краткое описание проблемы;</li>
-            <li>какой шаг уже успели пройти: анкета, кабинет, оплата или готовая песня.</li>
+            <li>краткое описание проблемы и шаг, на котором она возникла;</li>
+            <li>скриншот ошибки, если она видна на экране.</li>
           </ul>
         </section>
-
-        <section class="legal-section" id="support-channels">
-          <h2>Где мы отвечаем</h2>
-          <p>Быстрее всего отвечаем в Telegram и MAX. Обращение из формы всё равно попадёт в операторскую админку, поэтому можно использовать любой удобный канал.</p>
-        </section>
       </div>
+
+      <aside class="legal-side-card">
+        <div class="legal-side-kicker">Быстрый контакт</div>
+        <p style="margin-top: 0;">Если удобнее написать напрямую, используйте быстрые кнопки. Обращение из формы мы тоже видим в админке.</p>
+        {% include "partials/support_card.html" with context %}
+        {% if telegram_reporting_enabled %}
+          <p class="helper-text" style="margin-top: 12px;">Новые обращения дополнительно дублируются в Telegram-отчёт для оператора.</p>
+        {% endif %}
+      </aside>
     </div>
   </div>
 </section>
