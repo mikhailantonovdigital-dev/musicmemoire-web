@@ -541,5 +541,6 @@ async def account_order_detail(
             "welcome": welcome,
             "welcome_delivery": delivery,
             "song_sync_error": song_sync_error,
+            "metrica_counter_id": settings.METRICA_COUNTER_ID,
         },
     )
