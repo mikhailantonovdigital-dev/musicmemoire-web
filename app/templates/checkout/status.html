@@ -87,24 +87,31 @@
 
           <div class="form-actions action-stack">
             {% if is_success and latest_song and latest_song.status in ["queued", "processing"] %}
-              <a href="/songs/status?job={{ latest_song.public_id }}" class="btn btn-primary">Открыть статус генерации</a>
-              <a href="/account/orders/{{ order.public_id }}" class="btn btn-secondary">Открыть заказ</a>
+              {% if has_account_access %}
+                <a href="/songs/status?job={{ latest_song.public_id }}" class="btn btn-primary">Открыть статус генерации</a>
+                <a href="/account/orders/{{ order.public_id }}" class="btn btn-secondary">Открыть заказ</a>
+              {% else %}
+                <a href="/account/login" class="btn btn-primary">Войти по email</a>
+              {% endif %}
             {% elif is_success and latest_song and latest_song.status == "succeeded" %}
-              <a href="/songs/status?job={{ latest_song.public_id }}" class="btn btn-primary">Открыть результат</a>
-              <a href="/account/orders/{{ order.public_id }}" class="btn btn-secondary">Открыть заказ</a>
+              {% if has_account_access %}
+                <a href="/songs/status?job={{ latest_song.public_id }}" class="btn btn-primary">Открыть результат</a>
+                <a href="/account/orders/{{ order.public_id }}" class="btn btn-secondary">Открыть заказ</a>
+              {% else %}
+                <a href="/account/login" class="btn btn-primary">Войти по email</a>
+              {% endif %}
             {% elif is_success and latest_song and latest_song.status == "failed" %}
-              <a href="/account/orders/{{ order.public_id }}" class="btn btn-primary">Открыть заказ</a>
+              {% if has_account_access %}<a href="/account/orders/{{ order.public_id }}" class="btn btn-primary">Открыть заказ</a>{% else %}<a href="/account/login" class="btn btn-primary">Войти по email</a>{% endif %}
             {% elif is_success %}
-              <a href="/account/login" class="btn btn-secondary">Войти в кабинет</a>
-              <a href="/account/orders/{{ order.public_id }}" class="btn btn-primary">Открыть заказ</a>
+              <a href="/account/login" class="btn btn-primary">Войти по email</a>
             {% elif is_pending %}
-              <a href="/checkout/status?payment={{ payment.public_id }}" class="btn btn-secondary">Обновить статус</a>
-              <a href="/account/orders/{{ order.public_id }}" class="btn btn-secondary">Открыть заказ</a>
+              <a href="/checkout/status?payment={{ payment.public_id }}&access={{ checkout_access_token }}" class="btn btn-secondary">Обновить статус</a>
+              {% if has_account_access %}<a href="/account/orders/{{ order.public_id }}" class="btn btn-secondary">Открыть заказ</a>{% else %}<a href="/account/login" class="btn btn-secondary">Войти по email</a>{% endif %}
             {% else %}
               <form method="post" action="/checkout/start/{{ order.public_id }}">
                 <button type="submit" class="btn btn-primary">Попробовать оплатить снова</button>
               </form>
-              <a href="/account/orders/{{ order.public_id }}" class="btn btn-secondary">Вернуться к заказу</a>
+              {% if has_account_access %}<a href="/account/orders/{{ order.public_id }}" class="btn btn-secondary">Вернуться к заказу</a>{% else %}<a href="/account/login" class="btn btn-secondary">Войти по email</a>{% endif %}
             {% endif %}
           </div>
         </aside>
