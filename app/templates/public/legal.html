@@ -9,48 +9,6 @@
       <p class="lead">{{ legal_page.lead }}</p>
     </div>
 
-    {% if show_support_card %}
-      {% include "partials/support_card.html" with context %}
-    {% endif %}
-
-    {% if support_form_enabled %}
-      <div class="form-card" style="margin-bottom: 20px;">
-        <h2 class="form-title">Оставить обращение</h2>
-        {% if support_sent %}
-          <div class="notice notice-success" style="margin-bottom: 12px;">
-            Обращение создано{% if support_thread_public_id %} · номер {{ support_thread_public_id }}{% endif %}. Оно уже видно в операторской админке.
-          </div>
-        {% endif %}
-        {% if support_form_error %}
-          <div class="notice notice-error" style="margin-bottom: 12px;">{{ support_form_error }}</div>
-        {% endif %}
-        <form method="post" action="/support/request">
-          {% if support_detected_order %}
-            <div class="notice" style="margin-bottom: 12px;">
-              Обращение будет привязано к заказу <strong>{{ support_detected_order.order_number }}</strong>.
-            </div>
-          {% endif %}
-          <div class="form-grid form-grid-2">
-            <div>
-              <label class="form-label" for="support-email">Email</label>
-              <input id="support-email" name="email" type="email" class="text-input" value="{{ support_form_email or '' }}" placeholder="client@example.com" required />
-            </div>
-            <div>
-              <label class="form-label" for="support-order-ref">Номер заказа или public id</label>
-              <input id="support-order-ref" name="order_ref" type="text" class="text-input" value="{{ support_form_order_ref or '' }}" placeholder="MM-260319-XXXXXX" />
-            </div>
-          </div>
-          <label class="form-label" for="support-subject">Тема</label>
-          <input id="support-subject" name="subject" type="text" class="text-input" value="{{ support_form_subject or '' }}" placeholder="Например: не пришла готовая песня" />
-          <label class="form-label" for="support-message">Сообщение</label>
-          <textarea id="support-message" name="message_text" class="textarea" rows="6" placeholder="Опишите вопрос, укажите номер заказа, что уже произошло и что нужно проверить." required>{{ support_form_message or '' }}</textarea>
-          <div class="form-actions" style="margin-top: 12px;">
-            <button type="submit" class="btn btn-primary">Отправить обращение</button>
-          </div>
-        </form>
-      </div>
-    {% endif %}
-
     <div class="legal-layout">
       <aside class="legal-side-card">
         <div class="legal-side-kicker">Содержание</div>

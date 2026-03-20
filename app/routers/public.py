@@ -1,14 +1,11 @@
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.db import engine, get_db
 from app.core.templates import templates
-from app.core.storage import save_support_file
-from app.models import Order, OrderEvent, SupportMessage, SupportThread, User
 from app.services.background_jobs import get_redis_connection
-from app.services.telegram_report_service import notify_new_support_thread, telegram_reporting_enabled
 
 router = APIRouter()
 
@@ -512,58 +509,6 @@ FAQ_PAGE = {
     ],
 }
 
-SUPPORT_PAGE = {
-    "page_title": "Поддержка - Magic Music",
-    "meta_description": "Поддержка Magic Music: форма обращения по анкете, кабинету, оплате и готовому заказу.",
-    "eyebrow": "Поддержка",
-    "title": "Связаться с поддержкой Magic Music",
-    "lead": "Если возник вопрос по анкете, кабинету, оплате или готовому заказу, отправьте обращение через форму ниже.",
-    "updated_at": "Актуально на 18.03.2026",
-    "sections": [
-        {
-            "title": "По каким вопросам можно писать",
-            "paragraphs": [
-                "Поддержка помогает по шагам анкеты, доступу в кабинет, оплате, статусу заказа и проблемам с готовым результатом.",
-                "Если что-то непонятно в текущем заказе, лучше написать сразу, чем пытаться пройти сценарий заново."
-            ],
-            "bullet_items": [
-                "не приходит ссылка входа или не открывается кабинет;",
-                "не получается пройти шаг анкеты;",
-                "возник вопрос по оплате или статусу заказа;",
-                "нужно уточнить, где смотреть готовый результат.",
-            ],
-        },
-        {
-            "title": "Что лучше сразу указать в сообщении",
-            "paragraphs": [
-                "Чтобы поддержка быстрее помогла, полезно сразу отправить максимум конкретики по ситуации.",
-            ],
-            "bullet_items": [
-                "email, на который оформлялся заказ;",
-                "ссылку на кабинет или номер заказа, если он уже есть;",
-                "краткое описание проблемы;",
-                "скриншот ошибки, если она отображается на сайте.",
-            ],
-        },
-        {
-            "title": "Как написать в поддержку",
-            "paragraphs": [
-                "Все обращения на этой странице отправляются через встроенную форму поддержки и сразу попадают в операторскую админку.",
-                "Так мы быстрее связываем сообщение с заказом, видим историю обращения и можем точнее проверить статус."
-            ],
-            "bullet_items": [],
-        },
-        {
-            "title": "Где после этого смотреть статус",
-            "paragraphs": [
-                "Если заказ уже сохранён за email, все основные изменения по нему лучше отслеживать в личном кабинете Magic Music.",
-                "Поддержка помогает разобраться в спорных ситуациях, но сам статус заказа и итоговый результат появляются именно в кабинете."
-            ],
-            "bullet_items": [],
-        },
-    ],
-}
-
 def build_public_meta(path: str, page_title: str, meta_description: str) -> dict:
     base_url = settings.BASE_URL.rstrip("/")
     canonical_url = f"{base_url}{path}"
@@ -581,49 +526,6 @@ def build_public_meta(path: str, page_title: str, meta_description: str) -> dict
         "twitter_card": "summary_large_image",
     }
 
-
-def normalize_support_order_ref(value: str | None) -> str:
-    return (value or "").strip()
-
-
-def find_order_for_support(db: Session, order_ref: str | None) -> Order | None:
-    normalized = normalize_support_order_ref(order_ref)
-    if not normalized:
-        return None
-    return db.query(Order).filter((Order.public_id == normalized) | (Order.order_number == normalized)).first()
-
-
-def build_support_template_context(
-    request: Request,
-    *,
-    order_ref: str = "",
-    email: str = "",
-    subject: str = "",
-    message: str = "",
-    error: str | None = None,
-    success: str | None = None,
-    thread_public_id: str | None = None,
-    order: Order | None = None,
-) -> dict:
-    meta = build_public_meta(
-        path=request.url.path,
-        page_title=SUPPORT_PAGE["page_title"],
-        meta_description=SUPPORT_PAGE.get("meta_description", ""),
-    )
-    return {
-        "request": request,
-        "support_page": SUPPORT_PAGE,
-        "support_order_ref": order_ref,
-        "support_email": email,
-        "support_subject": subject,
-        "support_message": message,
-        "support_error": error,
-        "support_success": success,
-        "support_thread_public_id": thread_public_id,
-        "support_order": order,
-        "telegram_reporting_enabled": telegram_reporting_enabled(),
-        **meta,
-    }
 
 def render_screen(request: Request, key: str):
     screen = SCREEN_PAGES[key]
@@ -716,156 +618,13 @@ async def faq_page(request: Request):
 
 
 @router.get("/support", response_class=HTMLResponse)
-async def support_page(
-    request: Request,
-    order: str | None = None,
-    email: str | None = None,
-    subject: str | None = None,
-    message: str | None = None,
-    sent: int = 0,
-    thread: str | None = None,
-    db: Session = Depends(get_db),
-):
-    linked_order = find_order_for_support(db, order)
-    resolved_email = (email or "").strip()
-    if not resolved_email and linked_order and linked_order.user and linked_order.user.email:
-        resolved_email = linked_order.user.email
-    success = None
-    if sent:
-        success = "Обращение отправлено. Мы увидим его в админке и сможем быстро найти заказ."
-    return templates.TemplateResponse(
-        "public/support.html",
-        build_support_template_context(
-            request,
-            order_ref=normalize_support_order_ref(order),
-            email=resolved_email,
-            subject=(subject or "").strip(),
-            message=(message or "").strip(),
-            success=success,
-            thread_public_id=(thread or "").strip() or None,
-            order=linked_order,
-        ),
-    )
+async def support_page():
+    return RedirectResponse(url="/", status_code=303)
 
 
 @router.post("/support", response_class=HTMLResponse)
-async def support_page_submit(
-    request: Request,
-    email: str = Form(""),
-    subject: str = Form(""),
-    message: str = Form(""),
-    order_ref: str = Form(""),
-    attachment: UploadFile | None = File(None),
-    db: Session = Depends(get_db),
-):
-    normalized_email = (email or "").strip().lower()
-    normalized_subject = (subject or "").strip()
-    normalized_message = (message or "").strip()
-    normalized_order_ref = normalize_support_order_ref(order_ref)
-    linked_order = find_order_for_support(db, normalized_order_ref)
-
-    if linked_order and not normalized_email and linked_order.user and linked_order.user.email:
-        normalized_email = linked_order.user.email
-
-    if not normalized_email or "@" not in normalized_email:
-        return templates.TemplateResponse(
-            "public/support.html",
-            build_support_template_context(
-                request,
-                order_ref=normalized_order_ref,
-                email=normalized_email,
-                subject=normalized_subject,
-                message=normalized_message,
-                error="Укажите email, чтобы мы могли связаться с вами по обращению.",
-                order=linked_order,
-            ),
-            status_code=400,
-        )
-
-    if len(normalized_message) < 10:
-        return templates.TemplateResponse(
-            "public/support.html",
-            build_support_template_context(
-                request,
-                order_ref=normalized_order_ref,
-                email=normalized_email,
-                subject=normalized_subject,
-                message=normalized_message,
-                error="Опишите ситуацию чуть подробнее, хотя бы в нескольких словах.",
-                order=linked_order,
-            ),
-            status_code=400,
-        )
-
-    stored_attachment = None
-    if attachment is not None and (attachment.filename or "").strip():
-        try:
-            stored_attachment = save_support_file(attachment)
-        except ValueError as exc:
-            return templates.TemplateResponse(
-                "public/support.html",
-                build_support_template_context(
-                    request,
-                    order_ref=normalized_order_ref,
-                    email=normalized_email,
-                    subject=normalized_subject,
-                    message=normalized_message,
-                    error=str(exc),
-                    order=linked_order,
-                ),
-                status_code=400,
-            )
-
-    linked_user = db.query(User).filter(User.email == normalized_email).first()
-    if linked_order and linked_order.user_id and linked_user is None:
-        linked_user = linked_order.user
-
-    thread = SupportThread(
-        order=linked_order,
-        user=linked_user,
-        email=normalized_email,
-        subject=normalized_subject or None,
-        status="new",
-        source="site",
-    )
-    thread.messages.append(
-        SupportMessage(
-            sender_role="user",
-            body=normalized_message,
-            attachment_original_filename=stored_attachment.original_filename if stored_attachment else None,
-            attachment_content_type=stored_attachment.content_type if stored_attachment else None,
-            attachment_size_bytes=stored_attachment.size_bytes if stored_attachment else None,
-            attachment_relative_path=stored_attachment.relative_path if stored_attachment else None,
-            attachment_storage_backend=stored_attachment.storage_backend if stored_attachment else None,
-            attachment_storage_bucket=stored_attachment.storage_bucket if stored_attachment else None,
-            attachment_storage_key=stored_attachment.storage_key if stored_attachment else None,
-            is_internal=False,
-        )
-    )
-    db.add(thread)
-    db.flush()
-
-    if linked_order is not None:
-        db.add(
-            OrderEvent(
-                order=linked_order,
-                event_type="support_thread_created",
-                payload={
-                    "thread_public_id": thread.public_id,
-                    "source": "site",
-                    "email": normalized_email,
-                },
-            )
-        )
-
-    db.commit()
-
-    notify_new_support_thread(thread, thread.messages[0])
-    redirect_url = request.url_for("support_page")
-    params = ["sent=1", f"thread={thread.public_id}"]
-    if normalized_order_ref:
-        params.append(f"order={normalized_order_ref}")
-    return RedirectResponse(url=f"{redirect_url}?{'&'.join(params)}", status_code=303)
+async def support_page_submit():
+    return RedirectResponse(url="/", status_code=303)
 
 
 @router.get("/robots.txt", response_class=PlainTextResponse)
@@ -894,7 +653,6 @@ async def sitemap_xml():
         f"{base_url}/offer",
         f"{base_url}/policy",
         f"{base_url}/faq",
-        f"{base_url}/support",
     ]
     xml = (
         '<?xml version="1.0" encoding="UTF-8"?>'

@@ -30,7 +30,7 @@
 </head>
 {% set path = request.url.path %}
 {% set is_marketing_screen = path in ['/', '/portfolio', '/how-it-works', '/reviews'] %}
-{% set is_legal_screen = path in ['/offer', '/policy', '/faq', '/support'] %}
+{% set is_legal_screen = path in ['/offer', '/policy', '/faq'] %}
 {% set is_questionnaire_screen = path.startswith('/questionnaire') %}
 {% set is_checkout_screen = path.startswith('/checkout') %}
 {% set is_account_screen = path.startswith('/account') %}
@@ -75,7 +75,6 @@
         <a class="footer-legal-btn {% if path == '/offer' %}is-active{% endif %}" href="/offer">Оферта</a>
         <a class="footer-legal-btn {% if path == '/policy' %}is-active{% endif %}" href="/policy">Политика</a>
         <a class="footer-legal-btn {% if path == '/faq' %}is-active{% endif %}" href="/faq">FAQ</a>
-        <a class="footer-legal-btn {% if path == '/support' %}is-active{% endif %}" href="/support">Поддержка</a>
       </div>
     </div>
   </footer>
@@ -99,6 +98,10 @@
     <div><img src="https://mc.yandex.ru/watch/{{ settings.METRICA_COUNTER_ID }}" style="position:absolute; left:-9999px;" alt="" /></div>
   </noscript>
   {% endif %}
+
+  <div style="position: fixed; right: max(16px, calc(env(safe-area-inset-right, 0px) + 16px)); bottom: max(16px, calc(env(safe-area-inset-bottom, 0px) + 16px)); z-index: 9999;">
+    <script data-b24-form="click/14/gh9ru2" data-skip-moving="true">(function(w,d,u){var s=d.createElement('script');s.async=true;s.src=u+'?'+(Date.now()/180000|0);var h=d.getElementsByTagName('script')[0];h.parentNode.insertBefore(s,h);})(window,document,'https://cdn-ru.bitrix24.ru/b5781715/crm/form/loader_14.js');</script>
+  </div>
 
   <script src="/static/js/app.js?v=12668a"></script>
 </body>

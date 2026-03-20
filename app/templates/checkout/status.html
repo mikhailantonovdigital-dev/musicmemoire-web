@@ -36,12 +36,6 @@
         </div>
       {% endif %}
 
-      {% if error or is_canceled or (latest_song and latest_song.status == "failed") %}
-        <div style="margin-top: 20px;">
-          {% include "partials/support_card.html" with context %}
-        </div>
-      {% endif %}
-
       {% if error %}
         <div class="notice notice-error">{{ error }}</div>
       {% endif %}
@@ -100,7 +94,6 @@
               <a href="/account/orders/{{ order.public_id }}" class="btn btn-secondary">Открыть заказ</a>
             {% elif is_success and latest_song and latest_song.status == "failed" %}
               <a href="/account/orders/{{ order.public_id }}" class="btn btn-primary">Открыть заказ</a>
-              <a href="/support?order={{ order.public_id }}" class="btn btn-secondary">Поддержка</a>
             {% elif is_success %}
               <a href="/account/login" class="btn btn-secondary">Войти в кабинет</a>
               <a href="/account/orders/{{ order.public_id }}" class="btn btn-primary">Открыть заказ</a>

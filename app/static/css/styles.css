@@ -3241,6 +3241,7 @@ strong,
 @media (max-width: 680px) {
   .page-home .hero-home-photo {
     padding-top: 118px;
+    padding-bottom: 46px;
     margin-bottom: -14px;
   }
 
@@ -5402,7 +5403,7 @@ strong,
 
 @media (max-width: 640px) {
   .questionnaire-stage {
-    padding-top: 92px;
+    padding-top: 46px;
     padding-bottom: 68px;
   }
 
@@ -6179,6 +6180,15 @@ strong,
 
 /* ===== 2026-03-19 checkout mobile chrome parity ===== */
 @media (max-width: 640px) {
+  .site-footer-minimal {
+    bottom: 9px;
+    padding-bottom: 9px;
+  }
+
+  .page-marketing-screen .hero-screen {
+    padding-bottom: 36px;
+  }
+
   .page-checkout-screen {
     overflow-x: hidden;
     overflow-y: auto;
