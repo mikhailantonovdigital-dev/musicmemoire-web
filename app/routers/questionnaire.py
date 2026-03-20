@@ -41,6 +41,7 @@ router = APIRouter(prefix="/questionnaire", tags=["questionnaire"])
 ALLOWED_STORY_SOURCES = {"text", "voice"}
 ALLOWED_LYRICS_MODES = {"generate", "custom"}
 ALLOWED_SONG_STYLES = {"pop", "rap", "rock", "chanson", "indie", "multi", "custom"}
+ALLOWED_SONG_MOODS = {"romantic", "uplifting", "nostalgic", "dramatic", "party"}
 ALLOWED_SINGER_GENDERS = {"male", "female"}
 LYRICS_GENERATION_DAILY_LIMIT = 3
 
@@ -1116,6 +1117,79 @@ async def questionnaire_style_submit(
     db.commit()
 
     return RedirectResponse(
+        url=request.url_for("questionnaire_mood"),
+        status_code=303,
+    )
+
+
+@router.get("/mood", response_class=HTMLResponse)
+async def questionnaire_mood(request: Request, db: Session = Depends(get_db)):
+    draft = get_current_draft(db, request)
+    if draft is None:
+        return RedirectResponse(url=request.url_for("questionnaire_start"), status_code=303)
+
+    if not (draft.final_lyrics_text or "").strip():
+        if draft.lyrics_mode == "custom":
+            return RedirectResponse(url=request.url_for("questionnaire_custom_text"), status_code=303)
+        return RedirectResponse(url=request.url_for("questionnaire_lyrics"), status_code=303)
+
+    if not (draft.song_style or "").strip():
+        return RedirectResponse(url=request.url_for("questionnaire_style"), status_code=303)
+
+    return templates.TemplateResponse(
+        "questionnaire/mood.html",
+        {
+            "request": request,
+            "page_title": "Анкета — настроение песни",
+            "draft": draft,
+            "error": None,
+        },
+    )
+
+
+@router.post("/mood", response_class=HTMLResponse)
+async def questionnaire_mood_submit(
+    request: Request,
+    song_mood: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    draft = get_current_draft(db, request)
+    if draft is None:
+        return RedirectResponse(url=request.url_for("questionnaire_start"), status_code=303)
+
+    if not (draft.final_lyrics_text or "").strip():
+        if draft.lyrics_mode == "custom":
+            return RedirectResponse(url=request.url_for("questionnaire_custom_text"), status_code=303)
+        return RedirectResponse(url=request.url_for("questionnaire_lyrics"), status_code=303)
+
+    if not (draft.song_style or "").strip():
+        return RedirectResponse(url=request.url_for("questionnaire_style"), status_code=303)
+
+    song_mood = song_mood.strip().lower()
+    if song_mood not in ALLOWED_SONG_MOODS:
+        return templates.TemplateResponse(
+            "questionnaire/mood.html",
+            {
+                "request": request,
+                "page_title": "Анкета — настроение песни",
+                "draft": draft,
+                "error": "Выбери настроение песни.",
+                "form_song_mood": song_mood,
+            },
+            status_code=400,
+        )
+
+    draft.song_mood = song_mood
+    db.add(
+        OrderEvent(
+            order=draft,
+            event_type="song_mood_selected",
+            payload={"song_mood": song_mood},
+        )
+    )
+    db.commit()
+
+    return RedirectResponse(
         url=request.url_for("questionnaire_singer"),
         status_code=303,
     )
@@ -1164,6 +1238,9 @@ async def questionnaire_singer_submit(
     if not (draft.song_style or "").strip():
         return RedirectResponse(url=request.url_for("questionnaire_style"), status_code=303)
 
+    if not (draft.song_mood or "").strip():
+        return RedirectResponse(url=request.url_for("questionnaire_mood"), status_code=303)
+
     singer_gender = singer_gender.strip().lower()
 
     if singer_gender not in ALLOWED_SINGER_GENDERS:
@@ -1185,7 +1262,7 @@ async def questionnaire_singer_submit(
         OrderEvent(
             order=draft,
             event_type="singer_gender_selected",
-            payload={"singer_gender": singer_gender},
+            payload={"singer_gender": singer_gender, "song_mood": draft.song_mood},
         )
     )
     db.commit()
