@@ -1,11 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from urllib.parse import urlencode
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.db import engine, get_db
 from app.core.templates import templates
+from app.core.storage import StorageError, save_support_file
+from app.models import Order, OrderEvent, SupportMessage, SupportThread, User
 from app.services.background_jobs import get_redis_connection
+from app.services.telegram_report_service import notify_new_support_thread, telegram_reporting_enabled
 
 router = APIRouter()
 
@@ -509,6 +515,58 @@ FAQ_PAGE = {
     ],
 }
 
+SUPPORT_PAGE = {
+    "page_title": "Поддержка - Magic Music",
+    "meta_description": "Поддержка Magic Music: форма обращения по анкете, кабинету, оплате и готовому заказу.",
+    "eyebrow": "Поддержка",
+    "title": "Связаться с поддержкой Magic Music",
+    "lead": "Если возник вопрос по анкете, кабинету, оплате или готовому заказу, отправьте обращение через форму ниже.",
+    "updated_at": "Актуально на 18.03.2026",
+    "sections": [
+        {
+            "title": "По каким вопросам можно писать",
+            "paragraphs": [
+                "Поддержка помогает по шагам анкеты, доступу в кабинет, оплате, статусу заказа и проблемам с готовым результатом.",
+                "Если что-то непонятно в текущем заказе, лучше написать сразу, чем пытаться пройти сценарий заново."
+            ],
+            "bullet_items": [
+                "не приходит ссылка входа или не открывается кабинет;",
+                "не получается пройти шаг анкеты;",
+                "возник вопрос по оплате или статусу заказа;",
+                "нужно уточнить, где смотреть готовый результат.",
+            ],
+        },
+        {
+            "title": "Что лучше сразу указать в сообщении",
+            "paragraphs": [
+                "Чтобы поддержка быстрее помогла, полезно сразу отправить максимум конкретики по ситуации.",
+            ],
+            "bullet_items": [
+                "email, на который оформлялся заказ;",
+                "ссылку на кабинет или номер заказа, если он уже есть;",
+                "краткое описание проблемы;",
+                "скриншот ошибки, если она отображается на сайте.",
+            ],
+        },
+        {
+            "title": "Как написать в поддержку",
+            "paragraphs": [
+                "Все обращения на этой странице отправляются через встроенную форму поддержки и сразу попадают в операторскую админку.",
+                "Так мы быстрее связываем сообщение с заказом, видим историю обращения и можем точнее проверить статус."
+            ],
+            "bullet_items": [],
+        },
+        {
+            "title": "Где после этого смотреть статус",
+            "paragraphs": [
+                "Если заказ уже сохранён за email, все основные изменения по нему лучше отслеживать в личном кабинете Magic Music.",
+                "Поддержка помогает разобраться в спорных ситуациях, но сам статус заказа и итоговый результат появляются именно в кабинете."
+            ],
+            "bullet_items": [],
+        },
+    ],
+}
+
 def build_public_meta(path: str, page_title: str, meta_description: str) -> dict:
     base_url = settings.BASE_URL.rstrip("/")
     canonical_url = f"{base_url}{path}"
@@ -526,6 +584,49 @@ def build_public_meta(path: str, page_title: str, meta_description: str) -> dict
         "twitter_card": "summary_large_image",
     }
 
+
+def normalize_support_order_ref(value: str | None) -> str:
+    return (value or "").strip()
+
+
+def find_order_for_support(db: Session, order_ref: str | None) -> Order | None:
+    normalized = normalize_support_order_ref(order_ref)
+    if not normalized:
+        return None
+    return db.query(Order).filter((Order.public_id == normalized) | (Order.order_number == normalized)).first()
+
+
+def build_support_template_context(
+    request: Request,
+    *,
+    order_ref: str = "",
+    email: str = "",
+    subject: str = "",
+    message: str = "",
+    error: str | None = None,
+    success: str | None = None,
+    thread_public_id: str | None = None,
+    order: Order | None = None,
+) -> dict:
+    meta = build_public_meta(
+        path=request.url.path,
+        page_title=SUPPORT_PAGE["page_title"],
+        meta_description=SUPPORT_PAGE.get("meta_description", ""),
+    )
+    return {
+        "request": request,
+        "support_page": SUPPORT_PAGE,
+        "support_order_ref": order_ref,
+        "support_email": email,
+        "support_subject": subject,
+        "support_message": message,
+        "support_error": error,
+        "support_success": success,
+        "support_thread_public_id": thread_public_id,
+        "support_order": order,
+        "telegram_reporting_enabled": telegram_reporting_enabled(),
+        **meta,
+    }
 
 def render_screen(request: Request, key: str):
     screen = SCREEN_PAGES[key]

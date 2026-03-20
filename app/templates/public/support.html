@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="legal-screen">
+  <div class="container legal-shell">
+    <div class="legal-hero-card">
+      <p class="eyebrow hero-eyebrow-thin">{{ support_page.eyebrow }}</p>
+      <h1>{{ support_page.title }}</h1>
+      <p class="lead">{{ support_page.lead }}</p>
+    </div>
+
+    {% if support_success %}
+      <div class="notice notice-success">{{ support_success }}{% if support_thread_public_id %} Номер обращения: <strong>{{ support_thread_public_id }}</strong>.{% endif %}</div>
+    {% endif %}
+    {% if support_error %}
+      <div class="notice notice-error">{{ support_error }}</div>
+    {% endif %}
+
+    <div class="legal-main-card legal-main-card-single">
+      <section class="legal-section" id="support-form">
+        <h2>Написать в поддержку</h2>
+        <p>Опишите вопрос в форме ниже. Если у вас уже есть заказ, сразу укажите номер заказа — так мы быстрее найдём кейс и проверим статус.</p>
+        {% if support_order %}
+          <div class="notice" style="margin-bottom: 16px;">
+            Обращение будет привязано к заказу <strong>{{ support_order.order_number }}</strong>.
+          </div>
+        {% endif %}
+        <form class="form-card" method="post" action="/support" enctype="multipart/form-data" style="margin-top: 16px;">
+          <label class="form-label" for="support-order-ref">
+            Номер заказа
+            <a href="/account/" target="_blank" rel="noopener" class="support-inline-link">Где взять номер заказа?</a>
+          </label>
+          <input id="support-order-ref" name="order_ref" type="text" class="text-input" value="{{ support_order_ref }}" placeholder="Например: MM-260319-ABC123" />
+
+          <label class="form-label" for="support-email" style="margin-top: 14px;">Email</label>
+          <input id="support-email" name="email" type="email" class="text-input" value="{{ support_email }}" placeholder="client@example.com" required />
+
+          <label class="form-label" for="support-subject" style="margin-top: 14px;">Тема</label>
+          <input id="support-subject" name="subject" type="text" class="text-input" value="{{ support_subject }}" placeholder="Например: не пришла песня или не открывается кабинет" />
+
+          <label class="form-label" for="support-message" style="margin-top: 14px;">Сообщение</label>
+          <textarea id="support-message" name="message" class="textarea" rows="8" placeholder="Опишите, что произошло и на каком шаге возникла проблема." required>{{ support_message }}</textarea>
+
+          <label class="form-label" for="support-attachment" style="margin-top: 14px;">Скриншот ошибки (необязательно)</label>
+          <input id="support-attachment" name="attachment" type="file" class="text-input" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" />
+
+          <div class="form-actions" style="margin-top: 16px;">
+            <button type="submit" class="btn btn-primary">Отправить обращение</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="legal-section" id="support-details">
+        <h2>Что указать сразу</h2>
+        <ul class="legal-list">
+          <li>email, на который оформлялся заказ;</li>
+          <li>номер заказа, если он уже есть;</li>
+          <li>краткое описание проблемы и шаг, на котором она возникла;</li>
+          <li>скриншот ошибки, если она видна на экране.</li>
+        </ul>
+      </section>
+    </div>
+
+  </div>
+</section>
+{% endblock %}
