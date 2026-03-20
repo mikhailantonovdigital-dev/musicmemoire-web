@@ -57,6 +57,9 @@ def run_bootstrap_migrations() -> None:
             if "final_lyrics_text" not in order_columns:
                 conn.execute(text("ALTER TABLE orders ADD COLUMN final_lyrics_text TEXT"))
 
+            if "title" not in order_columns:
+                conn.execute(text("ALTER TABLE orders ADD COLUMN title VARCHAR(255)"))
+
             if "song_style" not in order_columns:
                 conn.execute(text("ALTER TABLE orders ADD COLUMN song_style VARCHAR(32)"))
 
@@ -65,6 +68,9 @@ def run_bootstrap_migrations() -> None:
 
             if "singer_gender" not in order_columns:
                 conn.execute(text("ALTER TABLE orders ADD COLUMN singer_gender VARCHAR(16)"))
+
+            if "song_mood" not in order_columns:
+                conn.execute(text("ALTER TABLE orders ADD COLUMN song_mood VARCHAR(32)"))
 
     if "song_generations" in inspector.get_table_names():
         song_columns = {col["name"] for col in inspector.get_columns("song_generations")}
