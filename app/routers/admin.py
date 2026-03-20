@@ -14,7 +14,7 @@ from app.core.security import utcnow
 from app.core.storage import StorageError, ensure_support_attachment_local_path, ensure_voice_input_local_path, object_storage_enabled
 from app.core.templates import templates
 from app.models import BackgroundJob, EmailLog, LyricsVersion, Order, OrderEvent, OrderPayment, SecurityEvent, SongGeneration, SupportMessage, SupportThread, User, VoiceInput
-from app.models.order_payment import build_order_pricing_preview
+from app.models.order_payment import build_order_pricing_preview, payment_success_at_expr
 from app.services.payment_workflow import resend_payment_success_email, sync_payment_with_remote
 from app.services.song_workflow import (
     RUNNING_SONG_STATUSES,
@@ -511,7 +511,8 @@ async def admin_dashboard(
     new_users_today = db.query(func.count(User.id)).filter(User.created_at >= day_start_utc, User.created_at < day_end_utc).scalar() or 0
     total_users = db.query(func.count(User.id)).scalar() or 0
     orders_today = db.query(func.count(Order.id)).filter(Order.created_at >= day_start_utc, Order.created_at < day_end_utc).scalar() or 0
-    successful_payments_today = db.query(func.count(OrderPayment.id)).filter(OrderPayment.status == "succeeded", OrderPayment.paid_at >= day_start_utc, OrderPayment.paid_at < day_end_utc).scalar() or 0
+    payment_success_at = payment_success_at_expr()
+    successful_payments_today = db.query(func.count(OrderPayment.id)).filter(OrderPayment.status == "succeeded", payment_success_at >= day_start_utc, payment_success_at < day_end_utc).scalar() or 0
     songs_ready_today = db.query(func.count(SongGeneration.id)).filter(SongGeneration.status == "succeeded", SongGeneration.finished_at >= day_start_utc, SongGeneration.finished_at < day_end_utc).scalar() or 0
     song_errors_today = db.query(func.count(SongGeneration.id)).filter(SongGeneration.status == "failed", SongGeneration.updated_at >= day_start_utc, SongGeneration.updated_at < day_end_utc).scalar() or 0
     pending_payments = db.query(func.count(OrderPayment.id)).filter(OrderPayment.status.in_(["pending", "waiting_for_capture"])).scalar() or 0

@@ -78,6 +78,20 @@ def run_bootstrap_migrations() -> None:
         with engine.begin() as conn:
             if "result_tracks" not in song_columns:
                 conn.execute(text("ALTER TABLE song_generations ADD COLUMN result_tracks JSON"))
+    if "order_payments" in inspector.get_table_names():
+        payment_columns = {col["name"] for col in inspector.get_columns("order_payments")}
+
+        with engine.begin() as conn:
+            if "paid_at" not in payment_columns:
+                conn.execute(text("ALTER TABLE order_payments ADD COLUMN paid_at TIMESTAMP WITH TIME ZONE"))
+
+            conn.execute(text("""
+                UPDATE order_payments
+                SET paid_at = COALESCE(updated_at, created_at)
+                WHERE status = 'succeeded' AND paid_at IS NULL
+            """))
+
+
 
     if "voice_inputs" in inspector.get_table_names():
         voice_columns = {col["name"] for col in inspector.get_columns("voice_inputs")}

@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models import Order, OrderPayment, User
+from app.models.order_payment import payment_success_at_expr
 from app.models.support_thread import SupportMessage, SupportThread
 
 
@@ -144,7 +145,8 @@ def build_daily_metrics_report(db: Session) -> str:
     orders_today = db.query(func.count(Order.id)).filter(Order.created_at >= start_utc, Order.created_at < end_utc).scalar() or 0
     users_today = db.query(func.count(User.id)).filter(User.created_at >= start_utc, User.created_at < end_utc).scalar() or 0
     total_users = db.query(func.count(User.id)).scalar() or 0
-    payments_today = db.query(OrderPayment).filter(OrderPayment.status == "succeeded", OrderPayment.paid_at.is_not(None), OrderPayment.paid_at >= start_utc, OrderPayment.paid_at < end_utc).all()
+    payment_success_at = payment_success_at_expr()
+    payments_today = db.query(OrderPayment).filter(OrderPayment.status == "succeeded", payment_success_at >= start_utc, payment_success_at < end_utc).all()
     successful_payments_today = len(payments_today)
     payments_sum_today = sum(item.final_amount_rub for item in payments_today)
 
