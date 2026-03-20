@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.db import get_db
-from app.core.security import get_session_user
+from app.core.security import build_checkout_access_token, get_session_user, is_valid_checkout_access_token
 from app.core.templates import templates
 from app.models import Order, OrderEvent, OrderPayment
 from app.models.order_payment import build_order_pricing_preview
@@ -43,10 +43,14 @@ def get_checkout_payment(request: Request, db: Session, payment_public_id: str) 
     if payment is None:
         return None
 
-    if get_checkout_order(request, db, payment.order.public_id) is None:
-        return None
+    if get_checkout_order(request, db, payment.order.public_id) is not None:
+        return payment
 
-    return payment
+    access_token = (request.query_params.get("access") or "").strip()
+    if is_valid_checkout_access_token(payment.public_id, access_token):
+        return payment
+
+    return None
 
 
 def humanize_payment_status(status: str | None) -> str:
@@ -118,9 +122,10 @@ async def _checkout_start(order_public_id: str, request: Request, db: Session):
     db.add(payment)
     db.flush()
 
+    access_token = build_checkout_access_token(payment.public_id)
     return_url = (
-        f"{settings.BASE_URL.rstrip('/')}/account/orders/{order.public_id}"
-        f"?welcome=1&delivery=payment_success&refresh_payment=1"
+        f"{settings.BASE_URL.rstrip('/')}/checkout/status?payment={payment.public_id}"
+        f"&access={access_token}"
     )
     payment.return_url = return_url
 
@@ -199,7 +204,7 @@ async def _checkout_start(order_public_id: str, request: Request, db: Session):
 
     if payment.status == "succeeded":
         return RedirectResponse(
-            url=f"/account/orders/{order.public_id}?welcome=1&delivery=payment_success&refresh_payment=1",
+            url=f"/checkout/status?payment={payment.public_id}&access={build_checkout_access_token(payment.public_id)}",
             status_code=303,
         )
 
@@ -264,10 +269,6 @@ async def checkout_status(payment: str, request: Request, db: Session = Depends(
         )
         db.commit()
         db.refresh(payment_obj)
-        return RedirectResponse(
-            url=f"/account/orders/{payment_obj.order.public_id}?welcome=1&delivery=payment_success&refresh_payment=1",
-            status_code=303,
-        )
 
     latest_song = get_latest_song(payment_obj.order)
 
@@ -286,6 +287,8 @@ async def checkout_status(payment: str, request: Request, db: Session = Depends(
             "is_canceled": payment_obj.status == "canceled",
             "error": status_sync_error,
             "metrica_counter_id": settings.METRICA_COUNTER_ID,
+            "checkout_access_token": build_checkout_access_token(payment_obj.public_id),
+            "has_account_access": get_checkout_order(request, db, payment_obj.order.public_id) is not None,
             **build_payment_template_context(payment_obj),
         },
     )

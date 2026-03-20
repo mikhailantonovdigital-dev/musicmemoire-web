@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import re
 import secrets
 from datetime import datetime, timezone
@@ -26,6 +27,24 @@ def generate_magic_token() -> str:
 def hash_magic_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
+
+
+
+def build_checkout_access_token(payment_public_id: str) -> str:
+    from app.core.config import settings
+
+    return hmac.new(
+        settings.SESSION_SECRET.encode("utf-8"),
+        payment_public_id.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+
+
+def is_valid_checkout_access_token(payment_public_id: str, token: str | None) -> bool:
+    if not token:
+        return False
+    expected = build_checkout_access_token(payment_public_id)
+    return hmac.compare_digest(expected, token.strip())
 
 def normalize_email(value: str) -> str:
     return value.strip().lower()

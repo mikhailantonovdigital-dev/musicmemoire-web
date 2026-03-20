@@ -8,7 +8,7 @@
         <p class="eyebrow">Заказ</p>
         <h1 class="account-order-number">{{ order.order_number }}</h1>
         {% if welcome %}
-          <p class="questionnaire-stage-lead">
+          <p class="questionnaire-stage-lead" id="order-welcome-message">
             {% if playback_song and (playback_song.audio_variants or playback_song.audio_url) %}
               Ваша песня готова в двух вариантах. Послушайте оба, и выберите лучший. Или заберите оба 💖
             {% elif welcome_delivery == "payment_success" %}
@@ -47,6 +47,18 @@
   (function () {
     var pollHandle = null;
 
+    function syncWelcomeMessage(container) {
+      var messageNode = document.getElementById("order-welcome-message");
+      if (!messageNode || !container) {
+        return;
+      }
+
+      var nextMessage = (container.dataset.welcomeMessage || "").trim();
+      if (nextMessage) {
+        messageNode.textContent = nextMessage;
+      }
+    }
+
     function scheduleNextPoll() {
       window.clearTimeout(pollHandle);
       pollHandle = window.setTimeout(runPoll, 5000);
@@ -73,6 +85,7 @@
         .then(function (html) {
           container.outerHTML = html;
           var updatedContainer = document.getElementById("order-song-panel-root");
+          syncWelcomeMessage(updatedContainer);
           if (updatedContainer && updatedContainer.dataset.songRunning === "true") {
             scheduleNextPoll();
           }
@@ -82,7 +95,9 @@
         });
     }
 
-    if (document.getElementById("order-song-panel-root")?.dataset.songRunning === "true") {
+    var initialContainer = document.getElementById("order-song-panel-root");
+    syncWelcomeMessage(initialContainer);
+    if (initialContainer && initialContainer.dataset.songRunning === "true") {
       scheduleNextPoll();
     }
   })();
