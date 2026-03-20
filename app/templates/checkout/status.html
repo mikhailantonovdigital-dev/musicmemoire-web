@@ -131,11 +131,7 @@
       }
 
       if (typeof window.ym === "function") {
-        window.ym({{ metrica_counter_id }}, "reachGoal", "payment_success", {
-          order_number: "{{ order.order_number }}",
-          amount: {{ price_rub }},
-          currency: "RUB"
-        });
+        window.ym({{ metrica_counter_id }}, "reachGoal", "payment_success");
         window.sessionStorage.setItem(goalKey, "1");
         return;
       }
