@@ -70,6 +70,46 @@ def send_telegram_message(*, chat_id: int | str, text: str, reply_markup: dict |
     return TelegramReportResult(ok=True, detail="Отчёт отправлен в Telegram.")
 
 
+def telegram_webhook_url() -> str:
+    return f"{settings.BASE_URL.rstrip('/')}/telegram/webhook"
+
+
+def register_telegram_webhook() -> TelegramReportResult:
+    bot_token = (settings.TELEGRAM_BOT_TOKEN or "").strip()
+    webhook_secret = (settings.TELEGRAM_BOT_WEBHOOK_SECRET or "").strip()
+    if not bot_token:
+        return TelegramReportResult(ok=False, detail="TELEGRAM_BOT_TOKEN не задан.")
+
+    payload_dict: dict[str, str] = {"url": telegram_webhook_url()}
+    if webhook_secret:
+        payload_dict["secret_token"] = webhook_secret
+
+    payload = json.dumps(payload_dict).encode("utf-8")
+    req = request.Request(
+        url=f"{TELEGRAM_API_BASE}/bot{bot_token}/setWebhook",
+        data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with request.urlopen(req, timeout=15) as response:
+            raw = response.read().decode("utf-8")
+    except error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="ignore")
+        return TelegramReportResult(ok=False, detail=f"HTTP {exc.code}: {detail or exc.reason}")
+    except error.URLError as exc:
+        return TelegramReportResult(ok=False, detail=f"Ошибка сети: {exc.reason}")
+
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError:
+        return TelegramReportResult(ok=False, detail="Telegram вернул некорректный JSON.")
+
+    if not parsed.get("ok"):
+        return TelegramReportResult(ok=False, detail=str(parsed.get("description") or "Не удалось зарегистрировать webhook Telegram."))
+    return TelegramReportResult(ok=True, detail=f"Webhook Telegram зарегистрирован: {payload_dict['url']}")
+
+
 def send_telegram_report(text: str) -> TelegramReportResult:
     chat_id = (settings.TELEGRAM_REPORT_CHAT_ID or "").strip()
     if not chat_id:
