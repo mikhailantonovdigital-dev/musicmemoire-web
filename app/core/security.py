@@ -46,6 +46,18 @@ def is_valid_checkout_access_token(payment_public_id: str, token: str | None) ->
     expected = build_checkout_access_token(payment_public_id)
     return hmac.compare_digest(expected, token.strip())
 
+
+def request_checkout_access_token(request: Request) -> str:
+    return (request.query_params.get("access") or "").strip()
+
+
+def order_has_checkout_access(order, token: str | None) -> bool:
+    if not token:
+        return False
+
+    payments = getattr(order, "payments", None) or []
+    return any(is_valid_checkout_access_token(payment.public_id, token) for payment in payments if getattr(payment, "public_id", None))
+
 def normalize_email(value: str) -> str:
     return value.strip().lower()
 

@@ -14,6 +14,8 @@ from app.core.security import (
     hash_magic_token,
     is_valid_email,
     normalize_email,
+    order_has_checkout_access,
+    request_checkout_access_token,
     utcnow,
 )
 from app.core.templates import templates
@@ -153,6 +155,8 @@ def build_order_detail_context(request: Request, db: Session, order: Order, late
     has_previous_ready_song = bool(playback_song and latest_song and playback_song.public_id != latest_song.public_id)
     song_profile = build_song_profile(order)
     pricing = get_order_pricing_context(db, order)
+    checkout_access_token = request_checkout_access_token(request)
+    has_checkout_access = order_has_checkout_access(order, checkout_access_token)
 
     return {
         "request": request,
@@ -182,6 +186,8 @@ def build_order_detail_context(request: Request, db: Session, order: Order, late
         "welcome_delivery": delivery,
         "song_sync_error": song_sync_error,
         "metrica_counter_id": settings.METRICA_COUNTER_ID,
+        "checkout_access_token": checkout_access_token,
+        "has_checkout_access": has_checkout_access,
     }
 
 
@@ -476,19 +482,20 @@ async def account_order_detail(
     db: Session = Depends(get_db),
 ):
     user = get_session_user(request, db)
-    if user is None:
-        return RedirectResponse(url=request.url_for("account_login_page"), status_code=303)
+    checkout_access_token = request_checkout_access_token(request)
 
-    order = (
-        db.query(Order)
-        .filter(
-            Order.public_id == order_public_id,
-            Order.user_id == user.id,
-        )
-        .first()
-    )
-
+    order = db.query(Order).filter(Order.public_id == order_public_id).first()
     if order is None:
+        if user is None:
+            return RedirectResponse(url=request.url_for("account_login_page"), status_code=303)
+        return RedirectResponse(url=request.url_for("account_dashboard"), status_code=303)
+
+    has_user_access = user is not None and order.user_id == user.id
+    has_checkout_access = order_has_checkout_access(order, checkout_access_token)
+    if not has_user_access and not has_checkout_access:
+        if user is None:
+            login_url = f"{request.url_for('account_login_page')}?next=/account/orders/{order_public_id}"
+            return RedirectResponse(url=login_url, status_code=303)
         return RedirectResponse(url=request.url_for("account_dashboard"), status_code=303)
 
     latest_payment = get_latest_payment(order)
@@ -506,15 +513,10 @@ async def account_order_detail(
             latest_payment = get_latest_payment(order)
         except Exception:
             db.rollback()
-            order = (
-                db.query(Order)
-                .filter(
-                    Order.public_id == order_public_id,
-                    Order.user_id == user.id,
-                )
-                .first()
-            )
-            if order is None:
+            order = db.query(Order).filter(Order.public_id == order_public_id).first()
+            if order is None or not (has_user_access or order_has_checkout_access(order, checkout_access_token)):
+                if user is None:
+                    return RedirectResponse(url=request.url_for("account_login_page"), status_code=303)
                 return RedirectResponse(url=request.url_for("account_dashboard"), status_code=303)
             latest_payment = get_latest_payment(order)
     latest_song = get_latest_song(order)
@@ -528,15 +530,10 @@ async def account_order_detail(
         except SunoServiceError as exc:
             song_sync_error = str(exc)
             db.rollback()
-            order = (
-                db.query(Order)
-                .filter(
-                    Order.public_id == order_public_id,
-                    Order.user_id == user.id,
-                )
-                .first()
-            )
-            if order is None:
+            order = db.query(Order).filter(Order.public_id == order_public_id).first()
+            if order is None or not (has_user_access or order_has_checkout_access(order, checkout_access_token)):
+                if user is None:
+                    return RedirectResponse(url=request.url_for("account_login_page"), status_code=303)
                 return RedirectResponse(url=request.url_for("account_dashboard"), status_code=303)
             latest_song = get_latest_song(order)
 
@@ -564,19 +561,15 @@ async def account_order_song_panel(
     db: Session = Depends(get_db),
 ):
     user = get_session_user(request, db)
-    if user is None:
-        raise HTTPException(status_code=403, detail="Требуется авторизация.")
-
-    order = (
-        db.query(Order)
-        .filter(
-            Order.public_id == order_public_id,
-            Order.user_id == user.id,
-        )
-        .first()
-    )
+    checkout_access_token = request_checkout_access_token(request)
+    order = db.query(Order).filter(Order.public_id == order_public_id).first()
     if order is None:
         raise HTTPException(status_code=404, detail="Заказ не найден.")
+
+    has_user_access = user is not None and order.user_id == user.id
+    has_checkout_access = order_has_checkout_access(order, checkout_access_token)
+    if not has_user_access and not has_checkout_access:
+        raise HTTPException(status_code=403, detail="Требуется авторизация.")
 
     latest_payment = get_latest_payment(order)
     latest_song = get_latest_song(order)
@@ -590,15 +583,8 @@ async def account_order_song_panel(
         except SunoServiceError as exc:
             song_sync_error = str(exc)
             db.rollback()
-            order = (
-                db.query(Order)
-                .filter(
-                    Order.public_id == order_public_id,
-                    Order.user_id == user.id,
-                )
-                .first()
-            )
-            if order is None:
+            order = db.query(Order).filter(Order.public_id == order_public_id).first()
+            if order is None or not (has_user_access or order_has_checkout_access(order, checkout_access_token)):
                 raise HTTPException(status_code=404, detail="Заказ не найден.")
             latest_payment = get_latest_payment(order)
             latest_song = get_latest_song(order)

@@ -1,4 +1,4 @@
-<div id="order-song-panel-root" data-song-running="{{ 'true' if latest_song and song_is_running and not suno_stub_mode and not song_sync_error else 'false' }}" data-poll-url="/account/orders/{{ order.public_id }}/song-panel" data-welcome-message="{% if latest_song and song_is_running %}Оплата прошла успешно. Генерация песни уже запущена автоматически.{% elif playback_song and (playback_song.audio_variants or playback_song.audio_url) %}Ваша песня готова в двух вариантах. Послушайте оба, и выберите лучший. Или заберите оба 💖{% elif welcome and welcome_delivery == 'payment_success' %}Оплата прошла успешно. Генерация песни уже запущена автоматически.{% elif welcome and welcome_delivery == 'email' %}Заказ открыт в кабинете. Ссылку для входа мы отправили на почту.{% elif welcome and welcome_delivery == 'stub' %}Заказ открыт в кабинете. Письмо сейчас в тестовом режиме.{% elif welcome %}Заказ уже привязан к вашему профилю.{% endif %}">
+<div id="order-song-panel-root" data-song-running="{{ 'true' if latest_song and song_is_running and not suno_stub_mode and not song_sync_error else 'false' }}" data-poll-url="/account/orders/{{ order.public_id }}/song-panel{% if has_checkout_access %}?access={{ checkout_access_token }}{% endif %}" data-welcome-message="{% if latest_song and song_is_running %}Оплата прошла успешно. Генерация песни уже запущена автоматически.{% elif playback_song and (playback_song.audio_variants or playback_song.audio_url) %}Ваша песня готова в двух вариантах. Послушайте оба, и выберите лучший. Или заберите оба 💖{% elif welcome and welcome_delivery == 'payment_success' %}Оплата прошла успешно. Генерация песни уже запущена автоматически.{% elif welcome and welcome_delivery == 'email' %}Заказ открыт в кабинете. Ссылку для входа мы отправили на почту.{% elif welcome and welcome_delivery == 'stub' %}Заказ открыт в кабинете. Письмо сейчас в тестовом режиме.{% elif welcome %}Заказ уже привязан к вашему профилю.{% endif %}">
   <div class="panel-card account-song-card">
     <div class="mini-label">Песня</div>
 
@@ -16,7 +16,9 @@
           <div class="account-song-results">
             {% for track in playback_song.audio_variants %}
               {% set playable_url = request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=loop.index0) %}
+              {% if has_checkout_access %}{% set playable_url = playable_url ~ '?access=' ~ checkout_access_token %}{% endif %}
               {% set download_url = request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=loop.index0) ~ '?download=1' %}
+              {% if has_checkout_access %}{% set download_url = download_url ~ '&access=' ~ checkout_access_token %}{% endif %}
               <div class="account-song-result-item">
                 <p class="account-song-result-title">Прошлый вариант {{ loop.index }}</p>
                 {% if playable_url %}
@@ -33,9 +35,9 @@
         {% elif playback_song.audio_url %}
           <div class="account-song-result-item">
             <p class="account-song-result-title">Прошлый готовый результат</p>
-            <audio class="audio-player" controls preload="none" data-exclusive-audio-group="order-{{ order.public_id }}" src="{{ request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=0) }}"></audio>
+            <audio class="audio-player" controls preload="none" data-exclusive-audio-group="order-{{ order.public_id }}" src="{{ request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=0) }}{% if has_checkout_access %}?access={{ checkout_access_token }}{% endif %}"></audio>
             <div class="form-actions" style="margin-top: 12px;">
-              <a href="{{ request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=0) }}?download=1" class="btn btn-secondary">Скачать mp3</a>
+              <a href="{{ request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=0) }}?download=1{% if has_checkout_access %}&access={{ checkout_access_token }}{% endif %}" class="btn btn-secondary">Скачать mp3</a>
             </div>
           </div>
         {% endif %}
@@ -49,7 +51,9 @@
       <div class="account-song-results">
         {% for track in playback_song.audio_variants %}
           {% set playable_url = request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=loop.index0) %}
+          {% if has_checkout_access %}{% set playable_url = playable_url ~ '?access=' ~ checkout_access_token %}{% endif %}
           {% set download_url = request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=loop.index0) ~ '?download=1' %}
+          {% if has_checkout_access %}{% set download_url = download_url ~ '&access=' ~ checkout_access_token %}{% endif %}
           <div class="account-song-result-item">
             <p class="account-song-result-title">Вариант {{ loop.index }}</p>
             {% if playable_url %}
@@ -65,9 +69,9 @@
       </div>
     {% elif playback_song and playback_song.audio_url %}
       <div class="account-song-result-item">
-        <audio class="audio-player" controls preload="none" data-exclusive-audio-group="order-{{ order.public_id }}" src="{{ request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=0) }}"></audio>
+        <audio class="audio-player" controls preload="none" data-exclusive-audio-group="order-{{ order.public_id }}" src="{{ request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=0) }}{% if has_checkout_access %}?access={{ checkout_access_token }}{% endif %}"></audio>
         <div class="form-actions" style="margin-top: 12px;">
-          <a href="{{ request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=0) }}?download=1" class="btn btn-secondary">Скачать mp3</a>
+          <a href="{{ request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=0) }}?download=1{% if has_checkout_access %}&access={{ checkout_access_token }}{% endif %}" class="btn btn-secondary">Скачать mp3</a>
         </div>
       </div>
     {% elif latest_song and song_is_ready and suno_stub_mode %}
@@ -76,7 +80,7 @@
       <div class="notice notice-warning">{{ latest_song.error_message }}</div>
       {% if can_start_song %}
         <div class="form-actions" style="margin-top: 16px;">
-          <form method="post" action="/songs/start/{{ order.public_id }}">
+          <form method="post" action="/songs/start/{{ order.public_id }}{% if has_checkout_access %}?access={{ checkout_access_token }}{% endif %}">
             <button type="submit" class="btn btn-primary">Попробовать ещё раз</button>
           </form>
         </div>
@@ -84,14 +88,14 @@
     {% elif can_pay_order %}
       <p class="muted" style="margin: 0;">Чтобы запустить генерацию песни, сначала нужно оплатить заказ.</p>
       <div class="form-actions" style="margin-top: 16px;">
-        <form method="post" action="/checkout/start/{{ order.public_id }}">
+        <form method="post" action="/checkout/start/{{ order.public_id }}{% if has_checkout_access %}?access={{ checkout_access_token }}{% endif %}">
           <button type="submit" class="btn btn-primary">{{ payment_cta_label }}</button>
         </form>
       </div>
     {% elif can_start_song %}
       <p class="muted" style="margin: 0;">Текст уже готов. Можно запускать генерацию песни.</p>
       <div class="form-actions" style="margin-top: 16px;">
-        <form method="post" action="/songs/start/{{ order.public_id }}">
+        <form method="post" action="/songs/start/{{ order.public_id }}{% if has_checkout_access %}?access={{ checkout_access_token }}{% endif %}">
           <button type="submit" class="btn btn-primary">Сгенерировать песню</button>
         </form>
       </div>
