@@ -15,17 +15,37 @@ from app.services.telegram_report_service import (
 router = APIRouter(prefix="/telegram", tags=["telegram"])
 
 
+def _update_message(update: dict) -> dict:
+    return (
+        update.get("message")
+        or update.get("edited_message")
+        or update.get("channel_post")
+        or update.get("edited_channel_post")
+        or update.get("callback_query", {}).get("message")
+        or {}
+    )
+
+
 def _message_chat_id(update: dict) -> int | None:
-    message = update.get("message") or update.get("callback_query", {}).get("message") or {}
+    message = _update_message(update)
     chat = message.get("chat") or {}
     chat_id = chat.get("id")
     return int(chat_id) if isinstance(chat_id, int) else None
 
 
 def _message_text(update: dict) -> str:
-    message = update.get("message") or {}
+    message = _update_message(update)
     text = message.get("text")
     return text.strip() if isinstance(text, str) else ""
+
+
+def _normalized_command(text: str) -> str:
+    if not text.startswith("/"):
+        return text.casefold()
+
+    command = text.split(maxsplit=1)[0]
+    command_name, _, _bot_name = command.partition("@")
+    return command_name.casefold()
 
 
 def _allowed_chat_id() -> int | None:
@@ -62,7 +82,7 @@ async def telegram_webhook(
         return {"ok": True}
 
     text = _message_text(update)
-    normalized = text.casefold()
+    normalized = _normalized_command(text)
     if text.startswith("/start") or normalized in {"/menu", "/report", "/otchet", "отчёт", "отчет"}:
         if text.startswith("/start") or normalized == "/menu":
             send_telegram_message(

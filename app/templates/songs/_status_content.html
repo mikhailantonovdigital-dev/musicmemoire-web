@@ -1,4 +1,4 @@
-<div id="song-status-content" data-song-running="{{ 'true' if auto_refresh_enabled and song else 'false' }}" data-poll-url="/songs/status-fragment?job={{ song.public_id }}">
+<div id="song-status-content" data-song-running="{{ 'true' if auto_refresh_enabled and song else 'false' }}" data-poll-url="/songs/status-fragment?job={{ song.public_id }}{% if has_checkout_access %}&access={{ checkout_access_token }}{% endif %}">
   <div class="step-meta">
     <span>Статус заказа: <strong>{{ order.status }}</strong></span>
     <span>Статус генерации: <strong>{{ song_status_label }}</strong></span>
@@ -49,7 +49,9 @@
       <div style="display: grid; gap: 16px;">
         {% for track in song.audio_variants %}
           {% set playable_url = request.url_for('song_track_file', job_public_id=song.public_id, track_index=loop.index0) %}
+          {% if has_checkout_access %}{% set playable_url = playable_url ~ '?access=' ~ checkout_access_token %}{% endif %}
           {% set download_url = request.url_for('song_track_file', job_public_id=song.public_id, track_index=loop.index0) ~ '?download=1' %}
+          {% if has_checkout_access %}{% set download_url = download_url ~ '&access=' ~ checkout_access_token %}{% endif %}
           <div class="panel-card" style="padding: 16px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08);">
             <p class="eyebrow" style="margin-bottom: 8px;">Вариант {{ loop.index }}</p>
             {% if track.title %}
@@ -71,16 +73,18 @@
     {% elif song and song.audio_url %}
       <div class="panel-card" style="padding: 16px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08);">
         <p class="muted" style="margin: 0 0 8px;">Готовый результат из попытки {{ song.attempt_no }}</p>
-        <audio class="audio-player" controls preload="none" src="{{ request.url_for('song_track_file', job_public_id=song.public_id, track_index=0) }}"></audio>
+        <audio class="audio-player" controls preload="none" src="{{ request.url_for('song_track_file', job_public_id=song.public_id, track_index=0) }}{% if has_checkout_access %}?access={{ checkout_access_token }}{% endif %}"></audio>
         <div class="form-actions" style="margin-top: 12px;">
-          <a href="{{ request.url_for('song_track_file', job_public_id=song.public_id, track_index=0) }}?download=1" class="btn btn-secondary">Скачать mp3</a>
+          <a href="{{ request.url_for('song_track_file', job_public_id=song.public_id, track_index=0) }}?download=1{% if has_checkout_access %}&access={{ checkout_access_token }}{% endif %}" class="btn btn-secondary">Скачать mp3</a>
         </div>
       </div>
     {% elif fallback_ready_song and fallback_ready_song.audio_variants %}
       <div style="display: grid; gap: 16px;">
         {% for track in fallback_ready_song.audio_variants %}
           {% set playable_url = request.url_for('song_track_file', job_public_id=fallback_ready_song.public_id, track_index=loop.index0) %}
+          {% if has_checkout_access %}{% set playable_url = playable_url ~ '?access=' ~ checkout_access_token %}{% endif %}
           {% set download_url = request.url_for('song_track_file', job_public_id=fallback_ready_song.public_id, track_index=loop.index0) ~ '?download=1' %}
+          {% if has_checkout_access %}{% set download_url = download_url ~ '&access=' ~ checkout_access_token %}{% endif %}
           <div class="panel-card" style="padding: 16px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08);">
             <p class="eyebrow" style="margin-bottom: 8px;">Готовый вариант {{ loop.index }}</p>
             <p class="muted" style="margin: 0 0 8px;">Попытка {{ fallback_ready_song.attempt_no }}</p>
@@ -100,9 +104,9 @@
     {% elif fallback_ready_song and fallback_ready_song.audio_url %}
       <div class="panel-card" style="padding: 16px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08);">
         <p class="muted" style="margin: 0 0 8px;">Готовый результат из попытки {{ fallback_ready_song.attempt_no }}</p>
-        <audio class="audio-player" controls preload="none" src="{{ request.url_for('song_track_file', job_public_id=fallback_ready_song.public_id, track_index=0) }}"></audio>
+        <audio class="audio-player" controls preload="none" src="{{ request.url_for('song_track_file', job_public_id=fallback_ready_song.public_id, track_index=0) }}{% if has_checkout_access %}?access={{ checkout_access_token }}{% endif %}"></audio>
         <div class="form-actions" style="margin-top: 12px;">
-          <a href="{{ request.url_for('song_track_file', job_public_id=fallback_ready_song.public_id, track_index=0) }}?download=1" class="btn btn-secondary">Скачать mp3</a>
+          <a href="{{ request.url_for('song_track_file', job_public_id=fallback_ready_song.public_id, track_index=0) }}?download=1{% if has_checkout_access %}&access={{ checkout_access_token }}{% endif %}" class="btn btn-secondary">Скачать mp3</a>
         </div>
       </div>
     {% elif is_ready and suno_stub_mode %}
@@ -115,16 +119,16 @@
   </div>
 
   <div class="form-actions">
-    <a href="/account/orders/{{ order.public_id }}" class="btn btn-secondary">Вернуться к заказу</a>
+    <a href="/account/orders/{{ order.public_id }}{% if has_checkout_access %}?access={{ checkout_access_token }}{% endif %}" class="btn btn-secondary">Вернуться к заказу</a>
 
     {% if is_running and song %}
-      <a href="/songs/status?job={{ song.public_id }}" class="btn btn-primary">Обновить статус</a>
+      <a href="/songs/status?job={{ song.public_id }}{% if has_checkout_access %}&access={{ checkout_access_token }}{% endif %}" class="btn btn-primary">Обновить статус</a>
     {% elif is_failed and song %}
       <form method="post" action="/songs/retry/{{ song.public_id }}">
         <button type="submit" class="btn btn-primary">Повторить генерацию</button>
       </form>
       {% if fallback_ready_song %}
-        <a href="/songs/status?job={{ fallback_ready_song.public_id }}" class="btn btn-secondary">Открыть прошлый готовый результат</a>
+        <a href="/songs/status?job={{ fallback_ready_song.public_id }}{% if has_checkout_access %}&access={{ checkout_access_token }}{% endif %}" class="btn btn-secondary">Открыть прошлый готовый результат</a>
       {% endif %}
     {% endif %}
   </div>

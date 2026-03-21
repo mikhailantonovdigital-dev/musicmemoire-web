@@ -96,30 +96,30 @@
           <div class="form-actions action-stack">
             {% if is_success and latest_song and latest_song.status in ["queued", "processing"] %}
               {% if has_account_access %}
-                <a href="/songs/status?job={{ latest_song.public_id }}" class="btn btn-primary">Открыть статус генерации</a>
-                <a href="/account/orders/{{ order.public_id }}?welcome=1&delivery=payment_success&refresh_payment=1" class="btn btn-secondary">Открыть заказ</a>
+                <a href="/songs/status?job={{ latest_song.public_id }}&access={{ checkout_access_token }}" class="btn btn-primary">Открыть статус генерации</a>
+                <a href="/account/orders/{{ order.public_id }}?welcome=1&delivery=payment_success&refresh_payment=1&access={{ checkout_access_token }}" class="btn btn-secondary">Открыть заказ</a>
               {% else %}
-                <a href="/account/login" class="btn btn-primary">Войти по email</a>
+                <a href="/account/orders/{{ order.public_id }}?welcome=1&delivery=payment_success&refresh_payment=1&access={{ checkout_access_token }}" class="btn btn-primary">Открыть заказ без входа</a>
               {% endif %}
             {% elif is_success and latest_song and latest_song.status == "succeeded" %}
               {% if has_account_access %}
-                <a href="/songs/status?job={{ latest_song.public_id }}" class="btn btn-primary">Открыть результат</a>
-                <a href="/account/orders/{{ order.public_id }}?welcome=1&delivery=payment_success&refresh_payment=1" class="btn btn-secondary">Открыть заказ</a>
+                <a href="/songs/status?job={{ latest_song.public_id }}&access={{ checkout_access_token }}" class="btn btn-primary">Открыть результат</a>
+                <a href="/account/orders/{{ order.public_id }}?welcome=1&delivery=payment_success&refresh_payment=1&access={{ checkout_access_token }}" class="btn btn-secondary">Открыть заказ</a>
               {% else %}
-                <a href="/account/login" class="btn btn-primary">Войти по email</a>
+                <a href="/account/orders/{{ order.public_id }}?welcome=1&delivery=payment_success&refresh_payment=1&access={{ checkout_access_token }}" class="btn btn-primary">Открыть заказ без входа</a>
               {% endif %}
             {% elif is_success and latest_song and latest_song.status == "failed" %}
-              {% if has_account_access %}<a href="/account/orders/{{ order.public_id }}?welcome=1&delivery=payment_success&refresh_payment=1" class="btn btn-primary">Открыть заказ</a>{% else %}<a href="/account/login" class="btn btn-primary">Войти по email</a>{% endif %}
+              {% if has_account_access %}<a href="/account/orders/{{ order.public_id }}?welcome=1&delivery=payment_success&refresh_payment=1&access={{ checkout_access_token }}" class="btn btn-primary">Открыть заказ</a>{% else %}<a href="/account/orders/{{ order.public_id }}?welcome=1&delivery=payment_success&refresh_payment=1&access={{ checkout_access_token }}" class="btn btn-primary">Открыть заказ без входа</a>{% endif %}
             {% elif is_success %}
-              <a href="/account/login" class="btn btn-primary">Войти по email</a>
+              <a href="/account/orders/{{ order.public_id }}?welcome=1&delivery=payment_success&refresh_payment=1&access={{ checkout_access_token }}" class="btn btn-primary">Открыть заказ без входа</a>
             {% elif is_pending %}
               <a href="/checkout/status?payment={{ payment.public_id }}&access={{ checkout_access_token }}" class="btn btn-secondary">Обновить статус</a>
-              {% if has_account_access %}<a href="/account/orders/{{ order.public_id }}?welcome=1&delivery=payment_success&refresh_payment=1" class="btn btn-secondary">Открыть заказ</a>{% else %}<a href="/account/login" class="btn btn-secondary">Войти по email</a>{% endif %}
+              {% if has_account_access %}<a href="/account/orders/{{ order.public_id }}?welcome=1&delivery=payment_success&refresh_payment=1&access={{ checkout_access_token }}" class="btn btn-secondary">Открыть заказ</a>{% else %}<a href="/account/orders/{{ order.public_id }}?welcome=1&delivery=payment_success&refresh_payment=1&access={{ checkout_access_token }}" class="btn btn-secondary">Открыть заказ без входа</a>{% endif %}
             {% else %}
               <form method="post" action="/checkout/start/{{ order.public_id }}">
                 <button type="submit" class="btn btn-primary">Попробовать оплатить снова</button>
               </form>
-              {% if has_account_access %}<a href="/account/orders/{{ order.public_id }}?welcome=1&delivery=payment_success&refresh_payment=1" class="btn btn-secondary">Вернуться к заказу</a>{% else %}<a href="/account/login" class="btn btn-secondary">Войти по email</a>{% endif %}
+              {% if has_account_access %}<a href="/account/orders/{{ order.public_id }}?welcome=1&delivery=payment_success&refresh_payment=1&access={{ checkout_access_token }}" class="btn btn-secondary">Вернуться к заказу</a>{% else %}<a href="/account/orders/{{ order.public_id }}?welcome=1&delivery=payment_success&refresh_payment=1&access={{ checkout_access_token }}" class="btn btn-secondary">Открыть заказ без входа</a>{% endif %}
             {% endif %}
           </div>
         </aside>

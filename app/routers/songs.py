@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.db import get_db
-from app.core.security import get_session_user
+from app.core.security import get_session_user, order_has_checkout_access, request_checkout_access_token
 from app.core.templates import templates
 from app.models import Order, OrderEvent, SongGeneration
 from app.services.rate_limit_service import RateLimitRule, enforce_rate_limit
@@ -29,7 +29,14 @@ from app.tasks import run_song_start_task
 router = APIRouter(prefix="/songs", tags=["songs"])
 
 
+def _request_access_query(request: Request) -> str:
+    access_token = request_checkout_access_token(request)
+    return f"&access={access_token}" if access_token else ""
+
+
 def build_song_status_context(request: Request, song: SongGeneration, *, fallback_ready_song: SongGeneration | None, error: str | None, auto_refresh_enabled: bool) -> dict:
+    checkout_access_token = request_checkout_access_token(request)
+    has_checkout_access = order_has_checkout_access(song.order, checkout_access_token)
     return {
         "request": request,
         "page_title": "Генерация песни",
@@ -44,6 +51,8 @@ def build_song_status_context(request: Request, song: SongGeneration, *, fallbac
         "error": error,
         "auto_refresh_enabled": auto_refresh_enabled and song.status in RUNNING_SONG_STATUSES,
         "suno_stub_mode": settings.SUNO_STUB_MODE,
+        "checkout_access_token": checkout_access_token,
+        "has_checkout_access": has_checkout_access,
     }
 
 
@@ -65,6 +74,9 @@ def get_song_order(request: Request, db: Session, order_public_id: str) -> Order
 
     user = get_session_user(request, db)
     if user and order.user_id == user.id:
+        return order
+
+    if order_has_checkout_access(order, request_checkout_access_token(request)):
         return order
 
     return None
@@ -194,7 +206,7 @@ async def song_start(order_public_id: str, request: Request, db: Session = Depen
     if active_background_job is not None:
         active_song = next((item for item in order.song_generations if item.status in RUNNING_SONG_STATUSES), None)
         if active_song is not None:
-            return RedirectResponse(url=f"/songs/status?job={active_song.public_id}", status_code=303)
+            return RedirectResponse(url=f"/songs/status?job={active_song.public_id}{_request_access_query(request)}", status_code=303)
 
     try:
         song = create_song_job_record(db, order, queued_event_type="song_generation_enqueued", trigger="user_start")
@@ -233,7 +245,7 @@ async def song_start(order_public_id: str, request: Request, db: Session = Depen
             status_code=400,
         )
 
-    return RedirectResponse(url=f"/songs/status?job={song.public_id}", status_code=303)
+    return RedirectResponse(url=f"/songs/status?job={song.public_id}{_request_access_query(request)}", status_code=303)
 
 
 @router.get("/status", response_class=HTMLResponse)
@@ -340,7 +352,7 @@ async def song_retry(job_public_id: str, request: Request, db: Session = Depends
         raise HTTPException(status_code=404, detail="Задача генерации не найдена.")
 
     if song.status in RUNNING_SONG_STATUSES:
-        return RedirectResponse(url=f"/songs/status?job={song.public_id}", status_code=303)
+        return RedirectResponse(url=f"/songs/status?job={song.public_id}{_request_access_query(request)}", status_code=303)
 
     limit_decision = enforce_rate_limit(
         db,
@@ -383,7 +395,7 @@ async def song_retry(job_public_id: str, request: Request, db: Session = Depends
     if active_background_job is not None:
         active_song = next((item for item in song.order.song_generations if item.status in RUNNING_SONG_STATUSES), None)
         if active_song is not None:
-            return RedirectResponse(url=f"/songs/status?job={active_song.public_id}", status_code=303)
+            return RedirectResponse(url=f"/songs/status?job={active_song.public_id}{_request_access_query(request)}", status_code=303)
 
     try:
         new_song = create_song_job_record(db, song.order, queued_event_type="song_generation_enqueued", trigger="user_retry")
@@ -421,4 +433,4 @@ async def song_retry(job_public_id: str, request: Request, db: Session = Depends
             status_code=400,
         )
 
-    return RedirectResponse(url=f"/songs/status?job={new_song.public_id}", status_code=303)
+    return RedirectResponse(url=f"/songs/status?job={new_song.public_id}{_request_access_query(request)}", status_code=303)
