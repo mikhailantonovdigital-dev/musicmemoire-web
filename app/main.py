@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+import logging
 
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
@@ -9,12 +10,23 @@ from app.core.db import init_db
 from app.core.storage import ensure_storage_dirs
 from app.core.templates import templates
 from app.routers import public, questionnaire, account, admin, songs, checkout, telegram
+from app.services.telegram_report_service import register_telegram_webhook
+
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     ensure_storage_dirs()
     init_db()
+
+    webhook_result = register_telegram_webhook()
+    if webhook_result.ok:
+        logger.info(webhook_result.detail)
+    else:
+        logger.warning("Telegram webhook registration skipped/failed: %s", webhook_result.detail)
+
     yield
 
 
