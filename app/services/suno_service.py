@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -54,6 +55,68 @@ MOOD_MAP = {
     "nostalgic": "nostalgic, heartfelt, bittersweet, reflective",
     "dramatic": "dramatic, emotionally powerful, cinematic, intense",
     "party": "celebratory, energetic, feel-good, danceable",
+}
+
+BRAND_PRONUNCIATION_MAP = {
+    "kfc": "кей эф си",
+    "bmw": "би эм дабл-ю",
+    "mcdonalds": "макдоналдс",
+    "mcdonald's": "макдоналдс",
+    "nike": "найки",
+    "iphone": "айфон",
+}
+
+DATE_PATTERN = re.compile(r"\b(0?[1-9]|[12]\d|3[01])[.\-/](0?[1-9]|1[0-2])[.\-/](\d{4})\b")
+NUMBER_PATTERN = re.compile(r"(?<![\w])\d{1,6}(?![\w-])")
+HEADER_LINE_PATTERN = re.compile(r"^\s*\[[^\]]+\]\s*$")
+
+MONTHS_RU_GENITIVE = {
+    1: "января",
+    2: "февраля",
+    3: "марта",
+    4: "апреля",
+    5: "мая",
+    6: "июня",
+    7: "июля",
+    8: "августа",
+    9: "сентября",
+    10: "октября",
+    11: "ноября",
+    12: "декабря",
+}
+
+DAY_ORDINALS = {
+    1: "первое",
+    2: "второе",
+    3: "третье",
+    4: "четвёртое",
+    5: "пятое",
+    6: "шестое",
+    7: "седьмое",
+    8: "восьмое",
+    9: "девятое",
+    10: "десятое",
+    11: "одиннадцатое",
+    12: "двенадцатое",
+    13: "тринадцатое",
+    14: "четырнадцатое",
+    15: "пятнадцатое",
+    16: "шестнадцатое",
+    17: "семнадцатое",
+    18: "восемнадцатое",
+    19: "девятнадцатое",
+    20: "двадцатое",
+    21: "двадцать первое",
+    22: "двадцать второе",
+    23: "двадцать третье",
+    24: "двадцать четвёртое",
+    25: "двадцать пятое",
+    26: "двадцать шестое",
+    27: "двадцать седьмое",
+    28: "двадцать восьмое",
+    29: "двадцать девятое",
+    30: "тридцатое",
+    31: "тридцать первое",
 }
 
 
@@ -140,6 +203,122 @@ def _api_request(method: str, path: str, *, payload: dict[str, Any] | None = Non
         raise SunoServiceError(msg)
 
     return parsed
+
+
+def _number_to_words_ru(value: int) -> str:
+    units = ["ноль", "один", "два", "три", "четыре", "пять", "шесть", "семь", "восемь", "девять"]
+    units_feminine = ["ноль", "одна", "две", "три", "четыре", "пять", "шесть", "семь", "восемь", "девять"]
+    teens = {
+        10: "десять",
+        11: "одиннадцать",
+        12: "двенадцать",
+        13: "тринадцать",
+        14: "четырнадцать",
+        15: "пятнадцать",
+        16: "шестнадцать",
+        17: "семнадцать",
+        18: "восемнадцать",
+        19: "девятнадцать",
+    }
+    tens = {
+        2: "двадцать",
+        3: "тридцать",
+        4: "сорок",
+        5: "пятьдесят",
+        6: "шестьдесят",
+        7: "семьдесят",
+        8: "восемьдесят",
+        9: "девяносто",
+    }
+    hundreds = {
+        1: "сто",
+        2: "двести",
+        3: "триста",
+        4: "четыреста",
+        5: "пятьсот",
+        6: "шестьсот",
+        7: "семьсот",
+        8: "восемьсот",
+        9: "девятьсот",
+    }
+
+    def _under_thousand(num: int, *, feminine: bool = False) -> str:
+        if num == 0:
+            return ""
+        words: list[str] = []
+        h = num // 100
+        rest = num % 100
+        if h:
+            words.append(hundreds[h])
+        if 10 <= rest <= 19:
+            words.append(teens[rest])
+            return " ".join(words)
+        t = rest // 10
+        u = rest % 10
+        if t:
+            words.append(tens[t])
+        if u:
+            source = units_feminine if feminine else units
+            words.append(source[u])
+        return " ".join(words)
+
+    if value < 0:
+        return f"минус {_number_to_words_ru(abs(value))}"
+    if value == 0:
+        return units[0]
+    if value < 1000:
+        return _under_thousand(value)
+    if value < 1_000_000:
+        thousands = value // 1000
+        remainder = value % 1000
+        thousand_words = _under_thousand(thousands, feminine=True)
+        last_two = thousands % 100
+        last = thousands % 10
+        if 11 <= last_two <= 14:
+            form = "тысяч"
+        elif last == 1:
+            form = "тысяча"
+        elif 2 <= last <= 4:
+            form = "тысячи"
+        else:
+            form = "тысяч"
+        remainder_words = _under_thousand(remainder)
+        parts = [thousand_words, form, remainder_words]
+        return " ".join(part for part in parts if part).strip()
+    return str(value)
+
+
+def _replace_date_with_words(match: re.Match[str]) -> str:
+    day = int(match.group(1))
+    month = int(match.group(2))
+    year = int(match.group(3))
+    day_words = DAY_ORDINALS.get(day)
+    month_words = MONTHS_RU_GENITIVE.get(month)
+    year_words = _number_to_words_ru(year)
+    if not day_words or not month_words:
+        return match.group(0)
+    return f"{day_words} {month_words} {year_words} года"
+
+
+def normalize_lyrics_for_suno(lyrics_text: str) -> str:
+    text = (lyrics_text or "").strip()
+    if not text:
+        return ""
+
+    lines = text.splitlines()
+    normalized_lines: list[str] = []
+    for line in lines:
+        if HEADER_LINE_PATTERN.match(line):
+            normalized_lines.append(line)
+            continue
+
+        updated = line
+        updated = DATE_PATTERN.sub(_replace_date_with_words, updated)
+        for brand, spoken in BRAND_PRONUNCIATION_MAP.items():
+            updated = re.sub(rf"\b{re.escape(brand)}\b", spoken, updated, flags=re.IGNORECASE)
+        updated = NUMBER_PATTERN.sub(lambda m: _number_to_words_ru(int(m.group(0))), updated)
+        normalized_lines.append(updated)
+    return "\n".join(normalized_lines).strip()
 
 
 def build_song_style(
@@ -269,7 +448,7 @@ def start_song_generation(
         song_style_custom=song_style_custom,
         song_mood=song_mood,
     )
-    lyrics = (lyrics_text or "").strip()
+    lyrics = normalize_lyrics_for_suno(lyrics_text)
 
     if len(lyrics) > 5000:
         raise SunoServiceError("Финальный текст слишком длинный для генерации песни. Сократи его до 5000 символов.")
