@@ -43,7 +43,7 @@ ALLOWED_LYRICS_MODES = {"generate", "custom"}
 ALLOWED_SONG_STYLES = {"pop", "rap", "rock", "chanson", "indie", "multi", "custom"}
 ALLOWED_SONG_MOODS = {"romantic", "uplifting", "nostalgic", "dramatic", "party"}
 ALLOWED_SINGER_GENDERS = {"male", "female"}
-LYRICS_GENERATION_DAILY_LIMIT = 3
+LYRICS_GENERATION_DAILY_LIMIT = 10
 
 
 def style_requires_custom_text(song_style: str) -> bool:
@@ -1055,7 +1055,7 @@ async def questionnaire_style(request: Request, db: Session = Depends(get_db)):
 @router.post("/style", response_class=HTMLResponse)
 async def questionnaire_style_submit(
     request: Request,
-    song_style: str = Form(...),
+    song_style: str | None = Form(default=None),
     song_style_custom: str = Form(default=""),
     db: Session = Depends(get_db),
 ):
@@ -1068,7 +1068,7 @@ async def questionnaire_style_submit(
             return RedirectResponse(url=request.url_for("questionnaire_custom_text"), status_code=303)
         return RedirectResponse(url=request.url_for("questionnaire_lyrics"), status_code=303)
 
-    song_style = song_style.strip().lower()
+    song_style = (song_style or "").strip().lower()
     song_style_custom = song_style_custom.strip()
 
     if song_style not in ALLOWED_SONG_STYLES:
