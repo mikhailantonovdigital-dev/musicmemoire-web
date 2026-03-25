@@ -43,7 +43,7 @@ ALLOWED_LYRICS_MODES = {"generate", "custom"}
 ALLOWED_SONG_STYLES = {"pop", "rap", "rock", "chanson", "indie", "multi", "custom"}
 ALLOWED_SONG_MOODS = {"romantic", "uplifting", "nostalgic", "dramatic", "party"}
 ALLOWED_SINGER_GENDERS = {"male", "female"}
-LYRICS_GENERATION_DAILY_LIMIT = 3
+LYRICS_GENERATION_DAILY_LIMIT = 10
 
 
 def style_requires_custom_text(song_style: str) -> bool:
