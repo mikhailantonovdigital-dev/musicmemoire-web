@@ -99,17 +99,35 @@
                         <div class="account-song-result-item">
                           <p class="account-song-result-title">Вариант {{ loop.index }}</p>
                           <audio class="audio-player" controls preload="none" data-exclusive-audio-group="dashboard-order-{{ order.public_id }}" src="{{ playable_url }}"></audio>
-                          <div class="form-actions" style="margin-top: 12px;">
-                            <a href="{{ download_url }}" class="btn btn-secondary">Скачать mp3</a>
+                          <div class="account-song-actions">
+                            <a href="{{ download_url }}" class="btn btn-secondary" download>Скачать mp3</a>
+                            <div class="share-actions" data-share-block data-share-url="{{ playable_url }}" data-share-title="{{ order.title or 'Песня от Magic Music' }}">
+                              <span class="share-actions-title">Отправить на:</span>
+                              {% set share_text = (order.title or 'Песня от Magic Music') ~ ' — послушай 🎵' %}
+                              <a class="btn btn-secondary btn-share" href="https://wa.me/?text={{ (share_text ~ ' ' ~ playable_url)|urlencode }}" target="_blank" rel="noopener" data-share-service="whatsapp">WhatsApp</a>
+                              <a class="btn btn-secondary btn-share" href="https://t.me/share/url?url={{ playable_url|urlencode }}&text={{ share_text|urlencode }}" target="_blank" rel="noopener" data-share-service="telegram">Telegram</a>
+                              <a class="btn btn-secondary btn-share" href="https://max.ru" target="_blank" rel="noopener" data-share-service="max">MAX</a>
+                              <a class="btn btn-secondary btn-share" href="https://vk.com/share.php?url={{ playable_url|urlencode }}&title={{ share_text|urlencode }}" target="_blank" rel="noopener" data-share-service="vk">VK</a>
+                            </div>
                           </div>
                         </div>
                       {% endfor %}
                     </div>
                   {% elif playback_song and playback_song.audio_url %}
                     <div class="account-song-result-item">
-                      <audio class="audio-player" controls preload="none" data-exclusive-audio-group="dashboard-order-{{ order.public_id }}" src="{{ request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=0) }}"></audio>
-                      <div class="form-actions" style="margin-top: 12px;">
-                        <a href="{{ request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=0) }}?download=1" class="btn btn-secondary">Скачать mp3</a>
+                      {% set single_playable_url = request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=0) %}
+                      {% set single_download_url = request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=0) ~ '?download=1' %}
+                      <audio class="audio-player" controls preload="none" data-exclusive-audio-group="dashboard-order-{{ order.public_id }}" src="{{ single_playable_url }}"></audio>
+                      <div class="account-song-actions">
+                        <a href="{{ single_download_url }}" class="btn btn-secondary" download>Скачать mp3</a>
+                        <div class="share-actions" data-share-block data-share-url="{{ single_playable_url }}" data-share-title="{{ order.title or 'Песня от Magic Music' }}">
+                          <span class="share-actions-title">Отправить на:</span>
+                          {% set share_text = (order.title or 'Песня от Magic Music') ~ ' — послушай 🎵' %}
+                          <a class="btn btn-secondary btn-share" href="https://wa.me/?text={{ (share_text ~ ' ' ~ single_playable_url)|urlencode }}" target="_blank" rel="noopener" data-share-service="whatsapp">WhatsApp</a>
+                          <a class="btn btn-secondary btn-share" href="https://t.me/share/url?url={{ single_playable_url|urlencode }}&text={{ share_text|urlencode }}" target="_blank" rel="noopener" data-share-service="telegram">Telegram</a>
+                          <a class="btn btn-secondary btn-share" href="https://max.ru" target="_blank" rel="noopener" data-share-service="max">MAX</a>
+                          <a class="btn btn-secondary btn-share" href="https://vk.com/share.php?url={{ single_playable_url|urlencode }}&title={{ share_text|urlencode }}" target="_blank" rel="noopener" data-share-service="vk">VK</a>
+                        </div>
                       </div>
                     </div>
                   {% elif latest_song and card.song_is_running %}
