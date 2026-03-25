@@ -431,6 +431,76 @@ function initQuestionnaireGenerationState() {
   });
 }
 
+function initShareButtons() {
+  const blocks = document.querySelectorAll("[data-share-block]");
+  if (!blocks.length) return;
+
+  function buildSharePayload(block) {
+    const rawUrl = (block.dataset.shareUrl || "").trim();
+    const rawTitle = (block.dataset.shareTitle || "Песня от Magic Music").trim();
+    const encodedUrl = encodeURIComponent(rawUrl);
+    const encodedText = encodeURIComponent(`${rawTitle} — послушай 🎵`);
+
+    return { rawUrl, rawTitle, encodedUrl, encodedText };
+  }
+
+  blocks.forEach((block) => {
+    if (block.dataset.shareInitialized === "true") return;
+    const links = block.querySelectorAll("[data-share-service]");
+    if (!links.length) return;
+
+    const payload = buildSharePayload(block);
+
+    links.forEach((link) => {
+      const service = link.dataset.shareService;
+      if (!service || !payload.rawUrl) return;
+
+      if (service === "whatsapp" && link.tagName === "A") {
+        link.href = `https://wa.me/?text=${payload.encodedText}%20${payload.encodedUrl}`;
+      } else if (service === "telegram" && link.tagName === "A") {
+        link.href = `https://t.me/share/url?url=${payload.encodedUrl}&text=${payload.encodedText}`;
+      } else if (service === "vk" && link.tagName === "A") {
+        link.href = `https://vk.com/share.php?url=${payload.encodedUrl}&title=${payload.encodedText}`;
+      } else if (service === "max") {
+        link.addEventListener("click", async (event) => {
+          event.preventDefault();
+
+          if (navigator.share) {
+            try {
+              await navigator.share({
+                title: payload.rawTitle,
+                text: `${payload.rawTitle} — послушай 🎵`,
+                url: payload.rawUrl,
+              });
+              return;
+            } catch (error) {
+              // fallback below
+            }
+          }
+
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            try {
+              await navigator.clipboard.writeText(payload.rawUrl);
+              link.textContent = "Ссылка скопирована";
+              window.setTimeout(() => {
+                link.textContent = "MAX";
+              }, 1800);
+              return;
+            } catch (error) {
+              // fallback below
+            }
+          }
+
+          window.open(`https://max.ru`, "_blank", "noopener");
+        });
+      }
+    });
+    block.dataset.shareInitialized = "true";
+  });
+}
+
+window.initShareButtons = initShareButtons;
+
 document.addEventListener("DOMContentLoaded", () => {
   initVoiceRecorder();
   initLyricsPicker();
@@ -438,4 +508,5 @@ document.addEventListener("DOMContentLoaded", () => {
   initSongStylePicker();
   initExclusiveAudioPlayers();
   initQuestionnaireGenerationState();
+  initShareButtons();
 });

@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.db import get_db
 from app.core.security import (
+    build_checkout_access_token,
     generate_magic_token,
     get_session_user,
     hash_magic_token,
@@ -148,6 +149,23 @@ def can_start_song(order: Order) -> bool:
     return settings.SUNO_STUB_MODE or order.status == "paid"
 
 
+def get_share_access_token(request: Request, order: Order) -> str:
+    direct_token = request_checkout_access_token(request)
+    if order_has_checkout_access(order, direct_token):
+        return direct_token
+
+    payments = sorted(
+        [item for item in (order.payments or []) if getattr(item, "public_id", None)],
+        key=lambda item: item.id or 0,
+        reverse=True,
+    )
+    for payment in payments:
+        if payment.status in {"succeeded", "waiting_for_capture"}:
+            return build_checkout_access_token(payment.public_id)
+
+    return ""
+
+
 def build_order_detail_context(request: Request, db: Session, order: Order, latest_payment, latest_song, *, welcome: bool = False, delivery: str = "", song_sync_error: str | None = None) -> dict:
     latest_ready_song = get_latest_ready_song(order)
     song_attempts = get_song_attempts(order)
@@ -155,8 +173,8 @@ def build_order_detail_context(request: Request, db: Session, order: Order, late
     has_previous_ready_song = bool(playback_song and latest_song and playback_song.public_id != latest_song.public_id)
     song_profile = build_song_profile(order)
     pricing = get_order_pricing_context(db, order)
-    checkout_access_token = request_checkout_access_token(request)
-    has_checkout_access = order_has_checkout_access(order, checkout_access_token)
+    checkout_access_token = get_share_access_token(request, order)
+    has_checkout_access = bool(checkout_access_token)
 
     return {
         "request": request,
@@ -458,6 +476,7 @@ async def account_dashboard(request: Request, db: Session = Depends(get_db)):
                 "song_is_failed": latest_song is not None and latest_song.status == "failed",
                 "has_ready_song": playback_song is not None,
                 "ready_variants_count": ready_variants_count,
+                "share_access_token": get_share_access_token(request, order),
                 **pricing,
             }
         )
