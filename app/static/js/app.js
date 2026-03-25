@@ -445,6 +445,7 @@ function initShareButtons() {
   }
 
   blocks.forEach((block) => {
+    if (block.dataset.shareInitialized === "true") return;
     const links = block.querySelectorAll("[data-share-service]");
     if (!links.length) return;
 
@@ -494,8 +495,11 @@ function initShareButtons() {
         });
       }
     });
+    block.dataset.shareInitialized = "true";
   });
 }
+
+window.initShareButtons = initShareButtons;
 
 document.addEventListener("DOMContentLoaded", () => {
   initVoiceRecorder();
