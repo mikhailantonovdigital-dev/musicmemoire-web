@@ -96,6 +96,8 @@
                       {% for track in playback_song.audio_variants %}
                         {% set playable_url = request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=loop.index0) %}
                         {% set download_url = request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=loop.index0) ~ '?download=1' %}
+                        {% if card.share_access_token %}{% set playable_url = playable_url ~ '?access=' ~ card.share_access_token %}{% endif %}
+                        {% if card.share_access_token %}{% set download_url = download_url ~ '&access=' ~ card.share_access_token %}{% endif %}
                         <div class="account-song-result-item">
                           <p class="account-song-result-title">Вариант {{ loop.index }}</p>
                           <audio class="audio-player" controls preload="none" data-exclusive-audio-group="dashboard-order-{{ order.public_id }}" src="{{ playable_url }}"></audio>
@@ -117,6 +119,8 @@
                     <div class="account-song-result-item">
                       {% set single_playable_url = request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=0) %}
                       {% set single_download_url = request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=0) ~ '?download=1' %}
+                      {% if card.share_access_token %}{% set single_playable_url = single_playable_url ~ '?access=' ~ card.share_access_token %}{% endif %}
+                      {% if card.share_access_token %}{% set single_download_url = single_download_url ~ '&access=' ~ card.share_access_token %}{% endif %}
                       <audio class="audio-player" controls preload="none" data-exclusive-audio-group="dashboard-order-{{ order.public_id }}" src="{{ single_playable_url }}"></audio>
                       <div class="account-song-actions">
                         <a href="{{ single_download_url }}" class="btn btn-secondary" download>Скачать mp3</a>
