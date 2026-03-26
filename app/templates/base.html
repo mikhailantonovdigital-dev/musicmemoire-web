@@ -75,11 +75,7 @@
         <a class="footer-legal-btn {% if path == '/offer' %}is-active{% endif %}" href="/offer">Оферта</a>
         <a class="footer-legal-btn {% if path == '/policy' %}is-active{% endif %}" href="/policy">Политика</a>
         <a class="footer-legal-btn {% if path == '/faq' %}is-active{% endif %}" href="/faq">FAQ</a>
-        <a
-          class="footer-legal-btn {% if path == '/support' %}is-active{% endif %}"
-          href="/support"
-          id="support-footer-btn"
-        >Запрос в поддержку</a>
+        <a class="footer-legal-btn" href="#" id="support-footer-btn">Запрос в поддержку</a>
       </div>
     </div>
   </footer>
@@ -104,86 +100,36 @@
   </noscript>
   {% endif %}
 
+  <div id="b24-support-trigger-host" style="position: fixed; right: -9999px; bottom: -9999px; width: 1px; height: 1px; opacity: 0; pointer-events: none; overflow: hidden;">
+    <script data-b24-form="click/14/gh9ru2" data-skip-moving="true">(function(w,d,u){var s=d.createElement('script');s.async=true;s.src=u+'?'+(Date.now()/180000|0);var h=d.getElementsByTagName('script')[0];h.parentNode.insertBefore(s,h);})(window,document,'https://cdn-ru.bitrix24.ru/b5781715/crm/form/loader_14.js');</script>
+  </div>
+
   <script>
-    (function () {
-      var FORM_CODE = 'click/14/gh9ru2';
-      var FORM_ID = 14;
-      var loaderUrl = 'https://cdn-ru.bitrix24.ru/b5781715/crm/form/loader_14.js';
-      var loaderPromise = null;
+    document.addEventListener('DOMContentLoaded', function () {
+      var supportBtn = document.getElementById('support-footer-btn');
+      var triggerHost = document.getElementById('b24-support-trigger-host');
+      if (!supportBtn || !triggerHost) return;
 
-      function tryOpenViaApi() {
-        var api = window.b24form;
-        if (!api) return false;
+      function clickBitrixTrigger() {
+        var trigger = triggerHost.querySelector('button, a, [role="button"], [class*="b24-widget-button"]');
+        if (!trigger) return false;
+        trigger.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+        return true;
+      }
 
-        var methods = ['show', 'open', 'openForm'];
-        for (var i = 0; i < methods.length; i += 1) {
-          var method = methods[i];
-          if (typeof api[method] === 'function') {
-            try {
-              api[method](FORM_ID);
-              return true;
-            } catch (err) {}
+      supportBtn.addEventListener('click', function (event) {
+        event.preventDefault();
+        if (clickBitrixTrigger()) return;
+
+        var tries = 0;
+        var intervalId = window.setInterval(function () {
+          tries += 1;
+          if (clickBitrixTrigger() || tries >= 20) {
+            window.clearInterval(intervalId);
           }
-        }
-        return false;
-      }
-
-      function ensureHiddenTrigger() {
-        var trigger = document.getElementById('b24-support-trigger');
-        if (trigger) return trigger;
-
-        trigger = document.createElement('button');
-        trigger.type = 'button';
-        trigger.id = 'b24-support-trigger';
-        trigger.setAttribute('data-b24-form', FORM_CODE);
-        trigger.setAttribute('data-b24-form-use-style', '0');
-        trigger.setAttribute('data-skip-moving', 'true');
-        trigger.style.position = 'absolute';
-        trigger.style.left = '-9999px';
-        trigger.style.width = '1px';
-        trigger.style.height = '1px';
-        trigger.style.opacity = '0';
-        trigger.style.pointerEvents = 'none';
-        document.body.appendChild(trigger);
-        return trigger;
-      }
-
-      function ensureLoader() {
-        if (loaderPromise) return loaderPromise;
-        loaderPromise = new Promise(function (resolve, reject) {
-          var s = document.createElement('script');
-          s.async = true;
-          s.src = loaderUrl + '?' + (Date.now() / 180000 | 0);
-          s.onload = resolve;
-          s.onerror = reject;
-          document.head.appendChild(s);
-        });
-        return loaderPromise;
-      }
-
-      document.addEventListener('DOMContentLoaded', function () {
-        var supportBtn = document.getElementById('support-footer-btn');
-        if (!supportBtn) return;
-
-        var trigger = ensureHiddenTrigger();
-        ensureLoader().catch(function () {});
-
-        supportBtn.addEventListener('click', function (event) {
-          event.preventDefault();
-
-          if (tryOpenViaApi()) return;
-
-          ensureLoader()
-            .then(function () {
-              if (tryOpenViaApi()) return;
-              trigger.click();
-            })
-            .catch(function () {
-              window.location.href = '/support';
-            });
-        });
+        }, 150);
       });
-    })();
+    });
   </script>
 
   <script src="/static/js/app.js?v=12668a"></script>
