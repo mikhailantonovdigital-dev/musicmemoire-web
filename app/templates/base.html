@@ -75,7 +75,13 @@
         <a class="footer-legal-btn {% if path == '/offer' %}is-active{% endif %}" href="/offer">Оферта</a>
         <a class="footer-legal-btn {% if path == '/policy' %}is-active{% endif %}" href="/policy">Политика</a>
         <a class="footer-legal-btn {% if path == '/faq' %}is-active{% endif %}" href="/faq">FAQ</a>
-        <a class="footer-legal-btn {% if path == '/support' %}is-active{% endif %}" href="/support" id="support-footer-btn">Запрос в поддержку</a>
+        <a
+          class="footer-legal-btn {% if path == '/support' %}is-active{% endif %}"
+          href="/support"
+          data-b24-form="click/14/gh9ru2"
+          data-b24-form-use-style="0"
+          data-skip-moving="true"
+        >Запрос в поддержку</a>
       </div>
     </div>
   </footer>
@@ -100,26 +106,14 @@
   </noscript>
   {% endif %}
 
-  <script>
-    (function () {
-      var s = document.createElement('script');
-      s.async = true;
-      s.src = 'https://cdn-ru.bitrix24.ru/b5781715/crm/form/loader_14.js?' + (Date.now() / 180000 | 0);
-      var h = document.getElementsByTagName('script')[0];
-      h.parentNode.insertBefore(s, h);
-    })();
-
-    document.addEventListener('DOMContentLoaded', function () {
-      var supportBtn = document.getElementById('support-footer-btn');
-      if (!supportBtn) return;
-
-      supportBtn.addEventListener('click', function (event) {
-        if (window.b24form && typeof window.b24form.show === 'function') {
-          event.preventDefault();
-          window.b24form.show(14);
-        }
-      });
-    });
+  <script data-skip-moving="true">
+    (function(w,d,u){
+      var s=d.createElement('script');
+      s.async=true;
+      s.src=u+'?'+(Date.now()/180000|0);
+      var h=d.getElementsByTagName('script')[0];
+      h.parentNode.insertBefore(s,h);
+    })(window,document,'https://cdn-ru.bitrix24.ru/b5781715/crm/form/loader_14.js');
   </script>
 
   <script src="/static/js/app.js?v=12668a"></script>
