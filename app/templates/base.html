@@ -70,11 +70,18 @@
 
   <footer class="site-footer site-footer-dark{% if uses_marketing_chrome %} site-footer-minimal{% endif %}{% if is_legal_screen %} site-footer-legal{% endif %}">
     <div class="container footer-bottom {% if uses_marketing_chrome %}footer-bottom-minimal{% else %}footer-bottom-default{% endif %}">
-      <p>© Magic Music. Копирование и распространение материалов разрешены только при указании активной ссылки на источник.</p>
+      <p>© Magic Music. Копирование контента запрещено.</p>
       <div class="footer-legal-links">
         <a class="footer-legal-btn {% if path == '/offer' %}is-active{% endif %}" href="/offer">Оферта</a>
         <a class="footer-legal-btn {% if path == '/policy' %}is-active{% endif %}" href="/policy">Политика</a>
         <a class="footer-legal-btn {% if path == '/faq' %}is-active{% endif %}" href="/faq">FAQ</a>
+        <a
+          class="footer-legal-btn {% if path == '/support' %}is-active{% endif %}"
+          href="/support"
+          data-b24-form="click/14/gh9ru2"
+          data-b24-form-use-style="0"
+          data-skip-moving="true"
+        >Запрос в поддержку</a>
       </div>
     </div>
   </footer>
@@ -99,9 +106,15 @@
   </noscript>
   {% endif %}
 
-  <div style="position: fixed; right: max(16px, calc(env(safe-area-inset-right, 0px) + 16px)); bottom: max(16px, calc(env(safe-area-inset-bottom, 0px) + 16px)); z-index: 9999;">
-    <script data-b24-form="click/14/gh9ru2" data-skip-moving="true">(function(w,d,u){var s=d.createElement('script');s.async=true;s.src=u+'?'+(Date.now()/180000|0);var h=d.getElementsByTagName('script')[0];h.parentNode.insertBefore(s,h);})(window,document,'https://cdn-ru.bitrix24.ru/b5781715/crm/form/loader_14.js');</script>
-  </div>
+  <script data-skip-moving="true">
+    (function(w,d,u){
+      var s=d.createElement('script');
+      s.async=true;
+      s.src=u+'?'+(Date.now()/180000|0);
+      var h=d.getElementsByTagName('script')[0];
+      h.parentNode.insertBefore(s,h);
+    })(window,document,'https://cdn-ru.bitrix24.ru/b5781715/crm/form/loader_14.js');
+  </script>
 
   <script src="/static/js/app.js?v=12668a"></script>
 </body>
