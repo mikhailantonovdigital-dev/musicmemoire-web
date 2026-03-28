@@ -133,14 +133,30 @@
   (function () {
     var goalKey = "payment_goal_sent_{{ payment.public_id }}";
 
+    function hasSentGoal() {
+      try {
+        return window.sessionStorage.getItem(goalKey) === "1";
+      } catch (error) {
+        return false;
+      }
+    }
+
+    function markGoalSent() {
+      try {
+        window.sessionStorage.setItem(goalKey, "1");
+      } catch (error) {
+        // ignore storage errors (private mode / blocked storage)
+      }
+    }
+
     function sendPaymentSuccessGoal(attemptsLeft) {
-      if (window.sessionStorage.getItem(goalKey)) {
+      if (hasSentGoal()) {
         return;
       }
 
       if (typeof window.ym === "function") {
         window.ym({{ metrica_counter_id }}, "reachGoal", "payment_success");
-        window.sessionStorage.setItem(goalKey, "1");
+        markGoalSent();
         return;
       }
 
