@@ -45,7 +45,10 @@ STYLE_MAP = {
     "pop": "Modern chart pop, big chorus, polished topline, radio-ready production",
     "rap": "Modern melodic rap, catchy flow, streaming-ready hooks, crisp low end",
     "rock": "Modern pop rock, anthemic chorus, emotional guitars, stadium energy",
-    "chanson": "Modern heartfelt chanson, memorable hook, cinematic warmth, rich storytelling",
+    "chanson": (
+        "Russian chanson, heartfelt storytelling, male baritone vocal, acoustic guitar and accordion, "
+        "intimate tavern atmosphere, emotional chorus, realistic live arrangement, no glossy pop production"
+    ),
     "indie": "Modern indie pop, atmospheric texture, intimate vocals, tasteful hook",
 }
 
