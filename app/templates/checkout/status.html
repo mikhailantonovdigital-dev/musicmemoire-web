@@ -155,7 +155,12 @@
       }
 
       if (typeof window.ym === "function") {
-        window.ym({{ metrica_counter_id }}, "reachGoal", "payment_success");
+        window.ym({{ metrica_counter_id }}, "reachGoal", "payment_success", {
+          payment_public_id: "{{ payment.public_id }}",
+          order_public_id: "{{ order.public_id }}",
+          order_number: "{{ order.order_number }}",
+          amount_rub: Number("{{ price_rub }}") || 0
+        });
         markGoalSent();
         return;
       }
