@@ -45,10 +45,6 @@ STYLE_MAP = {
     "pop": "Modern chart pop, big chorus, polished topline, radio-ready production",
     "rap": "Modern melodic rap, catchy flow, streaming-ready hooks, crisp low end",
     "rock": "Modern pop rock, anthemic chorus, emotional guitars, stadium energy",
-    "chanson": (
-        "Russian chanson, heartfelt storytelling, expressive lead vocal, acoustic guitar and accordion, "
-        "intimate tavern atmosphere, emotional chorus, realistic live arrangement, no glossy pop production"
-    ),
     "indie": "Modern indie pop, atmospheric texture, intimate vocals, tasteful hook",
 }
 
@@ -336,17 +332,32 @@ def build_song_style(
 
     mood_hint = MOOD_MAP.get((song_mood or "").strip().lower())
 
-    vocal_hint_map = {
-        "male": "Male lead vocal",
-        "female": "Female lead vocal",
-    }
-    vocal_hint = vocal_hint_map.get((singer_gender or "").strip().lower())
+    normalized_gender = (singer_gender or "").strip().lower()
+
+    if style_code == "chanson":
+        vocal_line = "expressive lead vocal"
+        if normalized_gender == "male":
+            vocal_line = "male baritone vocal"
+        elif normalized_gender == "female":
+            vocal_line = "female alto vocal"
+
+        parts = [
+            "russian chanson",
+            "heartfelt storytelling",
+            vocal_line,
+            "acoustic guitar and accordion",
+            "intimate tavern atmosphere",
+            "emotional chorus",
+            "realistic live arrangement",
+            "no glossy pop production",
+        ]
+        if mood_hint:
+            parts.append(f"mood: {mood_hint}")
+        return ", ".join(parts)
 
     if style_code == "multi" and style_custom:
         base_style = f"Mixed styles: {style_custom}"
         parts = [base_style]
-        if vocal_hint:
-            parts.append(vocal_hint)
         if mood_hint:
             parts.append(f"Mood: {mood_hint}")
         return ". ".join(parts)
@@ -361,8 +372,6 @@ def build_song_style(
         base_style = "Modern chart pop, emotional personalized song, memorable hook"
 
     parts = [base_style]
-    if vocal_hint:
-        parts.append(vocal_hint)
     if mood_hint:
         parts.append(f"Mood: {mood_hint}")
     return ". ".join(parts)
