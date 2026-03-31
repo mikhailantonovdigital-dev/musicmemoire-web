@@ -14,14 +14,6 @@
         </p>
         <h1>Сохраним заказ в личный кабинет</h1>
 
-        <div class="consultant-box">
-          <strong>Комментарий консультанта</strong>
-          <p>
-            Укажи email, и мы создадим личный кабинет с этим заказом, отправим ссылку для входа на почту и сразу переведём тебя к оплате.
-            После оплаты ты сразу получишь 2 варианта песни.
-          </p>
-        </div>
-
         {% if has_discount %}
           <div class="notice notice-success">
             Для этого заказа уже активна скидка 50% на повторную покупку: {{ base_price_rub }} ₽ → {{ price_rub }} ₽.
@@ -78,6 +70,14 @@
             <button type="submit" class="btn btn-primary">Перейти к оплате</button>
           </div>
         </form>
+
+        <div class="consultant-box">
+          <strong>Комментарий консультанта</strong>
+          <p>
+            Укажи email, и мы создадим личный кабинет с этим заказом, отправим ссылку для входа на почту и сразу переведём тебя к оплате.
+            После оплаты ты сразу получишь 2 варианта песни.
+          </p>
+        </div>
 
         {% if sent and stub_mode and stub_login_url %}
           <div class="notice notice-success">

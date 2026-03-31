@@ -14,13 +14,6 @@
         </p>
         <h1>Какое настроение должно быть у песни?</h1>
 
-        <div class="consultant-box">
-          <strong>Комментарий консультанта</strong>
-          <p>
-            Настроение сильно влияет на атмосферу, подачу и общий вайб финальной песни.
-          </p>
-        </div>
-
         {% if error %}
           <div class="notice notice-error">{{ error }}</div>
         {% endif %}
@@ -78,6 +71,13 @@
             <button type="submit" class="btn btn-primary">Продолжить</button>
           </div>
         </form>
+
+        <div class="consultant-box">
+          <strong>Комментарий консультанта</strong>
+          <p>
+            Настроение сильно влияет на атмосферу, подачу и общий вайб финальной песни.
+          </p>
+        </div>
       </div>
     </div>
   </div>
