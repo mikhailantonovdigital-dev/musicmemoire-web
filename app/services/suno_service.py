@@ -46,7 +46,7 @@ STYLE_MAP = {
     "rap": "Modern melodic rap, catchy flow, streaming-ready hooks, crisp low end",
     "rock": "Modern pop rock, anthemic chorus, emotional guitars, stadium energy",
     "chanson": (
-        "Russian chanson, heartfelt storytelling, male baritone vocal, acoustic guitar and accordion, "
+        "Russian chanson, heartfelt storytelling, expressive lead vocal, acoustic guitar and accordion, "
         "intimate tavern atmosphere, emotional chorus, realistic live arrangement, no glossy pop production"
     ),
     "indie": "Modern indie pop, atmospheric texture, intimate vocals, tasteful hook",
@@ -328,6 +328,7 @@ def build_song_style(
     *,
     song_style: str | None,
     song_style_custom: str | None,
+    singer_gender: str | None = None,
     song_mood: str | None = None,
 ) -> str:
     style_code = (song_style or "").strip().lower()
@@ -335,9 +336,20 @@ def build_song_style(
 
     mood_hint = MOOD_MAP.get((song_mood or "").strip().lower())
 
+    vocal_hint_map = {
+        "male": "Male lead vocal",
+        "female": "Female lead vocal",
+    }
+    vocal_hint = vocal_hint_map.get((singer_gender or "").strip().lower())
+
     if style_code == "multi" and style_custom:
         base_style = f"Mixed styles: {style_custom}"
-        return f"{base_style}. Mood: {mood_hint}" if mood_hint else base_style
+        parts = [base_style]
+        if vocal_hint:
+            parts.append(vocal_hint)
+        if mood_hint:
+            parts.append(f"Mood: {mood_hint}")
+        return ". ".join(parts)
 
     if style_code == "custom" and style_custom:
         base_style = style_custom
@@ -348,7 +360,12 @@ def build_song_style(
     else:
         base_style = "Modern chart pop, emotional personalized song, memorable hook"
 
-    return f"{base_style}. Mood: {mood_hint}" if mood_hint else base_style
+    parts = [base_style]
+    if vocal_hint:
+        parts.append(vocal_hint)
+    if mood_hint:
+        parts.append(f"Mood: {mood_hint}")
+    return ". ".join(parts)
 
 
 def build_song_title(order_number: str) -> str:
@@ -449,6 +466,7 @@ def start_song_generation(
     style_text = build_song_style(
         song_style=song_style,
         song_style_custom=song_style_custom,
+        singer_gender=singer_gender,
         song_mood=song_mood,
     )
     lyrics = normalize_lyrics_for_suno(lyrics_text)
