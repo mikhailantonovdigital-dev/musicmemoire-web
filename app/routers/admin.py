@@ -263,6 +263,20 @@ def humanize_payment_status(status: str | None) -> str:
     return mapping.get(status or "", "Не начата")
 
 
+def humanize_order_status(status: str | None) -> str:
+    mapping = {
+        "draft": "Черновик",
+        "awaiting_payment": "Ожидает оплату",
+        "payment_pending": "Оплата в процессе",
+        "payment_canceled": "Оплата отменена",
+        "paid": "Оплачен",
+        "song_pending": "Песня в работе",
+        "song_ready": "Песня готова",
+        "song_failed": "Ошибка генерации",
+    }
+    return mapping.get(status or "", status or "—")
+
+
 def can_run_song(order: Order) -> bool:
     return has_successful_payment(order)
 
@@ -440,17 +454,11 @@ def get_recent_security_events_for_order(db: Session, order_id: int, limit: int 
 
 def build_order_card(order: Order) -> dict:
     latest_payment = get_latest_payment(order)
-    latest_song = get_latest_song(order)
     return {
         "order": order,
-        "latest_payment": latest_payment,
-        "latest_song": latest_song,
+        "email": order.user.email if order.user and order.user.email else "—",
+        "order_status_label": humanize_order_status(order.status),
         "payment_status_label": humanize_payment_status(latest_payment.status if latest_payment else None),
-        "song_status_label": humanize_song_status(latest_song.status if latest_song else None),
-        "can_run_song": can_run_song(order),
-        "can_resend_payment_email": can_resend_payment_email(order),
-        "can_resend_song_ready_email": can_resend_song_ready_email(order),
-        "amount_rub": latest_payment.final_amount_rub if latest_payment else None,
     }
 
 
@@ -525,16 +533,6 @@ async def admin_dashboard(
         orders_query = orders_query.filter(or_(Order.order_number.ilike(pattern), User.email.ilike(pattern)))
 
     orders = orders_query.order_by(Order.id.desc()).limit(50).all()
-    order_status_counts = db.query(Order.status, func.count(Order.id)).group_by(Order.status).order_by(func.count(Order.id).desc()).all()
-    payment_status_counts = db.query(OrderPayment.status, func.count(OrderPayment.id)).group_by(OrderPayment.status).order_by(func.count(OrderPayment.id).desc()).all()
-    song_status_counts = db.query(SongGeneration.status, func.count(SongGeneration.id)).group_by(SongGeneration.status).order_by(func.count(SongGeneration.id).desc()).all()
-    recent_failed_songs = db.query(SongGeneration).filter(SongGeneration.status == "failed").order_by(SongGeneration.updated_at.desc(), SongGeneration.id.desc()).limit(10).all()
-
-    recent_problem_payments = db.query(OrderPayment).filter(OrderPayment.status.in_(["pending", "waiting_for_capture", "canceled"])).order_by(OrderPayment.updated_at.desc(), OrderPayment.id.desc()).limit(10).all()
-    recent_security_events = db.query(SecurityEvent).filter(SecurityEvent.status.in_(["blocked", "suspicious"])).order_by(SecurityEvent.id.desc()).limit(12).all()
-    recent_background_jobs = get_recent_background_jobs(db, limit=12)
-    recent_email_logs = get_recent_email_logs(db, limit=12)
-
     return templates.TemplateResponse(
         "admin/dashboard.html",
         {
@@ -545,16 +543,7 @@ async def admin_dashboard(
             "admin_token_enabled": bool(settings.ADMIN_TOKEN),
             "today_metrics": today_metrics,
             "all_time_metrics": all_time_metrics,
-            "order_status_counts": order_status_counts,
-            "payment_status_counts": payment_status_counts,
-            "song_status_counts": song_status_counts,
             "order_cards": [build_order_card(order) for order in orders],
-            "recent_failed_songs": recent_failed_songs,
-            "recent_problem_payments": recent_problem_payments,
-            "recent_security_events": [build_security_event_card(item) for item in recent_security_events],
-            "recent_background_jobs": [build_background_job_card(item) for item in recent_background_jobs],
-            "recent_email_logs": [build_email_log_card(item) for item in recent_email_logs],
-            "humanize_security_action": humanize_security_action,
         },
     )
 

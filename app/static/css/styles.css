@@ -388,6 +388,7 @@ h3 {
 }
 
 .admin-orders-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-top: 20px;
 }
 
@@ -7078,7 +7079,8 @@ strong,
 
 @media (max-width: 980px) {
   .admin-metrics-columns,
-  .admin-metrics-grid {
+  .admin-metrics-grid,
+  .admin-orders-list {
     grid-template-columns: 1fr;
   }
 }
