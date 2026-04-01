@@ -4,7 +4,7 @@ from datetime import datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 from sqlalchemy import distinct, func, or_
 from sqlalchemy.orm import Session
 
@@ -548,6 +548,57 @@ async def admin_dashboard(
     )
 
 
+@router.get("/customers/emails", response_class=HTMLResponse)
+async def admin_customer_emails_page(request: Request, db: Session = Depends(get_db)):
+    if not has_admin_access(request):
+        return RedirectResponse(url="/admin/login", status_code=303)
+
+    rows = (
+        db.query(User.email)
+        .filter(User.email.isnot(None), User.email != "")
+        .order_by(User.email.asc())
+        .all()
+    )
+    emails = [item[0].strip() for item in rows if item[0] and item[0].strip()]
+    unique_emails = sorted(set(emails), key=lambda value: value.casefold())
+
+    return templates.TemplateResponse(
+        "admin/customer_emails.html",
+        {
+            "request": request,
+            "page_title": "Админка · Email клиентов",
+            "admin_token_enabled": bool(settings.ADMIN_TOKEN),
+            "emails": unique_emails,
+            "emails_count": len(unique_emails),
+        },
+    )
+
+
+@router.get("/customers/emails.xls")
+async def admin_customer_emails_export(request: Request, db: Session = Depends(get_db)):
+    if not has_admin_access(request):
+        return RedirectResponse(url="/admin/login", status_code=303)
+
+    rows = (
+        db.query(User.email)
+        .filter(User.email.isnot(None), User.email != "")
+        .order_by(User.email.asc())
+        .all()
+    )
+    emails = [item[0].strip() for item in rows if item[0] and item[0].strip()]
+    unique_emails = sorted(set(emails), key=lambda value: value.casefold())
+
+    lines = ["Email"]
+    lines.extend(unique_emails)
+    content = "\n".join(lines)
+
+    return Response(
+        content=content,
+        media_type="application/vnd.ms-excel; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="customer-emails.xls"'},
+    )
+
+
 @router.get("/orders/{order_public_id}", response_class=HTMLResponse)
 async def admin_order_detail(order_public_id: str, request: Request, db: Session = Depends(get_db)):
     if not has_admin_access(request):
@@ -558,21 +609,8 @@ async def admin_order_detail(order_public_id: str, request: Request, db: Session
         return RedirectResponse(url="/admin/", status_code=303)
 
     latest_payment = get_latest_payment(order)
-    payment_attempts = get_order_payments(order)
-    pricing_preview = build_order_pricing_preview(db, order)
     latest_song = get_latest_song(order)
     latest_ready_song = get_latest_ready_song(order)
-    song_attempts = get_song_attempts(order)
-    lyrics_versions = get_lyrics_versions(db, order.id)
-    selected_version = next((item for item in lyrics_versions if item.is_selected), None)
-    voice_inputs = get_voice_inputs(db, order.id)
-    voice_cards = build_voice_cards(request, voice_inputs)
-    latest_voice = voice_inputs[0] if voice_inputs else None
-    events = db.query(OrderEvent).filter(OrderEvent.order_id == order.id).order_by(OrderEvent.id.desc()).limit(30).all()
-    security_events = get_recent_security_events_for_order(db, order.id, limit=20)
-    background_jobs = get_recent_background_jobs_for_order(db, order.id, limit=20)
-    support_threads = get_support_threads_for_order(db, order.id)
-    email_logs = get_recent_email_logs_for_order(db, order.id, limit=30)
 
     return templates.TemplateResponse(
         "admin/order_detail.html",
@@ -583,34 +621,10 @@ async def admin_order_detail(order_public_id: str, request: Request, db: Session
             "admin_token_enabled": bool(settings.ADMIN_TOKEN),
             "order": order,
             "latest_payment": latest_payment,
-            "payment_attempts": payment_attempts,
-            "pricing_preview": pricing_preview,
             "latest_song": latest_song,
             "latest_ready_song": latest_ready_song,
-            "song_attempts": song_attempts,
-            "has_previous_ready_song": bool(latest_ready_song and latest_song and latest_ready_song.public_id != latest_song.public_id),
-            "lyrics_versions": lyrics_versions,
-            "selected_version": selected_version,
-            "voice_cards": voice_cards,
-            "latest_voice": latest_voice,
-            "voice_source_is_active": order.story_source == "voice",
             "payment_status_label": humanize_payment_status(latest_payment.status if latest_payment else None),
             "song_status_label": humanize_song_status(latest_song.status if latest_song else None),
-            "can_run_song": can_run_song(order),
-            "can_resend_payment_email": can_resend_payment_email(order),
-            "can_resend_song_ready_email": can_resend_song_ready_email(order),
-            "can_resend_song_failed_email": can_resend_song_failed_email(order),
-            "order_status_options": ORDER_STATUS_OPTIONS,
-            "song_status_options": SONG_STATUS_OPTIONS,
-            "events": events,
-            "security_events": [build_security_event_card(item) for item in security_events],
-            "background_jobs": [build_background_job_card(item) for item in background_jobs],
-            "support_threads": [build_support_thread_card(item) for item in support_threads],
-            "email_logs": [build_email_log_card(item) for item in email_logs],
-            "humanize_email_type": humanize_email_type,
-            "humanize_email_status": humanize_email_status,
-            "humanize_payment_status": humanize_payment_status,
-            "humanize_security_action": humanize_security_action,
         },
     )
 

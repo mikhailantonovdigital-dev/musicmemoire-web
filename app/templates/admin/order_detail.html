@@ -16,478 +16,75 @@
 
     {% if flash %}<div class="notice notice-{{ flash.kind }}">{{ flash.text }}</div>{% endif %}
 
-    {% if background_jobs %}
-      <div class="form-card" style="margin-top: 20px;">
-        <h2 class="form-title">Последние фоновые задачи по заказу</h2>
-        <div class="admin-events">
-          {% for item in background_jobs %}
-            {% set job = item.job %}
-            <div class="admin-event">
-              <div class="admin-event-head"><strong>{{ item.job_label }}</strong><span>{{ job.created_at }}</span></div>
-              <p style="margin: 0 0 8px;"><strong>Статус:</strong> {{ item.status_label }}</p>
-              {% if item.song_job_id %}<p style="margin: 0 0 8px;"><strong>Song job:</strong> {{ item.song_job_id }}</p>{% endif %}
-              {% if item.voice_input_id %}<p style="margin: 0 0 8px;"><strong>Voice input:</strong> {{ item.voice_input_id }}</p>{% endif %}
-              {% if item.payment_id %}<p style="margin: 0 0 8px;"><strong>Платёж:</strong> {{ item.payment_id }}</p>{% endif %}
-              {% if job.error_message %}<div class="notice notice-error" style="margin-top: 8px;">{{ job.error_message }}</div>{% endif %}
-            </div>
-          {% endfor %}
-        </div>
-      </div>
-    {% endif %}
-
-    <div class="step-meta">
-      <span>Статус заказа: <strong>{{ order.status }}</strong></span>
-      <span>Email: <strong>{{ order.user.email if order.user and order.user.email else "—" }}</strong></span>
-      <span>Источник: <strong>{{ "Голос" if order.story_source == "voice" else "Текст" }}</strong></span>
-      <span>Режим: <strong>{{ "Свой текст" if order.lyrics_mode == "custom" else "Генерация" }}</strong></span>
-      <span>Создан: <strong>{{ order.created_at }}</strong></span>
-    </div>
-
     <div class="admin-detail-grid">
       <div class="form-card">
         <h2 class="form-title">Оплата</h2>
         {% if latest_payment %}
-          <div class="detail-list" style="margin-bottom: 14px;">
-            <div class="detail-list-item">
-              <span class="detail-label">Текущий статус</span>
-              <strong class="detail-value">{{ payment_status_label }}</strong>
-            </div>
-            <div class="detail-list-item">
-              <span class="detail-label">Итоговая сумма</span>
-              <strong class="detail-value">{{ latest_payment.final_amount_rub }} ₽</strong>
-            </div>
-            <div class="detail-list-item">
-              <span class="detail-label">Базовая цена</span>
-              <strong class="detail-value">{{ latest_payment.base_amount_rub }} ₽</strong>
-            </div>
-            <div class="detail-list-item">
-              <span class="detail-label">Скидка</span>
-              <strong class="detail-value">{% if latest_payment.has_discount %}-{{ latest_payment.discount_amount_rub }} ₽{% else %}—{% endif %}</strong>
-            </div>
-            <div class="detail-list-item">
-              <span class="detail-label">Оплачено в</span>
-              <strong class="detail-value">{{ latest_payment.paid_at or "—" }}</strong>
-            </div>
-          </div>
-
-          <div class="form-actions">
-            <form method="post" action="/admin/orders/{{ order.public_id }}/payment-sync"><button type="submit" class="btn btn-primary">Обновить статус последнего платежа</button></form>
-            {% if can_resend_payment_email %}<form method="post" action="/admin/orders/{{ order.public_id }}/payment-email-resend"><button type="submit" class="btn btn-secondary">Переотправить письмо об оплате</button></form>{% endif %}
+          <div class="detail-list">
+            <div class="detail-list-item"><span class="detail-label">Статус</span><strong class="detail-value">{{ payment_status_label }}</strong></div>
+            <div class="detail-list-item"><span class="detail-label">Сумма</span><strong class="detail-value">{{ latest_payment.final_amount_rub }} ₽</strong></div>
+            <div class="detail-list-item"><span class="detail-label">Оплачено в</span><strong class="detail-value">{{ latest_payment.paid_at or '—' }}</strong></div>
           </div>
         {% else %}
           <p class="muted">Платёж ещё не создавался.</p>
         {% endif %}
-
-        <div class="notice" style="margin-top: 16px;">
-          {% if latest_payment %}
-            Следующая попытка оплаты для этого заказа сейчас будет на сумму <strong>{{ pricing_preview.final_price_rub }} ₽</strong>{% if pricing_preview.has_discount %} (базовая цена {{ pricing_preview.base_price_rub }} ₽, скидка -{{ pricing_preview.discount_rub }} ₽){% endif %}.
-          {% else %}
-            Если создать оплату сейчас, сумма будет <strong>{{ pricing_preview.final_price_rub }} ₽</strong>{% if pricing_preview.has_discount %} (базовая цена {{ pricing_preview.base_price_rub }} ₽, скидка -{{ pricing_preview.discount_rub }} ₽){% endif %}.
-          {% endif %}
-        </div>
-
-        {% if payment_attempts %}
-          <div style="margin-top: 18px; display: grid; gap: 14px;">
-            <h3 style="margin: 0;">История платежных попыток</h3>
-            {% for payment in payment_attempts %}
-              <div class="panel-card" style="padding: 16px; background: #fafafa; border: 1px solid #ececec;">
-                <div class="lyrics-card-head" style="margin-bottom: 10px;">
-                  <div>
-                    <h3 style="margin: 0;">Платёж {{ loop.index }}</h3>
-                    <p class="lyrics-angle">{{ humanize_payment_status(payment.status) }} · {{ payment.final_amount_rub }} ₽</p>
-                    <p class="lyrics-angle">Внутренний ID: {{ payment.public_id }}</p>
-                    <p class="lyrics-angle">ЮKassa ID: {{ payment.yookassa_payment_id or "—" }}</p>
-                  </div>
-                  <span class="variant-chip">{% if latest_payment and latest_payment.public_id == payment.public_id %}Последний{% else %}История{% endif %}</span>
-                </div>
-
-                <div class="detail-list">
-                  <div class="detail-list-item"><span class="detail-label">Создан</span><strong class="detail-value">{{ payment.created_at }}</strong></div>
-                  <div class="detail-list-item"><span class="detail-label">Оплачен</span><strong class="detail-value">{{ payment.paid_at or "—" }}</strong></div>
-                  <div class="detail-list-item"><span class="detail-label">Базовая цена</span><strong class="detail-value">{{ payment.base_amount_rub }} ₽</strong></div>
-                  <div class="detail-list-item"><span class="detail-label">Скидка</span><strong class="detail-value">{% if payment.has_discount %}-{{ payment.discount_amount_rub }} ₽{% else %}—{% endif %}</strong></div>
-                  <div class="detail-list-item"><span class="detail-label">Итог</span><strong class="detail-value">{{ payment.final_amount_rub }} ₽</strong></div>
-                  <div class="detail-list-item"><span class="detail-label">Idempotence key</span><strong class="detail-value">{{ payment.idempotence_key or "—" }}</strong></div>
-                </div>
-
-                <div class="form-actions" style="margin-top: 12px;">
-                  {% if payment.yookassa_payment_id %}
-                    <form method="post" action="/admin/orders/{{ order.public_id }}/payments/{{ payment.public_id }}/sync">
-                      <button type="submit" class="btn btn-secondary">Синхронизировать этот платёж</button>
-                    </form>
-                  {% endif %}
-                  {% if payment.confirmation_url %}
-                    <a href="{{ payment.confirmation_url }}" class="btn btn-secondary" target="_blank" rel="noopener">Открыть ссылку оплаты</a>
-                  {% endif %}
-                  {% if payment.status == "succeeded" and order.user and order.user.email %}
-                    <form method="post" action="/admin/orders/{{ order.public_id }}/payments/{{ payment.public_id }}/payment-email-resend">
-                      <button type="submit" class="btn btn-secondary">Переотправить письмо по этому платежу</button>
-                    </form>
-                  {% endif %}
-                </div>
-
-                {% if payment.confirmation_url %}<p class="helper-text" style="margin-top: 10px;">{{ payment.confirmation_url }}</p>{% endif %}
-
-                {% if payment.raw_payload %}
-                  <details style="margin-top: 12px;">
-                    <summary style="cursor: pointer;">Показать raw payload</summary>
-                    <pre style="white-space: pre-wrap; word-break: break-word; margin-top: 12px; font-size: 13px; line-height: 1.45;">{{ payment.raw_payload | tojson(indent=2) }}</pre>
-                  </details>
-                {% endif %}
-              </div>
-            {% endfor %}
-          </div>
-        {% endif %}
-
-        <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #ececec;">
-          <p><strong>Ручная смена статуса заказа</strong></p>
-          <form method="post" action="/admin/orders/{{ order.public_id }}/status-update">
-            <label class="label" for="manual-order-status">Новый статус заказа</label>
-            <select id="manual-order-status" name="status" class="input">
-              {% for value, label in order_status_options %}<option value="{{ value }}" {% if order.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
-            </select>
-            <div class="form-actions" style="margin-top: 12px;"><button type="submit" class="btn btn-secondary">Сменить статус заказа вручную</button></div>
-          </form>
-        </div>
       </div>
 
       <div class="form-card">
         <h2 class="form-title">Песня</h2>
-        {% if latest_song %}
-          <p><strong>Текущий статус:</strong> {{ song_status_label }}</p>
-          <p><strong>Текущая попытка:</strong> {{ latest_song.attempt_no }}</p>
-          <p><strong>Внешний task id:</strong> {{ latest_song.external_job_id or "—" }}</p>
-          {% if has_previous_ready_song and latest_ready_song %}
-            <div class="notice" style="margin-bottom: 12px;">Последняя попытка ещё не дала готовый результат, но у заказа уже есть рабочая песня из попытки {{ latest_ready_song.attempt_no }}.</div>
-          {% endif %}
-          {% if latest_song.error_message %}<div class="notice notice-error">{{ latest_song.error_message }}</div>{% endif %}
-          {% if latest_ready_song and latest_ready_song.audio_variants %}
-            <div style="display: grid; gap: 12px; margin-top: 12px;">
-              {% for track in latest_ready_song.audio_variants %}
-                {% set playable_url = request.url_for('song_track_file', job_public_id=latest_ready_song.public_id, track_index=loop.index0) %}
-                {% set download_url = request.url_for('song_track_file', job_public_id=latest_ready_song.public_id, track_index=loop.index0) ~ '?download=1' %}
-                <div class="panel-card" style="padding: 14px; background: #fafafa; border: 1px solid #ececec;">
-                  <p style="margin: 0 0 8px;"><strong>Готовый вариант {{ loop.index }}</strong></p>
-                  <p class="helper-text" style="margin: 0 0 8px;">Попытка {{ latest_ready_song.attempt_no }}</p>
-                  {% if playable_url %}<audio class="audio-player" controls preload="none" src="{{ playable_url }}"></audio>{% endif %}
-                  {% if track.audio_url %}<p class="helper-text" style="margin-top: 8px;">Источник: {{ track.audio_url }}</p>{% endif %}
-                  {% if track.object_storage_key %}<p class="helper-text" style="margin-top: 6px;">Файл сохранён в object storage.</p>{% endif %}{% if track.stored_relative_path %}<p class="helper-text" style="margin-top: 6px;">Локальная копия сохранена.</p>{% endif %}
-                  <p style="margin-top: 10px;"><a href="{{ download_url }}" class="btn btn-secondary">Скачать mp3</a></p>
-                </div>
-              {% endfor %}
-            </div>
-          {% elif latest_ready_song and latest_ready_song.audio_url %}
-            <p class="helper-text">Готовый результат из попытки {{ latest_ready_song.attempt_no }}</p>
-            <audio class="audio-player" controls preload="none" src="{{ request.url_for('song_track_file', job_public_id=latest_ready_song.public_id, track_index=0) }}"></audio>
-            <p class="helper-text">Источник: {{ latest_ready_song.audio_url }}</p>
-            <p style="margin-top: 10px;"><a href="{{ request.url_for('song_track_file', job_public_id=latest_ready_song.public_id, track_index=0) }}?download=1" class="btn btn-secondary">Скачать mp3</a></p>
-          {% endif %}
-        {% else %}
-          <p class="muted">Генерация песни ещё не запускалась.</p>
-        {% endif %}
-
-        <div class="form-actions">
-          {% if can_run_song %}
-            <form method="post" action="/admin/orders/{{ order.public_id }}/song-run">
-              <button type="submit" class="btn btn-primary">{% if latest_song and latest_song.status == "failed" %}Перезапустить генерацию на текущем тексте{% elif latest_song %}Запустить новую попытку на текущем тексте{% else %}Запустить генерацию{% endif %}</button>
-            </form>
-            {% if latest_song and latest_song.status in ["queued", "processing"] %}<form method="post" action="/admin/orders/{{ order.public_id }}/song-sync"><button type="submit" class="btn btn-secondary">Обновить статус песни</button></form>{% endif %}
-            {% if can_resend_song_ready_email %}<form method="post" action="/admin/orders/{{ order.public_id }}/song-ready-email-resend"><button type="submit" class="btn btn-secondary">Переотправить письмо о готовой песне</button></form>{% endif %}
-            {% if can_resend_song_failed_email %}<form method="post" action="/admin/orders/{{ order.public_id }}/song-failed-email-resend"><button type="submit" class="btn btn-secondary">Переотправить письмо об ошибке</button></form>{% endif %}
-          {% else %}
-            <span class="btn btn-secondary">Сначала нужна оплата</span>
-          {% endif %}
+        <div class="detail-list" style="margin-bottom: 12px;">
+          <div class="detail-list-item"><span class="detail-label">Email</span><strong class="detail-value">{{ order.user.email if order.user and order.user.email else '—' }}</strong></div>
+          <div class="detail-list-item"><span class="detail-label">Статус</span><strong class="detail-value">{{ song_status_label }}</strong></div>
+          <div class="detail-list-item"><span class="detail-label">Стиль</span><strong class="detail-value">{{ order.song_style or '—' }}</strong></div>
+          <div class="detail-list-item"><span class="detail-label">Настроение</span><strong class="detail-value">{{ order.song_mood or '—' }}</strong></div>
+          <div class="detail-list-item"><span class="detail-label">Исполнитель</span><strong class="detail-value">{% if order.singer_gender == 'male' %}Мужчина{% elif order.singer_gender == 'female' %}Женщина{% else %}—{% endif %}</strong></div>
         </div>
 
-        {% if latest_song %}
-          <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #ececec;">
-            <p><strong>Ручная смена статуса песни</strong></p>
-            <form method="post" action="/admin/orders/{{ order.public_id }}/song-status-update">
-              <label class="label" for="manual-song-status">Новый статус песни</label>
-              <select id="manual-song-status" name="song_status" class="input">
-                {% for value, label in song_status_options %}<option value="{{ value }}" {% if latest_song.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
-              </select>
-              <label class="label" for="manual-audio-urls" style="margin-top: 12px;">Ссылки на mp3, по одной в строке</label>
-              <textarea id="manual-audio-urls" name="audio_urls" class="textarea" rows="4" placeholder="https://.../variant-1.mp3&#10;https://.../variant-2.mp3">{% if latest_song.audio_variants %}{% for track in latest_song.audio_variants %}{{ track.audio_url or track.stream_audio_url }}{% if not loop.last %}
-{% endif %}{% endfor %}{% elif latest_song.audio_url %}{{ latest_song.audio_url }}{% endif %}</textarea>
-              <label class="label" for="manual-song-error" style="margin-top: 12px;">Комментарий / ошибка</label>
-              <textarea id="manual-song-error" name="error_message" class="textarea" rows="3" placeholder="Например: финальный статус выставлен оператором после проверки API.">{{ latest_song.error_message or "" }}</textarea>
-              <div class="form-actions" style="margin-top: 12px;"><button type="submit" class="btn btn-secondary">Сменить статус песни вручную</button></div>
-            </form>
-          </div>
-        {% endif %}
-      </div>
-    </div>
-
-    {% if song_attempts %}
-      <div class="form-card" style="margin-top: 20px;">
-        <div class="lyrics-card-head" style="margin-bottom: 16px;">
-          <div>
-            <h2 class="form-title" style="margin-bottom: 4px;">История попыток генерации</h2>
-            <p class="muted" style="margin: 0;">Здесь видно, на каком тексте запускалась каждая попытка, какой task id был у провайдера и какой результат пришёл.</p>
-          </div>
-        </div>
-        <div style="display: grid; gap: 16px;">
-          {% for attempt in song_attempts %}
-            <div class="panel-card" style="padding: 16px; border: 1px solid #ececec; background: #fafafa;">
-              <div class="lyrics-card-head" style="margin-bottom: 12px;">
-                <div>
-                  <h3 style="margin: 0;">Попытка {{ attempt.attempt_no }}</h3>
-                  <p class="lyrics-angle">Статус: {{ attempt.status }}</p>
-                  <p class="lyrics-angle">task id: {{ attempt.external_job_id or "—" }}</p>
-                  <p class="lyrics-angle">Старт: {{ attempt.started_at or "—" }} · Финиш: {{ attempt.finished_at or "—" }}</p>
-                </div>
-                <span class="variant-chip">{% if latest_song and latest_song.public_id == attempt.public_id %}Текущая{% elif latest_ready_song and latest_ready_song.public_id == attempt.public_id %}Последний готовый результат{% else %}История{% endif %}</span>
-              </div>
-              {% if attempt.error_message %}
-                <div class="notice notice-error" style="margin-bottom: 12px;">{{ attempt.error_message }}</div>
-              {% endif %}
-              {% if attempt.audio_variants %}
-                <div style="display: grid; gap: 10px; margin-bottom: 12px;">
-                  {% for track in attempt.audio_variants %}
-                    {% set playable_url = request.url_for('song_track_file', job_public_id=attempt.public_id, track_index=loop.index0) %}
-                    {% set download_url = request.url_for('song_track_file', job_public_id=attempt.public_id, track_index=loop.index0) ~ '?download=1' %}
-                    <div class="panel-card" style="padding: 12px; background: #fff; border: 1px solid #ececec;">
-                      <p style="margin: 0 0 8px;"><strong>Вариант {{ loop.index }}</strong></p>
-                      {% if playable_url %}<audio class="audio-player" controls preload="none" src="{{ playable_url }}"></audio>{% endif %}
-                      {% if track.audio_url %}<p class="helper-text" style="margin-top: 8px;">Источник: {{ track.audio_url }}</p>{% endif %}
-                  {% if track.object_storage_key %}<p class="helper-text" style="margin-top: 6px;">Файл сохранён в object storage.</p>{% endif %}{% if track.stored_relative_path %}<p class="helper-text" style="margin-top: 6px;">Локальная копия сохранена.</p>{% endif %}
-                  <p style="margin-top: 10px;"><a href="{{ download_url }}" class="btn btn-secondary">Скачать mp3</a></p>
-                    </div>
-                  {% endfor %}
-                </div>
-              {% elif attempt.audio_url %}
-                <audio class="audio-player" controls preload="none" src="{{ request.url_for('song_track_file', job_public_id=attempt.public_id, track_index=0) }}"></audio>
-                <p class="helper-text">Источник: {{ attempt.audio_url }}</p>
-                <p style="margin-top: 10px;"><a href="{{ request.url_for('song_track_file', job_public_id=attempt.public_id, track_index=0) }}?download=1" class="btn btn-secondary">Скачать mp3</a></p>
-              {% endif %}
-
-              <details style="margin-top: 12px;">
-                <summary style="cursor: pointer;">Показать текст, на котором запускалась эта попытка</summary>
-                <textarea class="textarea textarea-readonly" readonly rows="12" style="margin-top: 12px;">{{ attempt.lyrics_text_snapshot or "" }}</textarea>
-              </details>
-
-              {% if attempt.raw_payload %}
-                <details style="margin-top: 12px;">
-                  <summary style="cursor: pointer;">Показать сырой ответ API</summary>
-                  <pre class="admin-pre" style="margin-top: 12px;">{{ attempt.raw_payload | tojson(indent=2) }}</pre>
-                </details>
-              {% endif %}
-            </div>
-          {% endfor %}
-        </div>
-      </div>
-    {% endif %}
-
-    {% if voice_source_is_active or voice_cards %}
-      <div class="form-card" style="margin-top: 20px;">
-        <h2 class="form-title">Голосовая ветка и расшифровка</h2>
-        {% if voice_source_is_active %}<p class="muted" style="margin-bottom: 12px;">Этот заказ создан через голосовую историю. Ниже можно переслушать голосовые, заново их расшифровать и обновить текущую расшифровку заказа.</p>{% endif %}
-
-        <form method="post" action="/admin/orders/{{ order.public_id }}/transcript-update">
-          <label class="label" for="admin-transcript-text">Текущая расшифровка заказа</label>
-          <textarea id="admin-transcript-text" class="textarea" name="transcript_text" rows="10">{{ order.transcript_text or "" }}</textarea>
-          {% if latest_voice %}
-            <label class="checkbox-field" style="margin-top: 10px; display: flex; gap: 8px; align-items: center;">
-              <input type="checkbox" name="sync_latest_voice" value="1" checked />
-              <span>Синхронизировать этот текст с последним голосовым файлом</span>
-            </label>
-          {% endif %}
-          <div class="form-actions" style="margin-top: 12px;">
-            <button type="submit" class="btn btn-primary">Сохранить расшифровку</button>
-          </div>
-        </form>
-        {% if order.lyrics_mode == "generate" %}
-          <div class="form-actions" style="margin-top: 12px;">
-            <form method="post" action="/admin/orders/{{ order.public_id }}/lyrics-regenerate">
-              <button type="submit" class="btn btn-secondary">Поставить перегенерацию в очередь</button>
-            </form>
-          </div>
-        {% endif %}
-
-        {% if voice_cards %}
-          <div style="display: grid; gap: 16px; margin-top: 18px;">
-            {% for card in voice_cards %}
-              {% set voice = card.voice %}
-              <div class="panel-card" style="padding: 16px; border: 1px solid #ececec; background: #fafafa;">
-                <div class="lyrics-card-head" style="margin-bottom: 12px;">
-                  <div>
-                    <h3 style="margin: 0;">Голосовое {{ loop.index }}</h3>
-                    <p class="lyrics-angle">ID: {{ voice.public_id }}</p>
-                    <p class="lyrics-angle">Файл: {{ voice.original_filename or "Без имени" }}</p>
-                  </div>
-                  <span class="variant-chip">{{ card.status_label }}</span>
-                </div>
-                <p class="helper-text">Размер: {{ card.size_label or "—" }} · Тип: {{ voice.content_type }} · Загружено: {{ voice.created_at }}</p>
-                <p class="helper-text">Хранение: {{ card.storage_label }}{% if card.storage_key %} · Key: {{ card.storage_key }}{% endif %}</p>
-                <audio class="audio-player" controls preload="none" src="{{ card.stream_url }}"></audio>
-                <p class="helper-text" style="margin-top: 8px;"><a href="{{ card.stream_url }}">Открыть / скачать голосовое</a></p>
-                <p style="margin: 12px 0 6px;"><strong>Расшифровка этого файла</strong></p>
-                <textarea class="textarea textarea-readonly" readonly rows="8">{{ voice.transcript_text or "" }}</textarea>
-                <div class="form-actions" style="margin-top: 12px;">
-                  <form method="post" action="/admin/orders/{{ order.public_id }}/voice-retranscribe">
-                    <input type="hidden" name="voice_public_id" value="{{ voice.public_id }}" />
-                    <label class="checkbox-field" style="margin-bottom: 10px; display: flex; gap: 8px; align-items: center;">
-                      <input type="checkbox" name="apply_to_order" value="1" {% if loop.first %}checked{% endif %} />
-                      <span>После расшифровки подставить в заказ</span>
-                    </label>
-                    <button type="submit" class="btn btn-secondary">Поставить перерасшифровку в очередь</button>
-                  </form>
-                  {% if voice.transcript_text %}
-                    <form method="post" action="/admin/orders/{{ order.public_id }}/voice-apply">
-                      <input type="hidden" name="voice_public_id" value="{{ voice.public_id }}" />
-                      <button type="submit" class="btn btn-secondary">Использовать эту расшифровку в заказе</button>
-                    </form>
-                  {% endif %}
+        {% set playback_song = latest_ready_song if latest_ready_song else latest_song %}
+        {% if playback_song and playback_song.audio_variants %}
+          <div class="account-song-results">
+            {% for track in playback_song.audio_variants %}
+              {% set playable_url = request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=loop.index0) %}
+              {% set share_text = (order.title or 'Песня от Magic Music') ~ ' — послушай 🎵' %}
+              <div class="account-song-result-item">
+                <p class="account-song-result-title">Вариант {{ loop.index }}</p>
+                <audio class="audio-player" controls preload="none" src="{{ playable_url }}"></audio>
+                <div class="account-song-actions">
+                  <a href="{{ playable_url }}?download=1" class="btn btn-secondary" download>Скачать mp3</a>
+                  <a class="btn btn-secondary" href="https://wa.me/?text={{ (share_text ~ ' ' ~ playable_url)|urlencode }}" target="_blank" rel="noopener">WhatsApp</a>
+                  <a class="btn btn-secondary" href="https://t.me/share/url?url={{ playable_url|urlencode }}&text={{ share_text|urlencode }}" target="_blank" rel="noopener">Telegram</a>
+                  <a class="btn btn-secondary" href="https://vk.com/share.php?url={{ playable_url|urlencode }}&title={{ share_text|urlencode }}" target="_blank" rel="noopener">VK</a>
                 </div>
               </div>
             {% endfor %}
           </div>
-        {% else %}
-          <p class="muted" style="margin-top: 12px;">Голосовые файлы у заказа не найдены.</p>
-        {% endif %}
-      </div>
-    {% endif %}
-
-
-    <div class="form-card" style="margin-top: 20px;">
-      <div class="lyrics-card-head" style="margin-bottom: 16px;">
-        <div>
-          <h2 class="form-title" style="margin-bottom: 4px;">Поддержка по заказу</h2>
-          <p class="muted" style="margin: 0;">Если пользователь уже писал, обращения сразу видны здесь и открываются в общем разделе поддержки.</p>
-        </div>
-      </div>
-      {% if support_threads %}
-        <div class="admin-events">
-          {% for item in support_threads %}
-            {% set thread = item.thread %}
-            <div class="admin-event">
-              <div class="admin-event-head"><strong>{{ thread.public_id }}</strong><span>{{ thread.updated_at }}</span></div>
-              <p style="margin: 0 0 8px;"><strong>Статус:</strong> {{ item.status_label }}</p>
-              <p style="margin: 0 0 8px;"><strong>Email:</strong> {{ item.email }}</p>
-              {% if thread.subject %}<p style="margin: 0 0 8px;"><strong>Тема:</strong> {{ thread.subject }}</p>{% endif %}
-              {% set first_message = thread.messages[0] if thread.messages else None %}
-              {% if first_message and first_message.attachment_relative_path %}<p style="margin: 0 0 8px;"><strong>Вложение:</strong> {{ first_message.attachment_original_filename or "файл" }}</p>{% endif %}
-              <div class="form-actions" style="margin-top: 12px;">
-                <a href="/admin/support?thread={{ thread.public_id }}" class="btn btn-secondary">Открыть обращение</a>
-              </div>
+        {% elif playback_song and playback_song.audio_url %}
+          {% set playable_url = request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=0) %}
+          {% set share_text = (order.title or 'Песня от Magic Music') ~ ' — послушай 🎵' %}
+          <div class="account-song-result-item">
+            <audio class="audio-player" controls preload="none" src="{{ playable_url }}"></audio>
+            <div class="account-song-actions">
+              <a href="{{ playable_url }}?download=1" class="btn btn-secondary" download>Скачать mp3</a>
+              <a class="btn btn-secondary" href="https://wa.me/?text={{ (share_text ~ ' ' ~ playable_url)|urlencode }}" target="_blank" rel="noopener">WhatsApp</a>
+              <a class="btn btn-secondary" href="https://t.me/share/url?url={{ playable_url|urlencode }}&text={{ share_text|urlencode }}" target="_blank" rel="noopener">Telegram</a>
+              <a class="btn btn-secondary" href="https://vk.com/share.php?url={{ playable_url|urlencode }}&title={{ share_text|urlencode }}" target="_blank" rel="noopener">VK</a>
             </div>
-          {% endfor %}
-        </div>
-      {% else %}
-        <p class="muted">По этому заказу обращений пока нет.</p>
-      {% endif %}
-    </div>
-    <div class="form-card" style="margin-top: 20px;">
-      <h2 class="form-title">Финальный текст</h2>
-      <form method="post" action="/admin/orders/{{ order.public_id }}/final-lyrics-update">
-        <textarea class="textarea" name="final_lyrics_text" rows="16">{{ order.final_lyrics_text or "" }}</textarea>
-        <div class="form-actions" style="margin-top: 12px;"><button type="submit" class="btn btn-primary">Сохранить финальный текст</button></div>
-      </form>
-    </div>
-
-    {% if lyrics_versions %}
-      <div class="form-card" style="margin-top: 20px;">
-        <div class="lyrics-card-head" style="margin-bottom: 16px;">
-          <div>
-            <h2 class="form-title" style="margin-bottom: 4px;">Сохранённые версии текста</h2>
-            <p class="muted" style="margin: 0;">Оператор может выбрать готовую версию или полностью перегенерировать тексты из текущей истории.</p>
           </div>
-          {% if order.lyrics_mode == "generate" %}<form method="post" action="/admin/orders/{{ order.public_id }}/lyrics-regenerate"><button type="submit" class="btn btn-secondary">Поставить перегенерацию в очередь</button></form>{% endif %}
-        </div>
-        <div style="display: grid; gap: 16px;">
-          {% for version in lyrics_versions %}
-            <div class="panel-card" style="padding: 16px; border: 1px solid #ececec; background: #fafafa;">
-              <div class="lyrics-card-head" style="margin-bottom: 12px;">
-                <div>
-                  <h3 style="margin: 0;">{{ version.angle_label }}</h3>
-                  <p class="lyrics-angle">Модель: {{ version.model_name }}</p>
-                  <p class="lyrics-angle">ID: {{ version.public_id }}</p>
-                </div>
-                <span class="variant-chip">{% if version.is_selected %}Выбрана{% else %}Версия{% endif %}</span>
-              </div>
-              <details><summary style="cursor: pointer; margin-bottom: 10px;">Показать prompt</summary><pre class="admin-pre">{{ version.prompt_text }}</pre></details>
-              <p style="margin: 12px 0 6px;"><strong>Исходный текст</strong></p>
-              <textarea class="textarea textarea-readonly" readonly rows="10">{{ version.lyrics_text }}</textarea>
-              {% if version.edited_lyrics_text %}
-                <p style="margin: 12px 0 6px;"><strong>Отредактированный текст</strong></p>
-                <textarea class="textarea textarea-readonly" readonly rows="10">{{ version.edited_lyrics_text }}</textarea>
-              {% endif %}
-              <div class="form-actions" style="margin-top: 12px;">
-                <form method="post" action="/admin/orders/{{ order.public_id }}/lyrics-select">
-                  <input type="hidden" name="version_public_id" value="{{ version.public_id }}" />
-                  <button type="submit" class="btn btn-secondary">{% if version.is_selected %}Обновить финальный текст из этой версии{% else %}Выбрать эту версию{% endif %}</button>
-                </form>
-              </div>
-            </div>
-          {% endfor %}
+        {% else %}
+          <p class="muted">Готовой песни пока нет.</p>
+        {% endif %}
+
+        <div class="detail-list" style="margin-top: 14px;">
+          <div class="detail-list-item" style="display: block;">
+            <span class="detail-label">Финальный текст</span>
+            <div class="account-song-lyrics" style="margin-top: 8px;">{{ order.final_lyrics_text or 'Финальный текст пока не сохранён.' }}</div>
+          </div>
+          <div class="detail-list-item" style="display: block;">
+            <span class="detail-label">История клиента</span>
+            <div class="account-song-lyrics" style="margin-top: 8px;">{{ order.story_text or '—' }}</div>
+          </div>
         </div>
       </div>
-    {% elif order.lyrics_mode == "generate" %}
-      <div class="form-card" style="margin-top: 20px;">
-        <h2 class="form-title">Сохранённые версии текста</h2>
-        <p class="muted">Версий текста пока нет. Можно запустить перегенерацию из текущей истории.</p>
-        <div class="form-actions" style="margin-top: 12px;"><form method="post" action="/admin/orders/{{ order.public_id }}/lyrics-regenerate"><button type="submit" class="btn btn-secondary">Поставить перегенерацию в очередь</button></form></div>
-      </div>
-    {% endif %}
-
-    {% if order.story_text %}<div class="form-card" style="margin-top: 20px;"><h2 class="form-title">История пользователя</h2><textarea class="textarea textarea-readonly" readonly>{{ order.story_text }}</textarea></div>{% endif %}
-    {% if order.custom_lyrics_text %}<div class="form-card" style="margin-top: 20px;"><h2 class="form-title">Свой текст пользователя</h2><textarea class="textarea textarea-readonly" readonly>{{ order.custom_lyrics_text }}</textarea></div>{% endif %}
-
-    {% if email_logs %}
-      <div class="form-card" style="margin-top: 20px;">
-        <h2 class="form-title">Письма по заказу</h2>
-        <div class="admin-events">
-          {% for item in email_logs %}
-            {% set log = item.log %}
-            <div class="admin-event">
-              <div class="admin-event-head"><strong>{{ item.type_label }}</strong><span>{{ log.created_at }}</span></div>
-              <p style="margin: 0 0 8px;"><strong>Статус:</strong> {{ item.status_label }}</p>
-              <p style="margin: 0 0 8px;"><strong>Email:</strong> {{ log.recipient_email }}</p>
-              <p style="margin: 0 0 8px;"><strong>Тема:</strong> {{ log.subject }}</p>
-              <p style="margin: 0 0 8px;"><strong>Режим:</strong> {{ log.delivery_mode }}</p>
-              {% if log.background_job_public_id %}<p style="margin: 0 0 8px;"><strong>Background job:</strong> {{ log.background_job_public_id }}</p>{% endif %}
-              {% if log.error_message %}<div class="notice notice-error" style="margin-top: 8px;">{{ log.error_message }}</div>{% endif %}
-              {% if log.payload %}<pre class="admin-pre">{{ log.payload | tojson(indent=2) }}</pre>{% endif %}
-            </div>
-          {% endfor %}
-        </div>
-      </div>
-    {% endif %}
-
-    {% if security_events %}
-      <div class="form-card" style="margin-top: 20px;">
-        <h2 class="form-title">Блокировки и подозрительные действия по заказу</h2>
-        <div class="admin-events">
-          {% for item in security_events %}
-            {% set event = item.event %}
-            <div class="admin-event">
-              <div class="admin-event-head"><strong>{{ item.action_label }}</strong><span>{{ event.created_at }}</span></div>
-              <p style="margin: 0 0 8px;"><strong>Статус:</strong> {{ item.status_label }}</p>
-              <p style="margin: 0 0 8px;"><strong>Scope:</strong> {{ item.scope_label }}</p>
-              <p style="margin: 0 0 8px;"><strong>IP:</strong> {{ item.ip }}</p>
-              {% if item.limit and item.recent_count %}<p style="margin: 0 0 8px;"><strong>Лимит:</strong> {{ item.recent_count }} / {{ item.limit }} за {{ item.window_seconds }} сек.</p>{% endif %}
-              {% if event.payload %}<pre class="admin-pre">{{ event.payload | tojson(indent=2) }}</pre>{% endif %}
-            </div>
-          {% endfor %}
-        </div>
-      </div>
-    {% endif %}
-
-    <div class="form-card" style="margin-top: 20px;">
-      <h2 class="form-title">Последние события</h2>
-      {% if events %}
-        <div class="admin-events">
-          {% for event in events %}
-            <div class="admin-event">
-              <div class="admin-event-head"><strong>{{ event.event_type }}</strong><span>{{ event.created_at }}</span></div>
-              {% if event.payload %}<pre class="admin-pre">{{ event.payload | tojson(indent=2) }}</pre>{% endif %}
-            </div>
-          {% endfor %}
-        </div>
-      {% else %}
-        <p class="muted">Событий пока нет.</p>
-      {% endif %}
     </div>
   </div>
 </section>
