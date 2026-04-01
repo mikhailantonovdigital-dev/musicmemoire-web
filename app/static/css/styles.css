@@ -6867,9 +6867,9 @@ strong,
 .admin-screen-section .panel-card,
 .admin-screen-section .metric-card,
 .admin-screen-section .admin-event {
-  background: var(--surface);
-  border: 1px solid rgba(221, 229, 240, 0.9);
-  box-shadow: var(--shadow);
+  background: rgba(255, 255, 255, 0.97);
+  border: 1px solid #d8e2f0;
+  box-shadow: 0 12px 28px rgba(16, 24, 40, 0.08);
 }
 
 .admin-screen-section .form-card,
@@ -6900,7 +6900,7 @@ strong,
 .admin-screen-section .textarea,
 .admin-screen-section .text-input,
 .admin-screen-section select {
-  color: var(--muted);
+  color: #4c5f7d;
 }
 
 .admin-screen-section .eyebrow,
@@ -6910,7 +6910,7 @@ strong,
 .admin-screen-section h3,
 .admin-screen-section strong,
 .admin-screen-section .detail-value {
-  color: var(--text);
+  color: #12233d;
 }
 
 .admin-screen-section .text-input,
@@ -6920,13 +6920,13 @@ strong,
 .admin-screen-section .preview-box,
 .admin-screen-section details {
   background: #ffffff;
-  border-color: var(--line);
+  border-color: #cfd9e8;
 }
 
 .admin-screen-section .notice {
   background: rgba(255, 255, 255, 0.78);
-  border-color: var(--line);
-  color: var(--text);
+  border-color: #d5dfec;
+  color: #12233d;
 }
 
 .admin-screen-section .notice.notice-error {
@@ -6940,14 +6940,14 @@ strong,
 }
 
 .admin-screen-section .detail-list-item {
-  border-color: var(--line);
+  border-color: #dde5f0;
   background: rgba(255, 255, 255, 0.76);
 }
 
 .admin-screen-section .btn.btn-secondary {
   background: rgba(255, 255, 255, 0.86);
-  border-color: var(--line);
-  color: var(--text);
+  border-color: #cfd9e8;
+  color: #12233d;
 }
 
 .admin-screen-section .btn.btn-secondary:hover {
@@ -7042,13 +7042,13 @@ strong,
 
 .admin-screen-section .step-meta span {
   background: rgba(255, 255, 255, 0.9);
-  border-color: var(--line);
-  color: var(--text);
+  border-color: #d6e0ed;
+  color: #213854;
   box-shadow: none;
 }
 
 .admin-screen-section .step-meta span strong {
-  color: var(--text);
+  color: #12233d;
 }
 
 .admin-screen-section .admin-event-head {
@@ -7056,7 +7056,7 @@ strong,
 }
 
 .admin-screen-section .admin-event-head span {
-  color: var(--muted);
+  color: #5f7391;
   word-break: break-word;
 }
 
@@ -7075,4 +7075,18 @@ strong,
   .admin-metrics-grid {
     grid-template-columns: 1fr;
   }
+}
+
+.page-admin-screen .page-bg-dark {
+  background:
+    radial-gradient(circle at 8% 10%, rgba(119, 155, 255, 0.14), transparent 28%),
+    radial-gradient(circle at 92% 14%, rgba(108, 172, 255, 0.12), transparent 24%),
+    linear-gradient(180deg, #f7fbff 0%, #eef4fb 42%, #f5f8fd 100%);
+}
+
+.page-admin-screen .site-header,
+.page-admin-screen .site-header-upgraded,
+.page-admin-screen .site-header-dark {
+  background: rgba(244, 248, 253, 0.9);
+  border-bottom: 1px solid #dbe4f1;
 }

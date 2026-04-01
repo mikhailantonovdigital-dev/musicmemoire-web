@@ -533,7 +533,6 @@ async def admin_dashboard(
     recent_problem_payments = db.query(OrderPayment).filter(OrderPayment.status.in_(["pending", "waiting_for_capture", "canceled"])).order_by(OrderPayment.updated_at.desc(), OrderPayment.id.desc()).limit(10).all()
     recent_security_events = db.query(SecurityEvent).filter(SecurityEvent.status.in_(["blocked", "suspicious"])).order_by(SecurityEvent.id.desc()).limit(12).all()
     recent_background_jobs = get_recent_background_jobs(db, limit=12)
-    recent_support_threads = get_recent_support_threads(db, limit=12)
     recent_email_logs = get_recent_email_logs(db, limit=12)
 
     return templates.TemplateResponse(
@@ -554,7 +553,6 @@ async def admin_dashboard(
             "recent_problem_payments": recent_problem_payments,
             "recent_security_events": [build_security_event_card(item) for item in recent_security_events],
             "recent_background_jobs": [build_background_job_card(item) for item in recent_background_jobs],
-            "recent_support_threads": [build_support_thread_card(item) for item in recent_support_threads],
             "recent_email_logs": [build_email_log_card(item) for item in recent_email_logs],
             "humanize_security_action": humanize_security_action,
         },
