@@ -27,87 +27,33 @@
     {% endif %}
 
     <form class="form-card admin-search-form" method="get" action="/admin/">
-      <h2 class="form-title">Поиск и фильтры</h2>
-      <label class="form-label" for="q">Поиск по номеру заказа, public id, session id или email</label>
+      <h2 class="form-title">Поиск по заказу</h2>
+      <label class="form-label" for="q">Поиск по номеру заказа или email</label>
       <div class="admin-search-row">
-        <input id="q" name="q" type="text" class="text-input" placeholder="Например: MM-260313, session id или client@example.com" value="{{ q }}" />
+        <input id="q" name="q" type="text" class="text-input" placeholder="Например: MM-260313-ABCDEF или client@example.com" value="{{ q }}" />
         <button type="submit" class="btn btn-primary">Найти</button>
-        {% if q or order_status != 'all' or payment_status != 'all' or song_status != 'all' or story_source != 'all' or lyrics_mode != 'all' %}
+        {% if q %}
           <a href="/admin/" class="btn btn-secondary">Сбросить</a>
         {% endif %}
       </div>
-
-      <div class="admin-status-grid" style="margin-top: 16px;">
-        <div>
-          <label class="label" for="order_status">Статус заказа</label>
-          <select id="order_status" name="order_status" class="input">
-            {% for value, label in order_status_filter_options %}
-              <option value="{{ value }}" {% if order_status == value %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div>
-          <label class="label" for="payment_status">Статус оплаты</label>
-          <select id="payment_status" name="payment_status" class="input">
-            {% for value, label in payment_status_filter_options %}
-              <option value="{{ value }}" {% if payment_status == value %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div>
-          <label class="label" for="song_status">Статус песни</label>
-          <select id="song_status" name="song_status" class="input">
-            {% for value, label in song_status_filter_options %}
-              <option value="{{ value }}" {% if song_status == value %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div>
-          <label class="label" for="story_source">Источник истории</label>
-          <select id="story_source" name="story_source" class="input">
-            {% for value, label in story_source_options %}
-              <option value="{{ value }}" {% if story_source == value %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div>
-          <label class="label" for="lyrics_mode">Режим текста</label>
-          <select id="lyrics_mode" name="lyrics_mode" class="input">
-            {% for value, label in lyrics_mode_options %}
-              <option value="{{ value }}" {% if lyrics_mode == value %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-          </select>
-        </div>
-      </div>
-
-      <div class="form-actions" style="margin-top: 16px;">
-        <button type="submit" class="btn btn-primary">Применить фильтры</button>
-      </div>
     </form>
 
-    <div class="grid">
-      <div class="metric-card"><span>Новые пользователи сегодня</span><strong>{{ new_users_today }}</strong></div>
-      <div class="metric-card"><span>Уникальные пользователи за всё время</span><strong>{{ total_users }}</strong></div>
-      <div class="metric-card"><span>Заказы сегодня</span><strong>{{ orders_today }}</strong></div>
-      <div class="metric-card"><span>Успешные оплаты сегодня</span><strong>{{ successful_payments_today }}</strong></div>
-      <div class="metric-card"><span>Готовые песни сегодня</span><strong>{{ songs_ready_today }}</strong></div>
-      <div class="metric-card"><span>Ошибки песен сегодня</span><strong>{{ song_errors_today }}</strong></div>
-      <div class="metric-card"><span>Все ошибки генерации</span><strong>{{ failed_song_jobs }}</strong></div>
-      <div class="metric-card"><span>Ожидающие оплаты</span><strong>{{ pending_payments }}</strong></div>
-      <div class="metric-card"><span>Блокировки и подозрительные действия сегодня</span><strong>{{ blocked_security_events_today }}</strong></div>
-      <div class="metric-card"><span>Фоновые задачи в работе</span><strong>{{ queued_background_jobs }}</strong></div>
-      <div class="metric-card"><span>Ошибки фоновых задач сегодня</span><strong>{{ failed_background_jobs_today }}</strong></div>
-      <div class="metric-card"><span>Открытые обращения</span><strong>{{ open_support_threads }}</strong></div>
-      <div class="metric-card"><span>Писем отправлено сегодня</span><strong>{{ sent_emails_today }}</strong></div>
-      <div class="metric-card"><span>Ошибок отправки писем сегодня</span><strong>{{ failed_emails_today }}</strong></div>
-    </div>
-
-    <div class="form-card" style="margin-top: 20px;">
-      <h2 class="form-title">Воронка заказов</h2>
-      <div class="grid">
-        {% for item in funnel_counts %}
-          <div class="metric-card"><span>{{ item.label }}</span><strong>{{ item.count }}</strong></div>
-        {% endfor %}
+    <div class="admin-metrics-columns">
+      <div class="form-card">
+        <h2 class="form-title">Сегодня</h2>
+        <div class="grid admin-metrics-grid">
+          {% for item in today_metrics %}
+            <div class="metric-card"><span>{{ item.label }}</span><strong>{{ item.value }}</strong></div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="form-card">
+        <h2 class="form-title">Всё время</h2>
+        <div class="grid admin-metrics-grid">
+          {% for item in all_time_metrics %}
+            <div class="metric-card"><span>{{ item.label }}</span><strong>{{ item.value }}</strong></div>
+          {% endfor %}
+        </div>
       </div>
     </div>
 
