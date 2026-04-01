@@ -5,7 +5,7 @@ from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
-from sqlalchemy import func, or_
+from sqlalchemy import distinct, func, or_
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -90,16 +90,6 @@ SUPPORT_STATUS_OPTIONS = [
 VALID_ORDER_STATUSES = {value for value, _label in ORDER_STATUS_OPTIONS}
 VALID_SONG_STATUSES = {value for value, _label in SONG_STATUS_OPTIONS}
 VALID_SUPPORT_STATUSES = {value for value, _label in SUPPORT_STATUS_OPTIONS if value != FILTER_ALL}
-FUNNEL_STAGES = [
-    ("Черновики", ["draft"]),
-    ("Ждут оплату", ["awaiting_payment", "payment_pending", "payment_canceled"]),
-    ("Оплачены", ["paid"]),
-    ("Песня в работе", ["song_pending"]),
-    ("Песня готова", ["song_ready"]),
-    ("Ошибка", ["song_failed"]),
-]
-
-
 def normalize_multiline_urls(value: str | None) -> list[str]:
     if not value:
         return []
@@ -197,6 +187,44 @@ def get_today_range_utc() -> tuple[datetime, datetime]:
     return start_local.astimezone(timezone.utc), end_local.astimezone(timezone.utc)
 
 
+def build_dashboard_metrics(
+    db: Session,
+    *,
+    day_start_utc: datetime | None = None,
+    day_end_utc: datetime | None = None,
+) -> list[dict[str, str | int]]:
+    session_query = db.query(Order)
+    starts_query = db.query(Order)
+    final_step_query = db.query(Order).filter(Order.user_id.isnot(None))
+
+    payment_success_at = payment_success_at_expr()
+    paid_query = db.query(OrderPayment).filter(OrderPayment.status == "succeeded")
+
+    if day_start_utc and day_end_utc:
+        session_query = session_query.filter(Order.created_at >= day_start_utc, Order.created_at < day_end_utc)
+        starts_query = starts_query.filter(Order.created_at >= day_start_utc, Order.created_at < day_end_utc)
+        final_step_query = final_step_query.filter(Order.updated_at >= day_start_utc, Order.updated_at < day_end_utc)
+        paid_query = paid_query.filter(payment_success_at >= day_start_utc, payment_success_at < day_end_utc)
+
+    visitor_count = session_query.with_entities(func.count(distinct(Order.session_id))).scalar() or 0
+    starts_count = starts_query.with_entities(func.count(Order.id)).scalar() or 0
+    final_step_count = final_step_query.with_entities(func.count(Order.id)).scalar() or 0
+
+    paid_items = paid_query.all()
+    paid_count = len(paid_items)
+    paid_sum = sum(item.final_amount_rub for item in paid_items)
+    unique_clients = len({item.user_id for item in paid_items if item.user_id})
+
+    return [
+        {"label": "Посетители сайта", "value": int(visitor_count)},
+        {"label": "Нажали кнопку «Хочу песню» (старт анкеты)", "value": int(starts_count)},
+        {"label": "Дошли до финального шага (ввод email и оплата)", "value": int(final_step_count)},
+        {"label": "Оплатили", "value": int(paid_count)},
+        {"label": "Сумма оплат", "value": f"{int(paid_sum)} ₽"},
+        {"label": "Уникальных клиентов", "value": int(unique_clients)},
+    ]
+
+
 def get_latest_payment(order: Order) -> OrderPayment | None:
     if not order.payments:
         return None
@@ -233,6 +261,20 @@ def humanize_payment_status(status: str | None) -> str:
         "canceled": "Не оплачено",
     }
     return mapping.get(status or "", "Не начата")
+
+
+def humanize_order_status(status: str | None) -> str:
+    mapping = {
+        "draft": "Черновик",
+        "awaiting_payment": "Ожидает оплату",
+        "payment_pending": "Оплата в процессе",
+        "payment_canceled": "Оплата отменена",
+        "paid": "Оплачен",
+        "song_pending": "Песня в работе",
+        "song_ready": "Песня готова",
+        "song_failed": "Ошибка генерации",
+    }
+    return mapping.get(status or "", status or "—")
 
 
 def can_run_song(order: Order) -> bool:
@@ -412,27 +454,12 @@ def get_recent_security_events_for_order(db: Session, order_id: int, limit: int 
 
 def build_order_card(order: Order) -> dict:
     latest_payment = get_latest_payment(order)
-    latest_song = get_latest_song(order)
     return {
         "order": order,
-        "latest_payment": latest_payment,
-        "latest_song": latest_song,
+        "email": order.user.email if order.user and order.user.email else "—",
+        "order_status_label": humanize_order_status(order.status),
         "payment_status_label": humanize_payment_status(latest_payment.status if latest_payment else None),
-        "song_status_label": humanize_song_status(latest_song.status if latest_song else None),
-        "can_run_song": can_run_song(order),
-        "can_resend_payment_email": can_resend_payment_email(order),
-        "can_resend_song_ready_email": can_resend_song_ready_email(order),
-        "amount_rub": latest_payment.final_amount_rub if latest_payment else None,
     }
-
-
-def build_funnel_counts(db: Session) -> list[dict[str, int | str]]:
-    rows = db.query(Order.status, func.count(Order.id)).group_by(Order.status).all()
-    counts_map = {status: count for status, count in rows}
-    return [
-        {"label": label, "count": sum(int(counts_map.get(status, 0) or 0) for status in statuses)}
-        for label, statuses in FUNNEL_STAGES
-    ]
 
 
 @router.get("/login", response_class=HTMLResponse)
@@ -489,72 +516,23 @@ async def admin_voice_stream(voice_public_id: str, request: Request, db: Session
 async def admin_dashboard(
     request: Request,
     q: str | None = None,
-    order_status: str = FILTER_ALL,
-    payment_status: str = FILTER_ALL,
-    song_status: str = FILTER_ALL,
-    story_source: str = FILTER_ALL,
-    lyrics_mode: str = FILTER_ALL,
     db: Session = Depends(get_db),
 ):
     if not has_admin_access(request):
         return RedirectResponse(url="/admin/login", status_code=303)
 
     query_text = (q or "").strip()
-    order_status = (order_status or FILTER_ALL).strip() or FILTER_ALL
-    payment_status = (payment_status or FILTER_ALL).strip() or FILTER_ALL
-    song_status = (song_status or FILTER_ALL).strip() or FILTER_ALL
-    story_source = (story_source or FILTER_ALL).strip() or FILTER_ALL
-    lyrics_mode = (lyrics_mode or FILTER_ALL).strip() or FILTER_ALL
 
     day_start_utc, day_end_utc = get_today_range_utc()
-
-    new_users_today = db.query(func.count(User.id)).filter(User.created_at >= day_start_utc, User.created_at < day_end_utc).scalar() or 0
-    total_users = db.query(func.count(User.id)).scalar() or 0
-    orders_today = db.query(func.count(Order.id)).filter(Order.created_at >= day_start_utc, Order.created_at < day_end_utc).scalar() or 0
-    payment_success_at = payment_success_at_expr()
-    successful_payments_today = db.query(func.count(OrderPayment.id)).filter(OrderPayment.status == "succeeded", payment_success_at >= day_start_utc, payment_success_at < day_end_utc).scalar() or 0
-    songs_ready_today = db.query(func.count(SongGeneration.id)).filter(SongGeneration.status == "succeeded", SongGeneration.finished_at >= day_start_utc, SongGeneration.finished_at < day_end_utc).scalar() or 0
-    song_errors_today = db.query(func.count(SongGeneration.id)).filter(SongGeneration.status == "failed", SongGeneration.updated_at >= day_start_utc, SongGeneration.updated_at < day_end_utc).scalar() or 0
-    pending_payments = db.query(func.count(OrderPayment.id)).filter(OrderPayment.status.in_(["pending", "waiting_for_capture"])).scalar() or 0
-    failed_song_jobs = db.query(func.count(SongGeneration.id)).filter(SongGeneration.status == "failed").scalar() or 0
-    blocked_security_events_today = db.query(func.count(SecurityEvent.id)).filter(SecurityEvent.status.in_(["blocked", "suspicious"]), SecurityEvent.created_at >= day_start_utc, SecurityEvent.created_at < day_end_utc).scalar() or 0
-    queued_background_jobs = db.query(func.count(BackgroundJob.id)).filter(BackgroundJob.status.in_(["queued", "started"])).scalar() or 0
-    failed_background_jobs_today = db.query(func.count(BackgroundJob.id)).filter(BackgroundJob.status == "failed", BackgroundJob.finished_at >= day_start_utc, BackgroundJob.finished_at < day_end_utc).scalar() or 0
-    open_support_threads = db.query(func.count(SupportThread.id)).filter(SupportThread.status.in_(["new", "open", "pending"])).scalar() or 0
-    sent_emails_today = db.query(func.count(EmailLog.id)).filter(EmailLog.status.in_(["sent", "stub"]), EmailLog.created_at >= day_start_utc, EmailLog.created_at < day_end_utc).scalar() or 0
-    failed_emails_today = db.query(func.count(EmailLog.id)).filter(EmailLog.status == "failed", EmailLog.created_at >= day_start_utc, EmailLog.created_at < day_end_utc).scalar() or 0
+    today_metrics = build_dashboard_metrics(db, day_start_utc=day_start_utc, day_end_utc=day_end_utc)
+    all_time_metrics = build_dashboard_metrics(db)
 
     orders_query = db.query(Order).outerjoin(User, Order.user_id == User.id)
     if query_text:
         pattern = f"%{query_text}%"
-        orders_query = orders_query.filter(or_(Order.order_number.ilike(pattern), Order.public_id.ilike(pattern), Order.session_id.ilike(pattern), User.email.ilike(pattern)))
-    if order_status != FILTER_ALL:
-        orders_query = orders_query.filter(Order.status == order_status)
-    if payment_status == "missing":
-        orders_query = orders_query.filter(~Order.payments.any())
-    elif payment_status != FILTER_ALL:
-        orders_query = orders_query.filter(Order.payments.any(OrderPayment.status == payment_status))
-    if song_status == "missing":
-        orders_query = orders_query.filter(~Order.song_generations.any())
-    elif song_status != FILTER_ALL:
-        orders_query = orders_query.filter(Order.song_generations.any(SongGeneration.status == song_status))
-    if story_source != FILTER_ALL:
-        orders_query = orders_query.filter(Order.story_source == story_source)
-    if lyrics_mode != FILTER_ALL:
-        orders_query = orders_query.filter(Order.lyrics_mode == lyrics_mode)
+        orders_query = orders_query.filter(or_(Order.order_number.ilike(pattern), User.email.ilike(pattern)))
 
     orders = orders_query.order_by(Order.id.desc()).limit(50).all()
-    order_status_counts = db.query(Order.status, func.count(Order.id)).group_by(Order.status).order_by(func.count(Order.id).desc()).all()
-    payment_status_counts = db.query(OrderPayment.status, func.count(OrderPayment.id)).group_by(OrderPayment.status).order_by(func.count(OrderPayment.id).desc()).all()
-    song_status_counts = db.query(SongGeneration.status, func.count(SongGeneration.id)).group_by(SongGeneration.status).order_by(func.count(SongGeneration.id).desc()).all()
-    recent_failed_songs = db.query(SongGeneration).filter(SongGeneration.status == "failed").order_by(SongGeneration.updated_at.desc(), SongGeneration.id.desc()).limit(10).all()
-
-    recent_problem_payments = db.query(OrderPayment).filter(OrderPayment.status.in_(["pending", "waiting_for_capture", "canceled"])).order_by(OrderPayment.updated_at.desc(), OrderPayment.id.desc()).limit(10).all()
-    recent_security_events = db.query(SecurityEvent).filter(SecurityEvent.status.in_(["blocked", "suspicious"])).order_by(SecurityEvent.id.desc()).limit(12).all()
-    recent_background_jobs = get_recent_background_jobs(db, limit=12)
-    recent_support_threads = get_recent_support_threads(db, limit=12)
-    recent_email_logs = get_recent_email_logs(db, limit=12)
-
     return templates.TemplateResponse(
         "admin/dashboard.html",
         {
@@ -562,43 +540,10 @@ async def admin_dashboard(
             "page_title": "Админка",
             "flash": pop_admin_flash(request),
             "q": query_text,
-            "order_status": order_status,
-            "payment_status": payment_status,
-            "song_status": song_status,
-            "story_source": story_source,
-            "lyrics_mode": lyrics_mode,
             "admin_token_enabled": bool(settings.ADMIN_TOKEN),
-            "new_users_today": new_users_today,
-            "total_users": total_users,
-            "orders_today": orders_today,
-            "successful_payments_today": successful_payments_today,
-            "songs_ready_today": songs_ready_today,
-            "song_errors_today": song_errors_today,
-            "failed_song_jobs": failed_song_jobs,
-            "pending_payments": pending_payments,
-            "blocked_security_events_today": blocked_security_events_today,
-            "queued_background_jobs": queued_background_jobs,
-            "failed_background_jobs_today": failed_background_jobs_today,
-            "open_support_threads": open_support_threads,
-            "sent_emails_today": sent_emails_today,
-            "failed_emails_today": failed_emails_today,
-            "order_status_counts": order_status_counts,
-            "payment_status_counts": payment_status_counts,
-            "song_status_counts": song_status_counts,
+            "today_metrics": today_metrics,
+            "all_time_metrics": all_time_metrics,
             "order_cards": [build_order_card(order) for order in orders],
-            "funnel_counts": build_funnel_counts(db),
-            "recent_failed_songs": recent_failed_songs,
-            "recent_problem_payments": recent_problem_payments,
-            "recent_security_events": [build_security_event_card(item) for item in recent_security_events],
-            "recent_background_jobs": [build_background_job_card(item) for item in recent_background_jobs],
-            "recent_support_threads": [build_support_thread_card(item) for item in recent_support_threads],
-            "recent_email_logs": [build_email_log_card(item) for item in recent_email_logs],
-            "humanize_security_action": humanize_security_action,
-            "order_status_filter_options": ORDER_STATUS_FILTER_OPTIONS,
-            "payment_status_filter_options": PAYMENT_STATUS_FILTER_OPTIONS,
-            "song_status_filter_options": SONG_STATUS_FILTER_OPTIONS,
-            "story_source_options": STORY_SOURCE_OPTIONS,
-            "lyrics_mode_options": LYRICS_MODE_OPTIONS,
         },
     )
 
