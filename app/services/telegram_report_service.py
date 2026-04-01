@@ -6,11 +6,11 @@ from zoneinfo import ZoneInfo
 import json
 from urllib import error, request
 
-from sqlalchemy import func
+from sqlalchemy import distinct, func
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.models import Order, OrderPayment, User
+from app.models import Order, OrderPayment
 from app.models.order_payment import payment_success_at_expr
 from app.models.support_thread import SupportMessage, SupportThread
 
@@ -181,22 +181,44 @@ def _today_range_utc() -> tuple[datetime, datetime]:
 
 def build_daily_metrics_report(db: Session) -> str:
     start_utc, end_utc = _today_range_utc()
-
-    orders_today = db.query(func.count(Order.id)).filter(Order.created_at >= start_utc, Order.created_at < end_utc).scalar() or 0
-    users_today = db.query(func.count(User.id)).filter(User.created_at >= start_utc, User.created_at < end_utc).scalar() or 0
-    total_users = db.query(func.count(User.id)).scalar() or 0
     payment_success_at = payment_success_at_expr()
     payments_today = db.query(OrderPayment).filter(OrderPayment.status == "succeeded", payment_success_at >= start_utc, payment_success_at < end_utc).all()
-    successful_payments_today = len(payments_today)
-    payments_sum_today = sum(item.final_amount_rub for item in payments_today)
+    payments_all_time = db.query(OrderPayment).filter(OrderPayment.status == "succeeded").all()
+
+    today_visitors = db.query(func.count(distinct(Order.session_id))).filter(Order.created_at >= start_utc, Order.created_at < end_utc).scalar() or 0
+    all_time_visitors = db.query(func.count(distinct(Order.session_id))).scalar() or 0
+
+    starts_today = db.query(func.count(Order.id)).filter(Order.created_at >= start_utc, Order.created_at < end_utc).scalar() or 0
+    starts_all_time = db.query(func.count(Order.id)).scalar() or 0
+
+    final_step_today = db.query(func.count(Order.id)).filter(Order.user_id.isnot(None), Order.updated_at >= start_utc, Order.updated_at < end_utc).scalar() or 0
+    final_step_all_time = db.query(func.count(Order.id)).filter(Order.user_id.isnot(None)).scalar() or 0
+
+    paid_today = len(payments_today)
+    paid_all_time = len(payments_all_time)
+    sum_today = sum(item.final_amount_rub for item in payments_today)
+    sum_all_time = sum(item.final_amount_rub for item in payments_all_time)
+
+    unique_clients_today = len({item.user_id for item in payments_today if item.user_id})
+    unique_clients_all_time = len({item.user_id for item in payments_all_time if item.user_id})
 
     return "\n".join([
         "<b>Magic Music · отчёт за сегодня</b>",
         f"Дата ({REPORT_TZ.key}): {start_utc.astimezone(REPORT_TZ).strftime('%Y-%m-%d')}",
         "",
-        f"Заказов сегодня: <b>{int(orders_today)}</b>",
-        f"Успешных оплат сегодня: <b>{int(successful_payments_today)}</b>",
-        f"Сумма успешных оплат сегодня: <b>{int(payments_sum_today)} ₽</b>",
-        f"Новых пользователей сегодня: <b>{int(users_today)}</b>",
-        f"Уникальных пользователей за всё время: <b>{int(total_users)}</b>",
+        "<b>Сегодня</b>",
+        f"• Посетители сайта: <b>{int(today_visitors)}</b>",
+        f"• Нажали «Хочу песню»: <b>{int(starts_today)}</b>",
+        f"• Дошли до финального шага: <b>{int(final_step_today)}</b>",
+        f"• Оплатили: <b>{int(paid_today)}</b>",
+        f"• Сумма оплат: <b>{int(sum_today)} ₽</b>",
+        f"• Уникальных клиентов: <b>{int(unique_clients_today)}</b>",
+        "",
+        "<b>Всё время</b>",
+        f"• Посетители сайта: <b>{int(all_time_visitors)}</b>",
+        f"• Нажали «Хочу песню»: <b>{int(starts_all_time)}</b>",
+        f"• Дошли до финального шага: <b>{int(final_step_all_time)}</b>",
+        f"• Оплатили: <b>{int(paid_all_time)}</b>",
+        f"• Сумма оплат: <b>{int(sum_all_time)} ₽</b>",
+        f"• Уникальных клиентов: <b>{int(unique_clients_all_time)}</b>",
     ])
