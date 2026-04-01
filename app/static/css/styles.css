@@ -6851,13 +6851,25 @@ strong,
   z-index: 1;
 }
 
+.admin-metrics-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.admin-metrics-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 0;
+}
+
 .admin-screen-section .form-card,
 .admin-screen-section .panel-card,
 .admin-screen-section .metric-card,
 .admin-screen-section .admin-event {
-  background: linear-gradient(180deg, rgba(11, 19, 35, 0.94), rgba(9, 16, 30, 0.96));
-  border: 1px solid rgba(148, 167, 209, 0.16);
-  box-shadow: 0 28px 60px rgba(3, 10, 24, 0.24);
+  background: linear-gradient(180deg, rgba(11, 19, 35, 0.96), rgba(9, 16, 30, 0.94));
+  border: 1px solid rgba(148, 167, 209, 0.2);
+  box-shadow: 0 24px 56px rgba(3, 10, 24, 0.3);
 }
 
 .admin-screen-section .form-card,
@@ -6888,7 +6900,7 @@ strong,
 .admin-screen-section .textarea,
 .admin-screen-section .text-input,
 .admin-screen-section select {
-  color: rgba(232, 238, 255, 0.84);
+  color: rgba(229, 236, 251, 0.86);
 }
 
 .admin-screen-section .eyebrow,
@@ -6898,7 +6910,7 @@ strong,
 .admin-screen-section h3,
 .admin-screen-section strong,
 .admin-screen-section .detail-value {
-  color: #ffffff;
+  color: #f6f9ff;
 }
 
 .admin-screen-section .text-input,
@@ -6907,39 +6919,45 @@ strong,
 .admin-screen-section select,
 .admin-screen-section .preview-box,
 .admin-screen-section details {
-  background: rgba(7, 13, 25, 0.82);
-  border-color: rgba(142, 162, 208, 0.18);
+  background: rgba(7, 13, 25, 0.88);
+  border-color: rgba(142, 162, 208, 0.24);
+  color: #f2f6ff;
+}
+
+.admin-screen-section .text-input::placeholder,
+.admin-screen-section .textarea::placeholder {
+  color: rgba(199, 214, 244, 0.72);
 }
 
 .admin-screen-section .notice {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(170, 184, 226, 0.14);
-  color: #eef3ff;
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(176, 193, 232, 0.2);
+  color: #eef4ff;
 }
 
 .admin-screen-section .notice.notice-error {
-  background: rgba(80, 18, 28, 0.38);
-  border-color: rgba(255, 140, 140, 0.2);
+  background: rgba(255, 236, 236, 0.88);
+  border-color: #f8b4b4;
 }
 
 .admin-screen-section .notice.notice-warning {
-  background: rgba(89, 58, 6, 0.32);
-  border-color: rgba(255, 201, 107, 0.24);
+  background: rgba(255, 248, 229, 0.9);
+  border-color: #f7dea6;
 }
 
 .admin-screen-section .detail-list-item {
-  border-color: rgba(148, 167, 209, 0.12);
-  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(155, 177, 222, 0.16);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .admin-screen-section .btn.btn-secondary {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(184, 198, 255, 0.16);
-  color: #eef3ff;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(176, 196, 235, 0.24);
+  color: #f1f5ff;
 }
 
 .admin-screen-section .btn.btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.14);
 }
 
 @media (max-width: 980px) {
@@ -7028,20 +7046,10 @@ strong,
 }
 
 
-/* ===== 2026-03-20 support attachment + admin fixes ===== */
-.page-admin-screen .page-bg-dark {
-  background:
-    radial-gradient(circle at 14% 18%, rgba(95, 121, 255, 0.28), transparent 24%),
-    radial-gradient(circle at 83% 16%, rgba(105, 224, 255, 0.18), transparent 18%),
-    radial-gradient(circle at 75% 74%, rgba(133, 87, 255, 0.2), transparent 24%),
-    radial-gradient(circle at 28% 88%, rgba(53, 119, 255, 0.18), transparent 22%),
-    linear-gradient(180deg, #07111f 0%, #0b1730 36%, #07111f 100%);
-}
-
 .admin-screen-section .step-meta span {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(184, 198, 255, 0.16);
-  color: #eef3ff;
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(176, 196, 235, 0.2);
+  color: #e7efff;
   box-shadow: none;
 }
 
@@ -7054,7 +7062,7 @@ strong,
 }
 
 .admin-screen-section .admin-event-head span {
-  color: rgba(210, 221, 255, 0.7);
+  color: rgba(207, 220, 250, 0.8);
   word-break: break-word;
 }
 
@@ -7066,4 +7074,27 @@ strong,
 .admin-screen-section .notice.notice-error {
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+@media (max-width: 980px) {
+  .admin-metrics-columns,
+  .admin-metrics-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.page-admin-screen .page-bg-dark {
+  background:
+    radial-gradient(circle at 14% 18%, rgba(95, 121, 255, 0.24), transparent 24%),
+    radial-gradient(circle at 83% 16%, rgba(105, 224, 255, 0.13), transparent 18%),
+    radial-gradient(circle at 75% 74%, rgba(133, 87, 255, 0.18), transparent 24%),
+    radial-gradient(circle at 28% 88%, rgba(53, 119, 255, 0.14), transparent 22%),
+    linear-gradient(180deg, #07111f 0%, #091423 30%, #07111f 100%);
+}
+
+.page-admin-screen .site-header,
+.page-admin-screen .site-header-upgraded,
+.page-admin-screen .site-header-dark {
+  background: rgba(7, 14, 27, 0.62);
+  border-bottom: 1px solid rgba(152, 177, 230, 0.22);
 }
