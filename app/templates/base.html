@@ -130,43 +130,37 @@
       telegramBotLink.addEventListener('click', function (event) {
         event.preventDefault();
 
-        var popupWindow = window.open('', '_blank', 'noopener');
-
-        function openTelegramUrl(clientId) {
-          var targetUrl = buildTelegramUrl(clientId);
-          if (popupWindow) {
-            popupWindow.location.replace(targetUrl);
-            return;
-          }
-          window.open(targetUrl, '_blank', 'noopener');
-        }
+        var fallbackUrl = buildTelegramUrl();
+        var popupWindow = window.open(fallbackUrl, '_blank', 'noopener');
 
         var hasYm = typeof window.ym === 'function';
         if (!hasYm || !metricaCounterId) {
-          openTelegramUrl();
           return;
         }
 
         var resolved = false;
 
-        function safeOpen(clientId) {
+        function safeUpdate(clientId) {
           if (resolved) return;
           resolved = true;
-          openTelegramUrl(clientId);
+          if (!clientId || !popupWindow || popupWindow.closed) {
+            return;
+          }
+          popupWindow.location.replace(buildTelegramUrl(clientId));
         }
 
         var timeoutId = window.setTimeout(function () {
-          safeOpen();
+          safeUpdate();
         }, 700);
 
         try {
           window.ym(metricaCounterId, 'getClientID', function (clientId) {
             window.clearTimeout(timeoutId);
-            safeOpen(clientId);
+            safeUpdate(clientId);
           });
         } catch (error) {
           window.clearTimeout(timeoutId);
-          safeOpen();
+          safeUpdate();
         }
       });
     });
