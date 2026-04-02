@@ -54,7 +54,7 @@
         <a class="{% if path == '/' %}is-active{% endif %}" href="/">Главная</a>
         <a class="{% if path == '/portfolio' %}is-active{% endif %}" href="/portfolio">Портфолио</a>
         <a class="{% if path == '/reviews' %}is-active{% endif %}" href="/reviews">Отзывы</a>
-        <a class="nav-link-bot" href="{{ settings.SUPPORT_TG_URL }}" target="_blank" rel="noopener">Telegram-бот</a>
+        <a class="nav-link-bot" id="telegram-bot-link" href="{{ settings.SUPPORT_TG_URL }}" target="_blank" rel="noopener">Telegram-бот</a>
       </nav>
       
       <div class="header-actions">
@@ -103,6 +103,74 @@
   <div id="b24-support-trigger-host" style="position: fixed; right: -9999px; bottom: -9999px; width: 1px; height: 1px; opacity: 0; pointer-events: none; overflow: hidden;">
     <script data-b24-form="click/14/gh9ru2" data-skip-moving="true">(function(w,d,u){var s=d.createElement('script');s.async=true;s.src=u+'?'+(Date.now()/180000|0);var h=d.getElementsByTagName('script')[0];h.parentNode.insertBefore(s,h);})(window,document,'https://cdn-ru.bitrix24.ru/b5781715/crm/form/loader_14.js');</script>
   </div>
+
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      var telegramBotLink = document.getElementById('telegram-bot-link');
+      if (!telegramBotLink) return;
+
+      var metricaCounterId = {{ settings.METRICA_COUNTER_ID|tojson }};
+
+      function buildTelegramUrl(clientId) {
+        var targetUrl = new URL(telegramBotLink.href);
+        var currentUrl = new URL(window.location.href);
+        var yclid = currentUrl.searchParams.get('yclid');
+
+        if (clientId) {
+          targetUrl.searchParams.set('cid', clientId);
+        }
+        if (yclid) {
+          targetUrl.searchParams.set('yclid', yclid);
+        }
+
+        return targetUrl.toString();
+      }
+
+      telegramBotLink.addEventListener('click', function (event) {
+        event.preventDefault();
+
+        var popupWindow = window.open('', '_blank', 'noopener');
+
+        function openTelegramUrl(clientId) {
+          var targetUrl = buildTelegramUrl(clientId);
+          if (popupWindow) {
+            popupWindow.location.replace(targetUrl);
+            return;
+          }
+          window.open(targetUrl, '_blank', 'noopener');
+        }
+
+        var hasYm = typeof window.ym === 'function';
+        if (!hasYm || !metricaCounterId) {
+          openTelegramUrl();
+          return;
+        }
+
+        var resolved = false;
+
+        function safeOpen(clientId) {
+          if (resolved) return;
+          resolved = true;
+          openTelegramUrl(clientId);
+        }
+
+        var timeoutId = window.setTimeout(function () {
+          safeOpen();
+        }, 700);
+
+        try {
+          window.ym(metricaCounterId, 'getClientID', function (clientId) {
+            window.clearTimeout(timeoutId);
+            safeOpen(clientId);
+          });
+        } catch (error) {
+          window.clearTimeout(timeoutId);
+          safeOpen();
+        }
+      });
+    });
+  </script>
 
   <script>
     document.addEventListener('DOMContentLoaded', function () {
