@@ -108,14 +108,22 @@
   <script>
     document.addEventListener('DOMContentLoaded', function () {
       var telegramBotLink = document.getElementById('telegram-bot-link');
+      console.log('[telegram-bot-link] element found:', Boolean(telegramBotLink));
       if (!telegramBotLink) return;
 
       var metricaCounterId = {{ settings.METRICA_COUNTER_ID|tojson }};
+      console.log('[telegram-bot-link] metricaCounterId:', metricaCounterId);
+
+      function getYclid() {
+        var currentUrl = new URL(window.location.href);
+        var yclid = currentUrl.searchParams.get('yclid');
+        console.log('[telegram-bot-link] yclid found:', yclid);
+        return yclid;
+      }
 
       function buildTelegramUrl(clientId) {
         var targetUrl = new URL(telegramBotLink.href);
-        var currentUrl = new URL(window.location.href);
-        var yclid = currentUrl.searchParams.get('yclid');
+        var yclid = getYclid();
 
         if (clientId) {
           targetUrl.searchParams.set('cid', clientId);
@@ -124,6 +132,7 @@
           targetUrl.searchParams.set('yclid', yclid);
         }
 
+        console.log('[telegram-bot-link] final url:', targetUrl.toString());
         return targetUrl.toString();
       }
 
@@ -131,9 +140,13 @@
         event.preventDefault();
 
         var fallbackUrl = buildTelegramUrl();
-        var popupWindow = window.open(fallbackUrl, '_blank', 'noopener');
+        var popupWindow = window.open(fallbackUrl, '_blank');
+        if (popupWindow) {
+          popupWindow.opener = null;
+        }
 
         var hasYm = typeof window.ym === 'function';
+        console.log('[telegram-bot-link] ym available:', hasYm);
         if (!hasYm || !metricaCounterId) {
           return;
         }
@@ -143,6 +156,7 @@
         function safeUpdate(clientId) {
           if (resolved) return;
           resolved = true;
+          console.log('[telegram-bot-link] clientID received:', clientId);
           if (!clientId || !popupWindow || popupWindow.closed) {
             return;
           }
@@ -150,6 +164,7 @@
         }
 
         var timeoutId = window.setTimeout(function () {
+          console.log('[telegram-bot-link] getClientID timeout fallback');
           safeUpdate();
         }, 700);
 
@@ -160,6 +175,7 @@
           });
         } catch (error) {
           window.clearTimeout(timeoutId);
+          console.log('[telegram-bot-link] getClientID error:', error);
           safeUpdate();
         }
       });
