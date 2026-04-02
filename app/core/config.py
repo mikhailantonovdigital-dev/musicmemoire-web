@@ -38,7 +38,7 @@ class Settings(BaseSettings):
 
     METRICA_COUNTER_ID: str | None = None
 
-    SUPPORT_TG_URL: str = "https://t.me/mikhailantonov19"
+    SUPPORT_TG_URL: str = "https://tg-song-bot--veshenka.replit.app/go"
     SUPPORT_MAX_URL: str = "https://max.ru/u/f9LHodD0cOKg36L-baFKeBJquxSx5xydupa2AYOKdl7BUFipfVYS5FVVV80"
 
     TELEGRAM_BOT_TOKEN: str | None = None
