@@ -151,6 +151,13 @@
           return;
         }
 
+        try {
+          window.ym(metricaCounterId, 'reachGoal', 'clicktgactiveon');
+          console.log('[telegram-bot-link] reachGoal sent: clicktgactiveon');
+        } catch (error) {
+          console.log('[telegram-bot-link] reachGoal error:', error);
+        }
+
         var resolved = false;
 
         function safeUpdate(clientId) {
