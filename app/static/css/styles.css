@@ -1718,10 +1718,31 @@ body.theme-dark-premium {
   color: var(--muted);
 }
 
+.nav-upgraded a.nav-link-bot {
+  color: #8f7cff;
+  font-weight: 700;
+}
+
 .nav-upgraded a:hover,
 .nav-upgraded a.is-active {
   background: rgba(255, 255, 255, 0.05);
   color: #ffffff;
+}
+
+.nav-upgraded a.nav-link-bot:hover,
+.nav-upgraded a.nav-link-bot.is-active {
+  color: #8f7cff;
+}
+
+@supports (-webkit-background-clip: text) {
+  .nav-upgraded a.nav-link-bot,
+  .nav-upgraded a.nav-link-bot:hover,
+  .nav-upgraded a.nav-link-bot.is-active {
+    background-image: linear-gradient(135deg, #5c7cff, #8f7cff);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
 }
 
 .header-link-btn {
@@ -2857,10 +2878,19 @@ strong,
   color: rgba(234, 241, 255, 0.78);
 }
 
+.page-home .nav-upgraded a.nav-link-bot {
+  color: #8f7cff;
+}
+
 .page-home .nav-upgraded a:hover,
 .page-home .nav-upgraded a.is-active {
   background: rgba(255, 255, 255, 0.06);
   color: #ffffff;
+}
+
+.page-home .nav-upgraded a.nav-link-bot:hover,
+.page-home .nav-upgraded a.nav-link-bot.is-active {
+  color: #8f7cff;
 }
 
 .page-home .header-link-btn {
@@ -3902,10 +3932,19 @@ strong,
   color: rgba(234, 241, 255, 0.78);
 }
 
+.page-marketing-screen .nav-upgraded a.nav-link-bot {
+  color: #8f7cff;
+}
+
 .page-marketing-screen .nav-upgraded a:hover,
 .page-marketing-screen .nav-upgraded a.is-active {
   background: rgba(255, 255, 255, 0.06);
   color: #ffffff;
+}
+
+.page-marketing-screen .nav-upgraded a.nav-link-bot:hover,
+.page-marketing-screen .nav-upgraded a.nav-link-bot.is-active {
+  color: #8f7cff;
 }
 
 .page-marketing-screen .hero-screen {
