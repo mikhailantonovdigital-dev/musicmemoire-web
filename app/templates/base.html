@@ -53,7 +53,7 @@
       <nav class="nav nav-upgraded nav-dark nav-horizontal">
         <a class="{% if path == '/' %}is-active{% endif %}" href="/">Главная</a>
         <a class="{% if path == '/portfolio' %}is-active{% endif %}" href="/portfolio">Портфолио</a>
-        <a class="{% if path == '/how-it-works' %}is-active{% endif %}" href="/how-it-works">Как работает</a>
+        <a class="nav-link-bot" href="{{ settings.SUPPORT_TG_URL }}" target="_blank" rel="noopener">ТГ-бот</a>
         <a class="{% if path == '/reviews' %}is-active{% endif %}" href="/reviews">Отзывы</a>
       </nav>
       
