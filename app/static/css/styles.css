@@ -1734,17 +1734,6 @@ body.theme-dark-premium {
   color: #8f7cff;
 }
 
-@supports (-webkit-background-clip: text) {
-  .nav-upgraded a.nav-link-bot,
-  .nav-upgraded a.nav-link-bot:hover,
-  .nav-upgraded a.nav-link-bot.is-active {
-    background-image: linear-gradient(135deg, #5c7cff, #8f7cff);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
-}
-
 .header-link-btn {
   border: 1px solid rgba(160, 181, 220, 0.16);
   background: rgba(255, 255, 255, 0.05);
