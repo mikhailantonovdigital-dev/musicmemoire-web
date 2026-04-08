@@ -1,7 +1,11 @@
+import math
+import re
+import unicodedata
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response
+from markupsafe import Markup, escape
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -9,7 +13,7 @@ from app.core.config import settings
 from app.core.db import engine, get_db
 from app.core.templates import templates
 from app.core.storage import StorageError, save_support_file
-from app.models import Order, OrderEvent, SupportMessage, SupportThread, User
+from app.models import BlogArticle, BlogCategory, Order, OrderEvent, SupportMessage, SupportThread, User
 from app.services.background_jobs import get_redis_connection
 from app.services.telegram_report_service import notify_new_support_thread, telegram_reporting_enabled
 
@@ -682,6 +686,150 @@ def render_faq_page(request: Request):
 
 
 
+def transliterate_slug(value: str) -> str:
+    source = (value or "").strip().lower()
+    if not source:
+        return ""
+    char_map = {
+        "а": "a", "б": "b", "в": "v", "г": "g", "д": "d", "е": "e", "ё": "e",
+        "ж": "zh", "з": "z", "и": "i", "й": "y", "к": "k", "л": "l", "м": "m",
+        "н": "n", "о": "o", "п": "p", "р": "r", "с": "s", "т": "t", "у": "u",
+        "ф": "f", "х": "h", "ц": "c", "ч": "ch", "ш": "sh", "щ": "sch", "ъ": "",
+        "ы": "y", "ь": "", "э": "e", "ю": "yu", "я": "ya",
+    }
+    transliterated = "".join(char_map.get(char, char) for char in source)
+    normalized = unicodedata.normalize("NFKD", transliterated)
+    ascii_value = normalized.encode("ascii", "ignore").decode("ascii")
+    ascii_value = re.sub(r"[^a-z0-9\s-]", " ", ascii_value)
+    ascii_value = re.sub(r"[\s_]+", "-", ascii_value)
+    return re.sub(r"-{2,}", "-", ascii_value).strip("-")
+
+
+def article_blocks(content_text: str) -> list[Markup]:
+    normalized = (content_text or "").replace("\r\n", "\n")
+    if not normalized.strip():
+        return []
+
+    if re.search(r"</?(p|h1|h2|h3|h4|h5|h6|ul|ol|li|blockquote|pre|br)\b", normalized, flags=re.IGNORECASE):
+        return [Markup(normalized)]
+
+    chunks = [item.strip() for item in re.split(r"\n\s*\n", normalized) if item.strip()]
+    blocks: list[Markup] = []
+    for chunk in chunks:
+        safe_chunk = escape(chunk).replace("\n", Markup("<br>"))
+        blocks.append(Markup(f"<p>{safe_chunk}</p>"))
+    return blocks
+
+
+def blog_meta_context(request: Request, *, page_title: str, meta_description: str, path: str | None = None, og_image: str | None = None) -> dict:
+    final_path = path or request.url.path
+    context = build_public_meta(
+        path=final_path,
+        page_title=page_title,
+        meta_description=meta_description,
+    )
+    if og_image:
+        context["og_image"] = og_image
+    return context
+
+
+@router.get("/blog", response_class=HTMLResponse)
+async def blog_page(
+    request: Request,
+    page: int = 1,
+    category: str | None = None,
+    db: Session = Depends(get_db),
+):
+    per_page = 30
+    page_no = max(page, 1)
+    selected_category_slug = (category or "").strip().lower()
+
+    categories = db.query(BlogCategory).order_by(BlogCategory.name.asc()).all()
+    selected_category = next((item for item in categories if item.slug == selected_category_slug), None)
+
+    query = db.query(BlogArticle).filter(BlogArticle.is_published.is_(True))
+    if selected_category:
+        query = query.filter(BlogArticle.category_id == selected_category.id)
+
+    total_count = query.count()
+    total_pages = max(1, math.ceil(total_count / per_page)) if total_count else 1
+    if page_no > total_pages:
+        page_no = total_pages
+
+    articles = (
+        query.order_by(BlogArticle.created_at.desc(), BlogArticle.id.desc())
+        .offset((page_no - 1) * per_page)
+        .limit(per_page)
+        .all()
+    )
+
+    category_stats = []
+    for category_item in categories:
+        count = db.query(BlogArticle).filter(
+            BlogArticle.is_published.is_(True),
+            BlogArticle.category_id == category_item.id,
+        ).count()
+        category_stats.append({"category": category_item, "count": count})
+
+    page_title = "Блог — Magic Music"
+    if selected_category:
+        page_title = f"Блог: {selected_category.name} — Magic Music"
+    meta_description = "Блог Magic Music: свежие статьи, советы и идеи о персональных песнях и музыкальных подарках."
+
+    return templates.TemplateResponse(
+        "public/blog.html",
+        {
+            "request": request,
+            "articles": articles,
+            "categories": category_stats,
+            "selected_category": selected_category,
+            "selected_category_slug": selected_category_slug,
+            "page_no": page_no,
+            "total_pages": total_pages,
+            "page_title": page_title,
+            "meta_keywords": "блог, персональная песня, песня в подарок, музыка, идеи подарков",
+            "hero_cta_url": "/questionnaire/",
+            **blog_meta_context(request, page_title=page_title, meta_description=meta_description),
+        },
+    )
+
+
+@router.get("/blog/{slug}", response_class=HTMLResponse)
+async def blog_article_page(slug: str, request: Request, db: Session = Depends(get_db)):
+    article = (
+        db.query(BlogArticle)
+        .filter(BlogArticle.slug == slug.strip().lower(), BlogArticle.is_published.is_(True))
+        .first()
+    )
+    if article is None:
+        raise HTTPException(status_code=404)
+
+    blocks = article_blocks(article.content_text)
+    midpoint = max(1, len(blocks) // 2) if blocks else 1
+    og_image = None
+    if article.hero_image_path:
+        og_image = f"{settings.BASE_URL.rstrip('/')}" + article.hero_image_path
+    return templates.TemplateResponse(
+        "public/blog_article.html",
+        {
+            "request": request,
+            "article": article,
+            "blocks": blocks,
+            "midpoint": midpoint,
+            "hero_cta_url": "/questionnaire/",
+            "price_rub": settings.PRICE_RUB,
+            "meta_keywords": article.meta_keywords or "блог, персональная песня, песня в подарок",
+            **blog_meta_context(
+                request,
+                page_title=article.meta_title or f"{article.title} — Magic Music",
+                meta_description=article.meta_description or article.excerpt or article.title,
+                path=f"/blog/{article.slug}",
+                og_image=og_image,
+            ),
+        },
+    )
+
+
 @router.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return render_screen(request, "home")
@@ -750,10 +898,19 @@ async def sitemap_xml():
         f"{base_url}/portfolio",
         f"{base_url}/how-it-works",
         f"{base_url}/reviews",
+        f"{base_url}/blog",
         f"{base_url}/offer",
         f"{base_url}/policy",
         f"{base_url}/faq",
     ]
+    with Session(engine) as db:
+        blog_slugs = [
+            item[0]
+            for item in db.query(BlogArticle.slug)
+            .filter(BlogArticle.is_published.is_(True))
+            .all()
+        ]
+    urls.extend(f"{base_url}/blog/{slug}" for slug in blog_slugs)
     xml = (
         '<?xml version="1.0" encoding="UTF-8"?>'
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
