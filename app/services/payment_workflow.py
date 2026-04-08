@@ -302,20 +302,16 @@ def sync_recent_pending_payments(
     event_name: str | None = None,
     failed_event_name: str | None = None,
 ) -> tuple[int, int]:
-    query = (
-        db.query(OrderPayment)
-        .filter(
-            or_(
-                OrderPayment.status == "pending",
-                OrderPayment.status == "waiting_for_capture",
-            ),
-            OrderPayment.yookassa_payment_id.isnot(None),
-        )
-        .order_by(OrderPayment.id.desc())
-        .limit(max(1, int(limit)))
+    query = db.query(OrderPayment).filter(
+        or_(
+            OrderPayment.status == "pending",
+            OrderPayment.status == "waiting_for_capture",
+        ),
+        OrderPayment.yookassa_payment_id.isnot(None),
     )
     if created_after is not None:
         query = query.filter(OrderPayment.created_at >= created_after)
+    query = query.order_by(OrderPayment.id.desc()).limit(max(1, int(limit)))
 
     synced = 0
     failed = 0
