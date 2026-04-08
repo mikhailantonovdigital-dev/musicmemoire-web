@@ -13,6 +13,7 @@ from app.core.config import settings
 from app.models import Order, OrderPayment
 from app.models.order_payment import payment_success_at_expr
 from app.models.support_thread import SupportMessage, SupportThread
+from app.services.payment_workflow import sync_recent_pending_payments
 
 
 TELEGRAM_API_BASE = "https://api.telegram.org"
@@ -181,6 +182,15 @@ def _today_range_utc() -> tuple[datetime, datetime]:
 
 def build_daily_metrics_report(db: Session) -> str:
     start_utc, end_utc = _today_range_utc()
+    sync_recent_pending_payments(
+        db,
+        trigger="telegram_daily_report_refresh",
+        created_after=start_utc - timedelta(days=1),
+        event_name="payment_status_synced_from_telegram_report",
+        failed_event_name="payment_status_sync_failed_from_telegram_report",
+    )
+    db.commit()
+
     payment_success_at = payment_success_at_expr()
     payments_today = db.query(OrderPayment).filter(OrderPayment.status == "succeeded", payment_success_at >= start_utc, payment_success_at < end_utc).all()
     payments_all_time = db.query(OrderPayment).filter(OrderPayment.status == "succeeded").all()
@@ -207,7 +217,7 @@ def build_daily_metrics_report(db: Session) -> str:
         f"Дата ({REPORT_TZ.key}): {start_utc.astimezone(REPORT_TZ).strftime('%Y-%m-%d')}",
         "",
         "<b>Сегодня</b>",
-        f"• Посетители сайта: <b>{int(today_visitors)}</b>",
+        f"• Уникальные сессии анкеты: <b>{int(today_visitors)}</b>",
         f"• Нажали «Хочу песню»: <b>{int(starts_today)}</b>",
         f"• Дошли до финального шага: <b>{int(final_step_today)}</b>",
         f"• Оплатили: <b>{int(paid_today)}</b>",
@@ -215,7 +225,7 @@ def build_daily_metrics_report(db: Session) -> str:
         f"• Уникальных клиентов: <b>{int(unique_clients_today)}</b>",
         "",
         "<b>Всё время</b>",
-        f"• Посетители сайта: <b>{int(all_time_visitors)}</b>",
+        f"• Уникальные сессии анкеты: <b>{int(all_time_visitors)}</b>",
         f"• Нажали «Хочу песню»: <b>{int(starts_all_time)}</b>",
         f"• Дошли до финального шага: <b>{int(final_step_all_time)}</b>",
         f"• Оплатили: <b>{int(paid_all_time)}</b>",
