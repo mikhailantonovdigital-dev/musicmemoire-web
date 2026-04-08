@@ -716,7 +716,25 @@ def article_blocks(content_text: str) -> list[Markup]:
     chunks = [item.strip() for item in re.split(r"\n\s*\n", normalized) if item.strip()]
     blocks: list[Markup] = []
     for chunk in chunks:
-        safe_chunk = escape(chunk).replace("\n", Markup("<br>"))
+        lines = [line.strip() for line in chunk.split("\n") if line.strip()]
+        if not lines:
+            continue
+
+        if all(re.match(r"^[-•*]\s+", line) for line in lines):
+            items = "".join(f"<li>{escape(re.sub(r'^[-•*]\\s+', '', line))}</li>" for line in lines)
+            blocks.append(Markup(f"<ul>{items}</ul>"))
+            continue
+
+        if all(re.match(r"^\\d+[\\).]\\s+", line) for line in lines):
+            items = "".join(f"<li>{escape(re.sub(r'^\\d+[\\).]\\s+', '', line))}</li>" for line in lines)
+            blocks.append(Markup(f"<ol>{items}</ol>"))
+            continue
+
+        if len(lines) == 1 and len(lines[0]) <= 80 and not re.search(r"[.!?…:]$", lines[0]):
+            blocks.append(Markup(f"<h3>{escape(lines[0])}</h3>"))
+            continue
+
+        safe_chunk = escape("\n".join(lines)).replace("\n", Markup("<br>"))
         blocks.append(Markup(f"<p>{safe_chunk}</p>"))
     return blocks
 

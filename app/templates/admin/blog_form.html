@@ -25,6 +25,7 @@
 
       <label class="form-label">Текст статьи</label>
       <textarea class="textarea" name="content_text" rows="15" required>{{ article.content_text if article else '' }}</textarea>
+      <p class="helper-text" style="margin-top: 8px;">Форматирование сохраняется по абзацам. Короткие отдельные строки будут заголовками, строки с «- » станут списком.</p>
 
       <label class="form-label">Meta title</label>
       <input class="text-input" name="meta_title" value="{{ article.meta_title if article else '' }}" />
