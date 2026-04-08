@@ -1,9 +1,17 @@
 from __future__ import annotations
 
+import csv
+import io
+import os
+import re
+import shutil
+import unicodedata
 from datetime import datetime, time, timedelta, timezone
+from pathlib import Path
 from zoneinfo import ZoneInfo
+from uuid import uuid4
 
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 from sqlalchemy import distinct, func, or_
 from sqlalchemy.orm import Session
@@ -13,7 +21,7 @@ from app.core.db import get_db
 from app.core.security import utcnow
 from app.core.storage import StorageError, ensure_support_attachment_local_path, ensure_voice_input_local_path, object_storage_enabled
 from app.core.templates import templates
-from app.models import BackgroundJob, EmailLog, LyricsVersion, Order, OrderEvent, OrderPayment, SecurityEvent, SongGeneration, SupportMessage, SupportThread, User, VoiceInput
+from app.models import BackgroundJob, BlogArticle, BlogCategory, EmailLog, LyricsVersion, Order, OrderEvent, OrderPayment, SecurityEvent, SongGeneration, SupportMessage, SupportThread, User, VoiceInput
 from app.models.order_payment import build_order_pricing_preview, payment_success_at_expr
 from app.services.payment_workflow import resend_payment_success_email, sync_payment_with_remote, sync_recent_pending_payments
 from app.services.song_workflow import (
@@ -91,6 +99,75 @@ SUPPORT_STATUS_OPTIONS = [
 VALID_ORDER_STATUSES = {value for value, _label in ORDER_STATUS_OPTIONS}
 VALID_SONG_STATUSES = {value for value, _label in SONG_STATUS_OPTIONS}
 VALID_SUPPORT_STATUSES = {value for value, _label in SUPPORT_STATUS_OPTIONS if value != FILTER_ALL}
+
+
+def transliterate_slug(value: str) -> str:
+    source = (value or "").strip().lower()
+    if not source:
+        return ""
+    char_map = {
+        "а": "a", "б": "b", "в": "v", "г": "g", "д": "d", "е": "e", "ё": "e",
+        "ж": "zh", "з": "z", "и": "i", "й": "y", "к": "k", "л": "l", "м": "m",
+        "н": "n", "о": "o", "п": "p", "р": "r", "с": "s", "т": "t", "у": "u",
+        "ф": "f", "х": "h", "ц": "c", "ч": "ch", "ш": "sh", "щ": "sch", "ъ": "",
+        "ы": "y", "ь": "", "э": "e", "ю": "yu", "я": "ya",
+    }
+    transliterated = "".join(char_map.get(char, char) for char in source)
+    normalized = unicodedata.normalize("NFKD", transliterated)
+    ascii_value = normalized.encode("ascii", "ignore").decode("ascii")
+    ascii_value = re.sub(r"[^a-z0-9\s-]", " ", ascii_value)
+    ascii_value = re.sub(r"[\s_]+", "-", ascii_value)
+    return re.sub(r"-{2,}", "-", ascii_value).strip("-")
+
+
+def build_unique_article_slug(db: Session, source_keywords: str, *, article_id: int | None = None) -> str:
+    base = transliterate_slug(source_keywords) or "article"
+    candidate = base
+    suffix = 0
+    while True:
+        query = db.query(BlogArticle).filter(BlogArticle.slug == candidate)
+        if article_id is not None:
+            query = query.filter(BlogArticle.id != article_id)
+        if query.first() is None:
+            return candidate
+        suffix += 1
+        candidate = f"{base}-{suffix}"
+
+
+def upsert_blog_category(db: Session, category_name: str | None) -> BlogCategory | None:
+    normalized_name = (category_name or "").strip()
+    if not normalized_name:
+        return None
+    category = db.query(BlogCategory).filter(func.lower(BlogCategory.name) == normalized_name.lower()).first()
+    if category:
+        return category
+    slug = transliterate_slug(normalized_name) or f"category-{uuid4().hex[:8]}"
+    unique_slug = slug
+    idx = 1
+    while db.query(BlogCategory).filter(BlogCategory.slug == unique_slug).first() is not None:
+        idx += 1
+        unique_slug = f"{slug}-{idx}"
+    category = BlogCategory(name=normalized_name, slug=unique_slug)
+    db.add(category)
+    db.flush()
+    return category
+
+
+def save_blog_image(upload: UploadFile | None) -> str | None:
+    if upload is None or not upload.filename:
+        return None
+    suffix = Path(upload.filename).suffix.lower()
+    if suffix not in {".png", ".jpg", ".jpeg", ".webp"}:
+        raise ValueError("Разрешены только изображения: png, jpg, jpeg, webp.")
+    today = datetime.utcnow()
+    relative_dir = Path("blog") / "images" / str(today.year) / f"{today.month:02d}"
+    file_name = f"{uuid4().hex}{suffix}"
+    absolute_dir = Path(settings.UPLOADS_DIR) / relative_dir
+    absolute_dir.mkdir(parents=True, exist_ok=True)
+    absolute_path = absolute_dir / file_name
+    with absolute_path.open("wb") as out_file:
+        shutil.copyfileobj(upload.file, out_file)
+    return f"/uploads/{relative_dir.as_posix()}/{file_name}"
 def normalize_multiline_urls(value: str | None) -> list[str]:
     if not value:
         return []
@@ -553,6 +630,8 @@ async def admin_dashboard(
         orders_query = orders_query.filter(or_(Order.order_number.ilike(pattern), User.email.ilike(pattern)))
 
     orders = orders_query.order_by(Order.id.desc()).limit(50).all()
+    blog_articles_count = db.query(func.count(BlogArticle.id)).scalar() or 0
+    blog_categories_count = db.query(func.count(BlogCategory.id)).scalar() or 0
     return templates.TemplateResponse(
         "admin/dashboard.html",
         {
@@ -564,6 +643,8 @@ async def admin_dashboard(
             "today_metrics": today_metrics,
             "all_time_metrics": all_time_metrics,
             "order_cards": [build_order_card(order) for order in orders],
+            "blog_articles_count": int(blog_articles_count),
+            "blog_categories_count": int(blog_categories_count),
         },
     )
 
@@ -617,6 +698,226 @@ async def admin_customer_emails_export(request: Request, db: Session = Depends(g
         media_type="application/vnd.ms-excel; charset=utf-8",
         headers={"Content-Disposition": 'attachment; filename="customer-emails.xls"'},
     )
+
+
+def blog_form_context(*, request: Request, article: BlogArticle | None, categories: list[BlogCategory], error: str | None = None):
+    return {
+        "request": request,
+        "page_title": "Админка · Блог",
+        "article": article,
+        "categories": categories,
+        "error": error,
+    }
+
+
+@router.get("/blog", response_class=HTMLResponse)
+async def admin_blog_page(request: Request, db: Session = Depends(get_db)):
+    if not has_admin_access(request):
+        return RedirectResponse(url="/admin/login", status_code=303)
+    articles = db.query(BlogArticle).order_by(BlogArticle.created_at.desc(), BlogArticle.id.desc()).all()
+    categories_count = db.query(func.count(BlogCategory.id)).scalar() or 0
+    return templates.TemplateResponse(
+        "admin/blog_list.html",
+        {
+            "request": request,
+            "page_title": "Админка · Блог",
+            "articles": articles,
+            "articles_count": len(articles),
+            "categories_count": int(categories_count),
+            "flash": pop_admin_flash(request),
+        },
+    )
+
+
+@router.get("/blog/new", response_class=HTMLResponse)
+async def admin_blog_new_page(request: Request, db: Session = Depends(get_db)):
+    if not has_admin_access(request):
+        return RedirectResponse(url="/admin/login", status_code=303)
+    categories = db.query(BlogCategory).order_by(BlogCategory.name.asc()).all()
+    return templates.TemplateResponse("admin/blog_form.html", blog_form_context(request=request, article=None, categories=categories))
+
+
+@router.post("/blog/new")
+async def admin_blog_create(
+    request: Request,
+    title: str = Form(...),
+    category_name: str = Form(""),
+    excerpt: str = Form(""),
+    content_text: str = Form(...),
+    meta_title: str = Form(""),
+    meta_description: str = Form(""),
+    meta_keywords: str = Form(...),
+    hero_image_alt: str = Form(""),
+    hero_image_title: str = Form(""),
+    is_published: bool = Form(False),
+    hero_image: UploadFile | None = File(None),
+    db: Session = Depends(get_db),
+):
+    if not has_admin_access(request):
+        return RedirectResponse(url="/admin/login", status_code=303)
+    categories = db.query(BlogCategory).order_by(BlogCategory.name.asc()).all()
+    try:
+        slug = build_unique_article_slug(db, meta_keywords)
+        category = upsert_blog_category(db, category_name)
+        image_path = save_blog_image(hero_image)
+        article = BlogArticle(
+            title=title.strip(),
+            slug=slug,
+            excerpt=excerpt.strip() or None,
+            content_text=content_text.strip(),
+            category_id=category.id if category else None,
+            meta_title=meta_title.strip() or None,
+            meta_description=meta_description.strip() or None,
+            meta_keywords=meta_keywords.strip() or None,
+            hero_image_path=image_path,
+            hero_image_alt=hero_image_alt.strip() or None,
+            hero_image_title=hero_image_title.strip() or None,
+            is_published=bool(is_published),
+        )
+        db.add(article)
+        db.commit()
+    except ValueError as exc:
+        db.rollback()
+        return templates.TemplateResponse("admin/blog_form.html", blog_form_context(request=request, article=None, categories=categories, error=str(exc)), status_code=400)
+    set_admin_flash(request, "success", "Статья добавлена.")
+    return RedirectResponse(url="/admin/blog", status_code=303)
+
+
+@router.get("/blog/{article_id}/edit", response_class=HTMLResponse)
+async def admin_blog_edit_page(article_id: int, request: Request, db: Session = Depends(get_db)):
+    if not has_admin_access(request):
+        return RedirectResponse(url="/admin/login", status_code=303)
+    article = db.query(BlogArticle).filter(BlogArticle.id == article_id).first()
+    if article is None:
+        set_admin_flash(request, "error", "Статья не найдена.")
+        return RedirectResponse(url="/admin/blog", status_code=303)
+    categories = db.query(BlogCategory).order_by(BlogCategory.name.asc()).all()
+    return templates.TemplateResponse("admin/blog_form.html", blog_form_context(request=request, article=article, categories=categories))
+
+
+@router.post("/blog/{article_id}/edit")
+async def admin_blog_edit(
+    article_id: int,
+    request: Request,
+    title: str = Form(...),
+    category_name: str = Form(""),
+    excerpt: str = Form(""),
+    content_text: str = Form(...),
+    meta_title: str = Form(""),
+    meta_description: str = Form(""),
+    meta_keywords: str = Form(...),
+    hero_image_alt: str = Form(""),
+    hero_image_title: str = Form(""),
+    is_published: bool = Form(False),
+    hero_image: UploadFile | None = File(None),
+    db: Session = Depends(get_db),
+):
+    if not has_admin_access(request):
+        return RedirectResponse(url="/admin/login", status_code=303)
+    article = db.query(BlogArticle).filter(BlogArticle.id == article_id).first()
+    if article is None:
+        set_admin_flash(request, "error", "Статья не найдена.")
+        return RedirectResponse(url="/admin/blog", status_code=303)
+
+    categories = db.query(BlogCategory).order_by(BlogCategory.name.asc()).all()
+    try:
+        article.slug = build_unique_article_slug(db, meta_keywords, article_id=article.id)
+        category = upsert_blog_category(db, category_name)
+        image_path = save_blog_image(hero_image)
+        article.title = title.strip()
+        article.excerpt = excerpt.strip() or None
+        article.content_text = content_text.strip()
+        article.category_id = category.id if category else None
+        article.meta_title = meta_title.strip() or None
+        article.meta_description = meta_description.strip() or None
+        article.meta_keywords = meta_keywords.strip() or None
+        article.hero_image_alt = hero_image_alt.strip() or None
+        article.hero_image_title = hero_image_title.strip() or None
+        article.is_published = bool(is_published)
+        if image_path:
+            article.hero_image_path = image_path
+        db.commit()
+    except ValueError as exc:
+        db.rollback()
+        return templates.TemplateResponse("admin/blog_form.html", blog_form_context(request=request, article=article, categories=categories, error=str(exc)), status_code=400)
+
+    set_admin_flash(request, "success", "Статья обновлена.")
+    return RedirectResponse(url="/admin/blog", status_code=303)
+
+
+@router.post("/blog/{article_id}/delete")
+async def admin_blog_delete(article_id: int, request: Request, db: Session = Depends(get_db)):
+    if not has_admin_access(request):
+        return RedirectResponse(url="/admin/login", status_code=303)
+    article = db.query(BlogArticle).filter(BlogArticle.id == article_id).first()
+    if article is None:
+        set_admin_flash(request, "warning", "Статья уже удалена.")
+        return RedirectResponse(url="/admin/blog", status_code=303)
+    db.delete(article)
+    db.commit()
+    set_admin_flash(request, "success", "Статья удалена.")
+    return RedirectResponse(url="/admin/blog", status_code=303)
+
+
+@router.get("/blog/export.xls")
+async def admin_blog_export(request: Request, db: Session = Depends(get_db)):
+    if not has_admin_access(request):
+        return RedirectResponse(url="/admin/login", status_code=303)
+    output = io.StringIO()
+    writer = csv.writer(output, delimiter="\t")
+    writer.writerow(["title", "category", "excerpt", "content_text", "meta_title", "meta_description", "meta_keywords", "hero_image_alt", "hero_image_title", "is_published"])
+    articles = db.query(BlogArticle).order_by(BlogArticle.id.asc()).all()
+    for article in articles:
+        writer.writerow([
+            article.title,
+            article.category.name if article.category else "",
+            article.excerpt or "",
+            article.content_text or "",
+            article.meta_title or "",
+            article.meta_description or "",
+            article.meta_keywords or "",
+            article.hero_image_alt or "",
+            article.hero_image_title or "",
+            "1" if article.is_published else "0",
+        ])
+    return Response(
+        content=output.getvalue(),
+        media_type="application/vnd.ms-excel; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename=\"blog-articles.xls\"'},
+    )
+
+
+@router.post("/blog/import")
+async def admin_blog_import(request: Request, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    if not has_admin_access(request):
+        return RedirectResponse(url="/admin/login", status_code=303)
+    payload = (await file.read()).decode("utf-8", errors="ignore")
+    reader = csv.DictReader(io.StringIO(payload), delimiter="\t")
+    imported = 0
+    for row in reader:
+        keywords = (row.get("meta_keywords") or "").strip()
+        if not keywords:
+            continue
+        category = upsert_blog_category(db, row.get("category"))
+        slug = build_unique_article_slug(db, keywords)
+        article = BlogArticle(
+            title=(row.get("title") or "").strip() or "Новая статья",
+            slug=slug,
+            excerpt=(row.get("excerpt") or "").strip() or None,
+            content_text=(row.get("content_text") or "").strip() or "",
+            meta_title=(row.get("meta_title") or "").strip() or None,
+            meta_description=(row.get("meta_description") or "").strip() or None,
+            meta_keywords=keywords,
+            hero_image_alt=(row.get("hero_image_alt") or "").strip() or None,
+            hero_image_title=(row.get("hero_image_title") or "").strip() or None,
+            is_published=(row.get("is_published") or "1").strip() != "0",
+            category_id=category.id if category else None,
+        )
+        db.add(article)
+        imported += 1
+    db.commit()
+    set_admin_flash(request, "success", f"Импорт завершён. Добавлено статей: {imported}.")
+    return RedirectResponse(url="/admin/blog", status_code=303)
 
 
 @router.get("/orders/{order_public_id}", response_class=HTMLResponse)
