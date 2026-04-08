@@ -764,7 +764,7 @@ async def admin_blog_create(
             title=title.strip(),
             slug=slug,
             excerpt=excerpt.strip() or None,
-            content_text=content_text.strip(),
+            content_text=content_text,
             category_id=category.id if category else None,
             meta_title=meta_title.strip() or None,
             meta_description=meta_description.strip() or None,
@@ -826,7 +826,7 @@ async def admin_blog_edit(
         image_path = save_blog_image(hero_image)
         article.title = title.strip()
         article.excerpt = excerpt.strip() or None
-        article.content_text = content_text.strip()
+        article.content_text = content_text
         article.category_id = category.id if category else None
         article.meta_title = meta_title.strip() or None
         article.meta_description = meta_description.strip() or None

@@ -38,7 +38,7 @@
                   <div class="blog-card-category">{{ article.category.name }}</div>
                 {% endif %}
                 <h2><a href="/blog/{{ article.slug }}">{{ article.title }}</a></h2>
-                {% if article.excerpt %}<p>{{ article.excerpt }}</p>{% endif %}
+                {% if article.excerpt %}<p>{{ article.excerpt[:200] }}{% if article.excerpt|length > 200 %}…{% endif %}</p>{% endif %}
                 <a class="btn btn-secondary" href="/blog/{{ article.slug }}">Читать статью</a>
               </div>
             </article>

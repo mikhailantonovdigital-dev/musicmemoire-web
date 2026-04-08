@@ -13,17 +13,15 @@
     </header>
 
     <div class="blog-article-content">
-      {% for paragraph in paragraphs %}
-        <p>{{ paragraph }}</p>
+      {% for block in blocks %}
+        {{ block }}
         {% if loop.index == midpoint %}
-          <div class="blog-inline-cta">
-            <a class="btn btn-primary" href="/questionnaire/" target="_blank" rel="noopener">Хочу песню</a>
-          </div>
+          {% include "public/_blog_hero_block.html" %}
         {% endif %}
       {% endfor %}
     </div>
   </div>
 
-  {% include "public/_blog_hero_block.html" %}
+  {% include "public/_blog_home_block.html" %}
 </article>
 {% endblock %}

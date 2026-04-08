@@ -32,7 +32,7 @@
   <link rel="stylesheet" href="/static/css/styles.css?v=12672a" />
 </head>
 {% set path = request.url.path %}
-{% set is_marketing_screen = path in ['/', '/portfolio', '/how-it-works', '/reviews'] %}
+{% set is_marketing_screen = path in ['/', '/portfolio', '/how-it-works', '/reviews', '/blog'] or path.startswith('/blog/') %}
 {% set is_legal_screen = path in ['/offer', '/policy', '/faq'] %}
 {% set is_questionnaire_screen = path.startswith('/questionnaire') %}
 {% set is_checkout_screen = path.startswith('/checkout') %}

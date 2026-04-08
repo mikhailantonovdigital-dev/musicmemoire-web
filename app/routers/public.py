@@ -5,6 +5,7 @@ from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response
+from markupsafe import Markup, escape
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -704,10 +705,20 @@ def transliterate_slug(value: str) -> str:
     return re.sub(r"-{2,}", "-", ascii_value).strip("-")
 
 
-def article_paragraphs(content_text: str) -> list[str]:
+def article_blocks(content_text: str) -> list[Markup]:
     normalized = (content_text or "").replace("\r\n", "\n")
-    chunks = [item.strip() for item in normalized.split("\n\n")]
-    return [item for item in chunks if item]
+    if not normalized.strip():
+        return []
+
+    if re.search(r"</?(p|h1|h2|h3|h4|h5|h6|ul|ol|li|blockquote|pre|br)\b", normalized, flags=re.IGNORECASE):
+        return [Markup(normalized)]
+
+    chunks = [item.strip() for item in re.split(r"\n\s*\n", normalized) if item.strip()]
+    blocks: list[Markup] = []
+    for chunk in chunks:
+        safe_chunk = escape(chunk).replace("\n", Markup("<br>"))
+        blocks.append(Markup(f"<p>{safe_chunk}</p>"))
+    return blocks
 
 
 def blog_meta_context(request: Request, *, page_title: str, meta_description: str, path: str | None = None, og_image: str | None = None) -> dict:
@@ -793,8 +804,8 @@ async def blog_article_page(slug: str, request: Request, db: Session = Depends(g
     if article is None:
         raise HTTPException(status_code=404)
 
-    paragraphs = article_paragraphs(article.content_text)
-    midpoint = max(1, len(paragraphs) // 2) if paragraphs else 1
+    blocks = article_blocks(article.content_text)
+    midpoint = max(1, len(blocks) // 2) if blocks else 1
     og_image = None
     if article.hero_image_path:
         og_image = f"{settings.BASE_URL.rstrip('/')}" + article.hero_image_path
@@ -803,9 +814,10 @@ async def blog_article_page(slug: str, request: Request, db: Session = Depends(g
         {
             "request": request,
             "article": article,
-            "paragraphs": paragraphs,
+            "blocks": blocks,
             "midpoint": midpoint,
             "hero_cta_url": "/questionnaire/",
+            "price_rub": settings.PRICE_RUB,
             "meta_keywords": article.meta_keywords or "блог, персональная песня, песня в подарок",
             **blog_meta_context(
                 request,
