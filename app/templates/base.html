@@ -4,6 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="yandex-verification" content="c255269f9252a442" />
+  {% if request.url.path == '/' %}
+  <meta name="google-site-verification" content="P37kN7Lm4xvl6ZdO25-GLYb_aeBfgCXSdrs0RF30uTE" />
+  {% endif %}
   <title>{{ page_title or "Magic Music" }}</title>
   <meta
     name="description"
