@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="section admin-screen-section">
+  <div class="container admin-shell">
+    <div class="admin-toolbar">
+      <div>
+        <p class="eyebrow">Админка</p>
+        <h1>{% if article %}Редактировать статью{% else %}Добавить статью{% endif %}</h1>
+      </div>
+      <div class="form-actions"><a href="/admin/blog" class="btn btn-secondary">Назад</a></div>
+    </div>
+
+    {% if error %}<div class="notice notice-error">{{ error }}</div>{% endif %}
+
+    <form class="form-card" method="post" enctype="multipart/form-data" action="{% if article %}/admin/blog/{{ article.id }}/edit{% else %}/admin/blog/new{% endif %}">
+      <label class="form-label">Заголовок</label>
+      <input class="text-input" name="title" required value="{{ article.title if article else '' }}" />
+
+      <label class="form-label">Категория (создастся автоматически, если новой ещё нет)</label>
+      <input class="text-input" name="category_name" value="{{ article.category.name if article and article.category else '' }}" />
+
+      <label class="form-label">Короткое описание</label>
+      <textarea class="textarea" name="excerpt" rows="3">{{ article.excerpt if article else '' }}</textarea>
+
+      <label class="form-label">Текст статьи</label>
+      <textarea class="textarea" name="content_text" rows="15" required>{{ article.content_text if article else '' }}</textarea>
+      <p class="helper-text" style="margin-top: 8px;">Форматирование сохраняется по абзацам. Короткие отдельные строки будут заголовками, строки с «- » станут списком.</p>
+
+      <label class="form-label">Meta title</label>
+      <input class="text-input" name="meta_title" value="{{ article.meta_title if article else '' }}" />
+
+      <label class="form-label">Meta description</label>
+      <textarea class="textarea" name="meta_description" rows="3">{{ article.meta_description if article else '' }}</textarea>
+
+      <label class="form-label">Meta keywords (из них формируется URL)</label>
+      <input class="text-input" name="meta_keywords" required value="{{ article.meta_keywords if article else '' }}" />
+
+      <label class="form-label">Изображение статьи</label>
+      <input class="text-input" type="file" name="hero_image" accept="image/png,image/jpeg,image/webp" />
+
+      <label class="form-label">ALT изображения</label>
+      <input class="text-input" name="hero_image_alt" value="{{ article.hero_image_alt if article else '' }}" />
+
+      <label class="form-label">TITLE изображения</label>
+      <input class="text-input" name="hero_image_title" value="{{ article.hero_image_title if article else '' }}" />
+
+      <label class="checkbox"><input type="checkbox" name="is_published" value="1" {% if not article or article.is_published %}checked{% endif %}/> Опубликовано</label>
+
+      <div class="form-actions" style="margin-top: 18px;">
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+      </div>
+    </form>
+  </div>
+</section>
+{% endblock %}

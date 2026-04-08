@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block content %}
+<article class="section blog-article-page">
+  <div class="container blog-article-shell">
+    <nav class="blog-breadcrumbs"><a href="/blog">Блог</a> / {% if article.category %}{{ article.category.name }} / {% endif %}<span>{{ article.title }}</span></nav>
+    <header class="blog-article-header">
+      <h1>{{ article.title }}</h1>
+      {% if article.excerpt %}<p class="blog-article-excerpt">{{ article.excerpt }}</p>{% endif %}
+      {% if article.hero_image_path %}
+        <img class="blog-article-image" src="{{ article.hero_image_path }}" alt="{{ article.hero_image_alt or article.title }}" title="{{ article.hero_image_title or article.title }}" loading="eager" />
+      {% endif %}
+    </header>
+
+    <div class="blog-article-content">
+      {% for block in blocks %}
+        {{ block }}
+        {% if loop.index == midpoint %}
+          {% include "public/_blog_hero_block.html" %}
+        {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+
+  {% include "public/_blog_home_block.html" %}
+</article>
+{% endblock %}
