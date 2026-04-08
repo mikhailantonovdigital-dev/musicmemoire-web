@@ -218,7 +218,7 @@ def build_dashboard_metrics(
     unique_clients = len({item.user_id for item in paid_items if item.user_id})
 
     return [
-        {"label": "Посетители сайта", "value": int(visitor_count)},
+        {"label": "Уникальные сессии анкеты", "value": int(visitor_count)},
         {"label": "Нажали кнопку «Хочу песню» (старт анкеты)", "value": int(starts_count)},
         {"label": "Дошли до финального шага (ввод email и оплата)", "value": int(final_step_count)},
         {"label": "Оплатили", "value": int(paid_count)},
