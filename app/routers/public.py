@@ -730,6 +730,13 @@ def article_blocks(content_text: str) -> list[Markup]:
             blocks.append(Markup(f"<ol>{items}</ol>"))
             continue
 
+        no_marker_list_like = len(lines) >= 3 and all(len(line) <= 140 for line in lines)
+        punctuation_list_like = sum(1 for line in lines if re.search(r"[;,:]$", line)) >= max(2, len(lines) // 2)
+        if no_marker_list_like and punctuation_list_like:
+            items = "".join(f"<li>{escape(line.rstrip(';,:'))}</li>" for line in lines)
+            blocks.append(Markup(f"<ul>{items}</ul>"))
+            continue
+
         if len(lines) == 1 and len(lines[0]) <= 80 and not re.search(r"[.!?…:]$", lines[0]):
             blocks.append(Markup(f"<h3>{escape(lines[0])}</h3>"))
             continue

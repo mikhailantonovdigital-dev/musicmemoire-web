@@ -7165,7 +7165,9 @@ strong,
 .blog-hero-cta-card { border: 1px solid rgba(255,255,255,.12); border-radius: 16px; padding: 22px; background: linear-gradient(135deg, rgba(40,52,120,.45), rgba(21,26,58,.8)); }
 .blog-hero-cta-card h2 { margin: 6px 0 10px; }
 .checkbox { display: flex; gap: 10px; align-items: center; margin-top: 14px; }
-.blog-home-final-cta { margin-top: 28px; }
+.blog-home-final-cta { margin-top: 28px; background: transparent !important; }
+.blog-home-final-cta::before,
+.blog-home-final-cta::after { display: none !important; }
 
 @media (max-width: 1024px) {
   .blog-layout { grid-template-columns: 1fr; }
