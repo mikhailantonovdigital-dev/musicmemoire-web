@@ -15,7 +15,7 @@ from app.core.storage import StorageError, ensure_support_attachment_local_path,
 from app.core.templates import templates
 from app.models import BackgroundJob, EmailLog, LyricsVersion, Order, OrderEvent, OrderPayment, SecurityEvent, SongGeneration, SupportMessage, SupportThread, User, VoiceInput
 from app.models.order_payment import build_order_pricing_preview, payment_success_at_expr
-from app.services.payment_workflow import resend_payment_success_email, sync_payment_with_remote
+from app.services.payment_workflow import resend_payment_success_email, sync_payment_with_remote, sync_recent_pending_payments
 from app.services.song_workflow import (
     RUNNING_SONG_STATUSES,
     create_song_job_record,
@@ -32,6 +32,7 @@ from app.services.song_workflow import (
 from app.services.suno_service import SunoServiceError
 from app.services.background_jobs import BackgroundJobError, get_job_label, enqueue_background_job, find_active_job_for_order
 from app.services.email_log_service import humanize_email_status, humanize_email_type
+from app.services.metrica_service import get_metrica_today_and_all_time_visitors
 from app.tasks import run_admin_lyrics_regeneration_task, run_song_start_task, run_voice_transcription_task
 from app.services.yookassa_service import YooKassaError
 from app.services.telegram_report_service import build_test_report, notify_admin_support_reply, send_telegram_report, telegram_reporting_enabled
@@ -192,6 +193,7 @@ def build_dashboard_metrics(
     *,
     day_start_utc: datetime | None = None,
     day_end_utc: datetime | None = None,
+    visitors_override: int | None = None,
 ) -> list[dict[str, str | int]]:
     session_query = db.query(Order)
     starts_query = db.query(Order)
@@ -206,7 +208,7 @@ def build_dashboard_metrics(
         final_step_query = final_step_query.filter(Order.updated_at >= day_start_utc, Order.updated_at < day_end_utc)
         paid_query = paid_query.filter(payment_success_at >= day_start_utc, payment_success_at < day_end_utc)
 
-    visitor_count = session_query.with_entities(func.count(distinct(Order.session_id))).scalar() or 0
+    visitor_count = visitors_override if visitors_override is not None else (session_query.with_entities(func.count(distinct(Order.session_id))).scalar() or 0)
     starts_count = starts_query.with_entities(func.count(Order.id)).scalar() or 0
     final_step_count = final_step_query.with_entities(func.count(Order.id)).scalar() or 0
 
@@ -524,8 +526,26 @@ async def admin_dashboard(
     query_text = (q or "").strip()
 
     day_start_utc, day_end_utc = get_today_range_utc()
-    today_metrics = build_dashboard_metrics(db, day_start_utc=day_start_utc, day_end_utc=day_end_utc)
-    all_time_metrics = build_dashboard_metrics(db)
+    sync_recent_pending_payments(
+        db,
+        trigger="admin_dashboard_metrics_refresh",
+        created_after=day_start_utc - timedelta(days=1),
+        event_name="payment_status_synced_from_admin_dashboard",
+        failed_event_name="payment_status_sync_failed_from_admin_dashboard",
+    )
+    db.commit()
+    now_local = datetime.now(BERLIN_TZ)
+    metrica_today_visitors, metrica_all_time_visitors = get_metrica_today_and_all_time_visitors(db, now_local=now_local)
+    today_metrics = build_dashboard_metrics(
+        db,
+        day_start_utc=day_start_utc,
+        day_end_utc=day_end_utc,
+        visitors_override=metrica_today_visitors,
+    )
+    all_time_metrics = build_dashboard_metrics(
+        db,
+        visitors_override=metrica_all_time_visitors,
+    )
 
     orders_query = db.query(Order).outerjoin(User, Order.user_id == User.id)
     if query_text:

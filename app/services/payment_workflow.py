@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 
 from app.core.config import settings
 from app.core.security import utcnow
@@ -288,3 +291,53 @@ def sync_payment_with_remote(
                 },
             )
         )
+
+
+def sync_recent_pending_payments(
+    db: Session,
+    *,
+    trigger: str,
+    created_after: datetime | None = None,
+    limit: int = 200,
+    event_name: str | None = None,
+    failed_event_name: str | None = None,
+) -> tuple[int, int]:
+    query = db.query(OrderPayment).filter(
+        or_(
+            OrderPayment.status == "pending",
+            OrderPayment.status == "waiting_for_capture",
+        ),
+        OrderPayment.yookassa_payment_id.isnot(None),
+    )
+    if created_after is not None:
+        query = query.filter(OrderPayment.created_at >= created_after)
+    query = query.order_by(OrderPayment.id.desc()).limit(max(1, int(limit)))
+
+    synced = 0
+    failed = 0
+    for payment in query.all():
+        try:
+            sync_payment_with_remote(
+                db,
+                payment,
+                trigger=trigger,
+                event_name=event_name,
+            )
+            synced += 1
+        except YooKassaError as exc:
+            failed += 1
+            if failed_event_name:
+                db.add(
+                    OrderEvent(
+                        order=payment.order,
+                        event_type=failed_event_name,
+                        payload={
+                            "payment_public_id": payment.public_id,
+                            "yookassa_payment_id": payment.yookassa_payment_id,
+                            "status": payment.status,
+                            "trigger": trigger,
+                            "error": str(exc),
+                        },
+                    )
+                )
+    return synced, failed

@@ -13,6 +13,8 @@ from app.core.config import settings
 from app.models import Order, OrderPayment
 from app.models.order_payment import payment_success_at_expr
 from app.models.support_thread import SupportMessage, SupportThread
+from app.services.metrica_service import get_metrica_today_and_all_time_visitors
+from app.services.payment_workflow import sync_recent_pending_payments
 
 
 TELEGRAM_API_BASE = "https://api.telegram.org"
@@ -181,12 +183,25 @@ def _today_range_utc() -> tuple[datetime, datetime]:
 
 def build_daily_metrics_report(db: Session) -> str:
     start_utc, end_utc = _today_range_utc()
+    sync_recent_pending_payments(
+        db,
+        trigger="telegram_daily_report_refresh",
+        created_after=start_utc - timedelta(days=1),
+        event_name="payment_status_synced_from_telegram_report",
+        failed_event_name="payment_status_sync_failed_from_telegram_report",
+    )
+    db.commit()
+
     payment_success_at = payment_success_at_expr()
     payments_today = db.query(OrderPayment).filter(OrderPayment.status == "succeeded", payment_success_at >= start_utc, payment_success_at < end_utc).all()
     payments_all_time = db.query(OrderPayment).filter(OrderPayment.status == "succeeded").all()
 
-    today_visitors = db.query(func.count(distinct(Order.session_id))).filter(Order.created_at >= start_utc, Order.created_at < end_utc).scalar() or 0
-    all_time_visitors = db.query(func.count(distinct(Order.session_id))).scalar() or 0
+    metrica_today_visitors, metrica_all_time_visitors = get_metrica_today_and_all_time_visitors(
+        db,
+        now_local=start_utc.astimezone(REPORT_TZ),
+    )
+    today_visitors = metrica_today_visitors if metrica_today_visitors is not None else (db.query(func.count(distinct(Order.session_id))).filter(Order.created_at >= start_utc, Order.created_at < end_utc).scalar() or 0)
+    all_time_visitors = metrica_all_time_visitors if metrica_all_time_visitors is not None else (db.query(func.count(distinct(Order.session_id))).scalar() or 0)
 
     starts_today = db.query(func.count(Order.id)).filter(Order.created_at >= start_utc, Order.created_at < end_utc).scalar() or 0
     starts_all_time = db.query(func.count(Order.id)).scalar() or 0
