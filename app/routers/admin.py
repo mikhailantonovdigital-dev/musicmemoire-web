@@ -15,7 +15,7 @@ from app.core.storage import StorageError, ensure_support_attachment_local_path,
 from app.core.templates import templates
 from app.models import BackgroundJob, EmailLog, LyricsVersion, Order, OrderEvent, OrderPayment, SecurityEvent, SongGeneration, SupportMessage, SupportThread, User, VoiceInput
 from app.models.order_payment import build_order_pricing_preview, payment_success_at_expr
-from app.services.payment_workflow import resend_payment_success_email, sync_payment_with_remote
+from app.services.payment_workflow import resend_payment_success_email, sync_payment_with_remote, sync_recent_pending_payments
 from app.services.song_workflow import (
     RUNNING_SONG_STATUSES,
     create_song_job_record,
@@ -216,7 +216,7 @@ def build_dashboard_metrics(
     unique_clients = len({item.user_id for item in paid_items if item.user_id})
 
     return [
-        {"label": "Посетители сайта", "value": int(visitor_count)},
+        {"label": "Уникальные сессии анкеты", "value": int(visitor_count)},
         {"label": "Нажали кнопку «Хочу песню» (старт анкеты)", "value": int(starts_count)},
         {"label": "Дошли до финального шага (ввод email и оплата)", "value": int(final_step_count)},
         {"label": "Оплатили", "value": int(paid_count)},
@@ -524,6 +524,14 @@ async def admin_dashboard(
     query_text = (q or "").strip()
 
     day_start_utc, day_end_utc = get_today_range_utc()
+    sync_recent_pending_payments(
+        db,
+        trigger="admin_dashboard_metrics_refresh",
+        created_after=day_start_utc - timedelta(days=1),
+        event_name="payment_status_synced_from_admin_dashboard",
+        failed_event_name="payment_status_sync_failed_from_admin_dashboard",
+    )
+    db.commit()
     today_metrics = build_dashboard_metrics(db, day_start_utc=day_start_utc, day_end_utc=day_end_utc)
     all_time_metrics = build_dashboard_metrics(db)
 
