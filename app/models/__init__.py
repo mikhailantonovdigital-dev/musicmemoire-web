@@ -8,6 +8,8 @@ from app.models.song_generation import SongGeneration
 from app.models.security_event import SecurityEvent
 from app.models.background_job import BackgroundJob
 from app.models.email_log import EmailLog
+from app.models.blog import BlogCategory, BlogArticle
+from app.models.support_thread import SupportThread, SupportMessage
 
 __all__ = [
     "User",
@@ -21,8 +23,8 @@ __all__ = [
     "SecurityEvent",
     "BackgroundJob",
     "EmailLog",
+    "BlogCategory",
+    "BlogArticle",
     "SupportThread",
     "SupportMessage",
 ]
-
-from app.models.support_thread import SupportThread, SupportMessage

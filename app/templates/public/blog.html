@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="section blog-page">
+  <div class="container blog-layout">
+    <aside class="blog-sidebar">
+      <div class="form-card blog-sidebar-card">
+        <h3>Категории</h3>
+        <a class="blog-category-link {% if not selected_category_slug %}is-active{% endif %}" href="/blog">Все статьи</a>
+        {% for item in categories %}
+          <a class="blog-category-link {% if selected_category and selected_category.id == item.category.id %}is-active{% endif %}" href="/blog?category={{ item.category.slug }}">
+            {{ item.category.name }}
+            <span>{{ item.count }}</span>
+          </a>
+        {% endfor %}
+      </div>
+    </aside>
+
+    <div class="blog-content">
+      <div class="blog-list-head">
+        <h1>{% if selected_category %}{{ selected_category.name }}{% else %}Блог Magic Music{% endif %}</h1>
+        <p>Последние статьи о персональных песнях, идеях подарков и музыкальных историях.</p>
+      </div>
+
+      {% include "public/_blog_hero_block.html" %}
+
+      {% if articles %}
+        <div class="blog-grid">
+          {% for article in articles %}
+            <article class="blog-card">
+              {% if article.hero_image_path %}
+                <a href="/blog/{{ article.slug }}" class="blog-card-image-wrap">
+                  <img class="blog-card-image" src="{{ article.hero_image_path }}" alt="{{ article.hero_image_alt or article.title }}" title="{{ article.hero_image_title or article.title }}" loading="lazy" />
+                </a>
+              {% endif %}
+              <div class="blog-card-body">
+                {% if article.category %}
+                  <div class="blog-card-category">{{ article.category.name }}</div>
+                {% endif %}
+                <h2><a href="/blog/{{ article.slug }}">{{ article.title }}</a></h2>
+                {% if article.excerpt %}<p>{{ article.excerpt[:200] }}{% if article.excerpt|length > 200 %}…{% endif %}</p>{% endif %}
+                <a class="btn btn-secondary" href="/blog/{{ article.slug }}">Читать статью</a>
+              </div>
+            </article>
+          {% endfor %}
+        </div>
+
+        {% if total_pages > 1 %}
+          <nav class="blog-pagination" aria-label="Пагинация блога">
+            {% for idx in range(1, total_pages + 1) %}
+              <a class="blog-page-link {% if idx == page_no %}is-active{% endif %}" href="/blog?page={{ idx }}{% if selected_category_slug %}&category={{ selected_category_slug }}{% endif %}">{{ idx }}</a>
+            {% endfor %}
+          </nav>
+        {% endif %}
+      {% else %}
+        <div class="notice">В выбранной категории пока нет статей.</div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}
