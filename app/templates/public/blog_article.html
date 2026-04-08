@@ -15,33 +15,8 @@
     <div class="blog-article-content" id="blog-article-content">
       {{ article_html }}
     </div>
-
-    <template id="blog-mid-cta-template">
-      {% include "public/_blog_hero_block.html" %}
-    </template>
   </div>
 
   {% include "public/_blog_home_block.html" %}
 </article>
-
-<script>
-  document.addEventListener('DOMContentLoaded', function () {
-    var content = document.getElementById('blog-article-content');
-    var tpl = document.getElementById('blog-mid-cta-template');
-    if (!content || !tpl) return;
-
-    var children = Array.prototype.filter.call(content.children, function (node) {
-      return node.tagName && node.tagName !== 'SCRIPT';
-    });
-
-    if (!children.length) {
-      content.appendChild(tpl.content.cloneNode(true));
-      return;
-    }
-
-    var insertAfterIndex = Math.max(0, Math.floor(children.length / 2) - 1);
-    var anchor = children[insertAfterIndex];
-    anchor.insertAdjacentElement('afterend', tpl.content.firstElementChild.cloneNode(true));
-  });
-</script>
 {% endblock %}
