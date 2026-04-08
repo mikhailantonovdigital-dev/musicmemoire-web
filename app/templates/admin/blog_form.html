@@ -24,8 +24,13 @@
       <textarea class="textarea" name="excerpt" rows="3">{{ article.excerpt if article else '' }}</textarea>
 
       <label class="form-label">Текст статьи</label>
-      <textarea class="textarea" name="content_text" rows="15" required>{{ article.content_text if article else '' }}</textarea>
-      <p class="helper-text" style="margin-top: 8px;">Форматирование сохраняется по абзацам. Короткие отдельные строки будут заголовками, строки с «- » станут списком.</p>
+      <div
+        id="blog-content-editor"
+        class="textarea rich-editor"
+        contenteditable="true"
+        data-placeholder="Вставьте статью сюда (форматирование сохранится как есть)"
+      >{% if article and article.content_text %}{{ article.content_text|safe }}{% endif %}</div>
+      <input type="hidden" name="content_text" id="blog-content-input" />
 
       <label class="form-label">Meta title</label>
       <input class="text-input" name="meta_title" value="{{ article.meta_title if article else '' }}" />
@@ -53,4 +58,19 @@
     </form>
   </div>
 </section>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var form = document.querySelector('form[action*="/admin/blog/"]');
+    var editor = document.getElementById('blog-content-editor');
+    var input = document.getElementById('blog-content-input');
+    if (!form || !editor || !input) return;
+
+    function syncContent() {
+      input.value = editor.innerHTML.trim();
+    }
+
+    syncContent();
+    form.addEventListener('submit', syncContent);
+  });
+</script>
 {% endblock %}

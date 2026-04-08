@@ -7168,6 +7168,8 @@ strong,
 .blog-home-final-cta { margin-top: 28px; background: transparent !important; }
 .blog-home-final-cta::before,
 .blog-home-final-cta::after { display: none !important; }
+.rich-editor { min-height: 320px; overflow-y: auto; white-space: normal; }
+.rich-editor:empty:before { content: attr(data-placeholder); color: rgba(207,220,250,.6); }
 
 @media (max-width: 1024px) {
   .blog-layout { grid-template-columns: 1fr; }

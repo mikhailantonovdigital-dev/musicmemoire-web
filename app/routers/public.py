@@ -829,8 +829,6 @@ async def blog_article_page(slug: str, request: Request, db: Session = Depends(g
     if article is None:
         raise HTTPException(status_code=404)
 
-    blocks = article_blocks(article.content_text)
-    midpoint = max(1, len(blocks) // 2) if blocks else 1
     og_image = None
     if article.hero_image_path:
         og_image = f"{settings.BASE_URL.rstrip('/')}" + article.hero_image_path
@@ -839,8 +837,7 @@ async def blog_article_page(slug: str, request: Request, db: Session = Depends(g
         {
             "request": request,
             "article": article,
-            "blocks": blocks,
-            "midpoint": midpoint,
+            "article_html": Markup(article.content_text or ""),
             "hero_cta_url": "/questionnaire/",
             "price_rub": settings.PRICE_RUB,
             "meta_keywords": article.meta_keywords or "блог, персональная песня, песня в подарок",
