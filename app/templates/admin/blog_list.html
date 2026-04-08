@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="section admin-screen-section">
+  <div class="container admin-shell">
+    <div class="admin-toolbar">
+      <div>
+        <p class="eyebrow">Админка</p>
+        <h1>Блог</h1>
+      </div>
+      <div class="form-actions">
+        <a href="/admin/blog/new" class="btn btn-primary">Добавить статью</a>
+        <a href="/admin/blog/export.xls" class="btn btn-secondary">Выгрузить Excel</a>
+      </div>
+    </div>
+
+    {% if flash %}<div class="notice notice-{{ flash.kind }}">{{ flash.text }}</div>{% endif %}
+
+    <div class="admin-metrics-columns">
+      <div class="form-card"><h2 class="form-title">Статистика блога</h2><div class="grid admin-metrics-grid"><div class="metric-card"><span>Статей</span><strong>{{ articles_count }}</strong></div><div class="metric-card"><span>Категорий</span><strong>{{ categories_count }}</strong></div></div></div>
+      <div class="form-card">
+        <h2 class="form-title">Загрузка Excel</h2>
+        <form method="post" action="/admin/blog/import" enctype="multipart/form-data" class="form-actions">
+          <input type="file" name="file" class="text-input" required />
+          <button type="submit" class="btn btn-secondary">Загрузить</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="admin-orders-list" style="margin-top: 20px;">
+      {% for article in articles %}
+        <article class="lyrics-card">
+          <div class="lyrics-card-head">
+            <div>
+              <h2>{{ article.title }}</h2>
+              <p class="lyrics-angle">URL: /blog/{{ article.slug }}</p>
+              <p class="lyrics-angle">Категория: {{ article.category.name if article.category else '—' }}</p>
+            </div>
+          </div>
+          <div class="form-actions">
+            <a href="/admin/blog/{{ article.id }}/edit" class="btn btn-secondary">Редактировать</a>
+            <form method="post" action="/admin/blog/{{ article.id }}/delete" onsubmit="return confirm('Удалить статью?')">
+              <button type="submit" class="btn btn-secondary">Удалить</button>
+            </form>
+          </div>
+        </article>
+      {% else %}
+        <div class="notice">Пока нет статей.</div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

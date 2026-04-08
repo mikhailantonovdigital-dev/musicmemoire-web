@@ -8,6 +8,9 @@
     name="description"
     content="{{ meta_description or 'Magic Music: персональные песни в подарок. Расскажите историю текстом или голосом, получите 2 версии текста и выберите лучший вариант.' }}"
   />
+  {% if meta_keywords %}
+  <meta name="keywords" content="{{ meta_keywords }}" />
+  {% endif %}
   <meta name="robots" content="{{ meta_robots or 'index,follow' }}" />
   <link rel="canonical" href="{{ canonical_url or request.url }}" />
   
@@ -75,6 +78,7 @@
         <a class="footer-legal-btn {% if path == '/offer' %}is-active{% endif %}" href="/offer">Оферта</a>
         <a class="footer-legal-btn {% if path == '/policy' %}is-active{% endif %}" href="/policy">Политика</a>
         <a class="footer-legal-btn {% if path == '/faq' %}is-active{% endif %}" href="/faq">FAQ</a>
+        <a class="footer-legal-btn {% if path.startswith('/blog') %}is-active{% endif %}" href="/blog">Блог</a>
         <a class="footer-legal-btn" href="#" id="support-footer-btn">Запрос в поддержку</a>
       </div>
     </div>
