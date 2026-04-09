@@ -109,7 +109,7 @@
   })();
 </script>
 
-{% if metrica_counter_id and latest_payment and latest_payment.status == "succeeded" %}
+{% if metrica_counter_id and latest_payment and latest_payment.status == "succeeded" and welcome and welcome_delivery == "payment_success" %}
 <script>
   (function () {
     var goalKey = "payment_goal_sent_{{ latest_payment.public_id }}";
