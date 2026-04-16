@@ -113,21 +113,32 @@
 <script>
   (function () {
     var goalKey = "payment_goal_sent_{{ latest_payment.public_id }}";
+    var sentInCurrentPage = false;
 
-    function hasSentGoal() {
+    function readStorage(storage) {
       try {
-        return window.sessionStorage.getItem(goalKey) === "1";
+        return storage.getItem(goalKey) === "1";
       } catch (error) {
         return false;
       }
     }
 
-    function markGoalSent() {
+    function writeStorage(storage) {
       try {
-        window.sessionStorage.setItem(goalKey, "1");
+        storage.setItem(goalKey, "1");
       } catch (error) {
         // ignore storage errors (private mode / blocked storage)
       }
+    }
+
+    function hasSentGoal() {
+      return sentInCurrentPage || readStorage(window.sessionStorage) || readStorage(window.localStorage);
+    }
+
+    function markGoalSent() {
+      sentInCurrentPage = true;
+      writeStorage(window.sessionStorage);
+      writeStorage(window.localStorage);
     }
 
     function sendPaymentSuccessGoal(attemptsLeft) {
@@ -154,14 +165,6 @@
     }
 
     sendPaymentSuccessGoal(60);
-    window.addEventListener("load", function () {
-      sendPaymentSuccessGoal(60);
-    });
-    document.addEventListener("visibilitychange", function () {
-      if (document.visibilityState === "visible") {
-        sendPaymentSuccessGoal(20);
-      }
-    });
   })();
 </script>
 {% endif %}
