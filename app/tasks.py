@@ -11,6 +11,7 @@ from app.core.storage import StorageError, ensure_voice_input_local_path
 from app.services.background_jobs import mark_job_failed, mark_job_started, mark_job_succeeded
 from app.services.email_service import (
     EmailServiceError,
+    build_email_error_details,
     payment_success_email_subject,
     send_payment_success_email,
     send_song_failed_email,
@@ -367,6 +368,7 @@ def run_payment_success_email_task(*, background_job_public_id: str, order_publi
                 price_rub=payment.final_amount_rub,
             )
         except EmailServiceError as exc:
+            error_details = build_email_error_details(exc)
             db.rollback()
             background_job = _get_background_job(db, background_job_public_id)
             order = _get_order(db, order_public_id)
@@ -382,7 +384,7 @@ def run_payment_success_email_task(*, background_job_public_id: str, order_publi
                 user=order.user,
                 background_job_public_id=background_job.public_id,
                 payload={"payment_public_id": payment.public_id},
-                error_message=str(exc),
+                error_message=error_details,
             )
             db.add(
                 OrderEvent(
@@ -391,12 +393,12 @@ def run_payment_success_email_task(*, background_job_public_id: str, order_publi
                     payload={
                         "payment_public_id": payment.public_id,
                         "email": recipient_email,
-                        "error": str(exc),
+                        "error": error_details,
                         "background_job_id": background_job.public_id,
                     },
                 )
             )
-            mark_job_failed(db, background_job, error_message=str(exc))
+            mark_job_failed(db, background_job, error_message=error_details)
             db.commit()
             return
 
@@ -473,6 +475,7 @@ def run_song_ready_email_task(*, background_job_public_id: str, order_public_id:
                 audio_url=audio_url or song.audio_url,
             )
         except EmailServiceError as exc:
+            error_details = build_email_error_details(exc)
             db.rollback()
             background_job = _get_background_job(db, background_job_public_id)
             order = _get_order(db, order_public_id)
@@ -488,7 +491,7 @@ def run_song_ready_email_task(*, background_job_public_id: str, order_public_id:
                 user=order.user,
                 background_job_public_id=background_job.public_id,
                 payload={"song_job_id": song.public_id, "audio_url": audio_url or song.audio_url},
-                error_message=str(exc),
+                error_message=error_details,
             )
             db.add(
                 OrderEvent(
@@ -498,12 +501,12 @@ def run_song_ready_email_task(*, background_job_public_id: str, order_public_id:
                         "song_job_id": song.public_id,
                         "email": recipient_email,
                         "audio_url": audio_url or song.audio_url,
-                        "error": str(exc),
+                        "error": error_details,
                         "background_job_id": background_job.public_id,
                     },
                 )
             )
-            mark_job_failed(db, background_job, error_message=str(exc))
+            mark_job_failed(db, background_job, error_message=error_details)
             db.commit()
             return
 
@@ -587,6 +590,7 @@ def run_song_failed_email_task(*, background_job_public_id: str, order_public_id
                 error_message=song.error_message,
             )
         except EmailServiceError as exc:
+            error_details = build_email_error_details(exc)
             db.rollback()
             background_job = _get_background_job(db, background_job_public_id)
             order = _get_order(db, order_public_id)
@@ -602,7 +606,7 @@ def run_song_failed_email_task(*, background_job_public_id: str, order_public_id
                 user=order.user,
                 background_job_public_id=background_job.public_id,
                 payload={"song_job_id": song.public_id},
-                error_message=str(exc),
+                error_message=error_details,
             )
             db.add(
                 OrderEvent(
@@ -611,12 +615,12 @@ def run_song_failed_email_task(*, background_job_public_id: str, order_public_id
                     payload={
                         "song_job_id": song.public_id,
                         "email": recipient_email,
-                        "error": str(exc),
+                        "error": error_details,
                         "background_job_id": background_job.public_id,
                     },
                 )
             )
-            mark_job_failed(db, background_job, error_message=str(exc))
+            mark_job_failed(db, background_job, error_message=error_details)
             db.commit()
             return
 

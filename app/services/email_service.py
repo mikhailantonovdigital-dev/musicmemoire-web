@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import smtplib
 import ssl
+import logging
 from dataclasses import dataclass
 from email.message import EmailMessage
 
@@ -10,6 +11,9 @@ from app.core.config import settings
 
 class EmailServiceError(RuntimeError):
     pass
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -70,7 +74,23 @@ def _deliver_email(*, recipient_email: str, subject: str, text_body: str, html_b
                 server.login(smtp_user, smtp_password)
                 server.send_message(msg)
     except Exception as exc:
+        logger.exception(
+            "SMTP delivery failed",
+            extra={
+                "recipient_email": recipient_email,
+                "subject": subject,
+                "smtp_host": smtp_host,
+                "smtp_port": smtp_port,
+            },
+        )
         raise EmailServiceError("Не удалось отправить письмо.") from exc
+
+
+def build_email_error_details(exc: Exception) -> str:
+    cause = exc.__cause__
+    if cause is None:
+        return str(exc)
+    return f"{exc} Причина: {cause.__class__.__name__}: {cause}"
 
 
 def magic_link_email_subject() -> str:

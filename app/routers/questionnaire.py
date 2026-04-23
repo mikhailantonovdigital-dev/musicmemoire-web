@@ -25,6 +25,7 @@ from app.services.email_log_service import create_email_log
 from app.services.email_service import (
     EmailServiceError,
     MagicLinkDeliveryResult,
+    build_email_error_details,
     magic_link_email_subject,
     send_magic_link_email,
 )
@@ -1553,7 +1554,7 @@ async def questionnaire_access_submit(
                     **limit_payload,
                     "limit": rule.limit,
                     "window_seconds": rule.window_seconds,
-                    "error": str(exc),
+                    "error": build_email_error_details(exc),
                 },
             )
         create_email_log(
@@ -1565,7 +1566,7 @@ async def questionnaire_access_submit(
             delivery_mode="email",
             order=draft,
             user=user,
-            error_message=str(exc),
+            error_message=build_email_error_details(exc),
             payload={"login_url": login_url, "source": "questionnaire_access"},
         )
         db.commit()
