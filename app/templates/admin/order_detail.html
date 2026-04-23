@@ -48,7 +48,7 @@
               {% set share_text = (order.title or 'Песня от Magic Music') ~ ' — послушай 🎵' %}
               <div class="account-song-result-item">
                 <p class="account-song-result-title">Вариант {{ loop.index }}</p>
-                <audio class="audio-player" controls preload="none" src="{{ playable_url }}"></audio>
+                <audio class="audio-player" controls preload="none" data-exclusive-audio-group="admin-order-{{ order.public_id }}" src="{{ playable_url }}"></audio>
                 <div class="account-song-actions">
                   <a href="{{ playable_url }}?download=1" class="btn btn-secondary" download>Скачать mp3</a>
                   <a class="btn btn-secondary" href="https://wa.me/?text={{ (share_text ~ ' ' ~ playable_url)|urlencode }}" target="_blank" rel="noopener">WhatsApp</a>
@@ -62,7 +62,7 @@
           {% set playable_url = request.url_for('song_track_file', job_public_id=playback_song.public_id, track_index=0) %}
           {% set share_text = (order.title or 'Песня от Magic Music') ~ ' — послушай 🎵' %}
           <div class="account-song-result-item">
-            <audio class="audio-player" controls preload="none" src="{{ playable_url }}"></audio>
+            <audio class="audio-player" controls preload="none" data-exclusive-audio-group="admin-order-{{ order.public_id }}" src="{{ playable_url }}"></audio>
             <div class="account-song-actions">
               <a href="{{ playable_url }}?download=1" class="btn btn-secondary" download>Скачать mp3</a>
               <a class="btn btn-secondary" href="https://wa.me/?text={{ (share_text ~ ' ' ~ playable_url)|urlencode }}" target="_blank" rel="noopener">WhatsApp</a>

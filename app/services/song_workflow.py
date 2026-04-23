@@ -336,16 +336,37 @@ def ensure_song_track_cached(db: Session, song: SongGeneration, track_index: int
         song.result_tracks = tracks
         return restored_track
 
-    source_url = (track.get("audio_url") or track.get("stream_audio_url") or "").strip()
-    if not source_url.startswith(("http://", "https://")):
+    source_candidates: list[str] = []
+    for candidate_url in (
+        (track.get("audio_url") or "").strip(),
+        (track.get("stream_audio_url") or "").strip(),
+    ):
+        if candidate_url.startswith(("http://", "https://")) and candidate_url not in source_candidates:
+            source_candidates.append(candidate_url)
+
+    if not source_candidates:
         return track
 
-    stored = cache_remote_song_file(
-        source_url,
-        order_number=song.order.order_number,
-        song_public_id=song.public_id,
-        track_index=track_index,
-    )
+    stored = None
+    source_url = ""
+    last_error: StorageError | None = None
+    for candidate_url in source_candidates:
+        try:
+            stored = cache_remote_song_file(
+                candidate_url,
+                order_number=song.order.order_number,
+                song_public_id=song.public_id,
+                track_index=track_index,
+            )
+            source_url = candidate_url
+            break
+        except StorageError as exc:
+            last_error = exc
+
+    if stored is None:
+        if last_error is not None:
+            raise last_error
+        return track
 
     tracks = get_song_track_entries(song)
     if not tracks:
