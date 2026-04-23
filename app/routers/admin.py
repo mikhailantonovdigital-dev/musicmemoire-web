@@ -14,6 +14,7 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 from sqlalchemy import distinct, func, or_
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -733,8 +734,17 @@ async def admin_blog_page(request: Request, db: Session = Depends(get_db)):
 async def admin_blog_new_page(request: Request, db: Session = Depends(get_db)):
     if not has_admin_access(request):
         return RedirectResponse(url="/admin/login", status_code=303)
-    categories = db.query(BlogCategory).order_by(BlogCategory.name.asc()).all()
-    return templates.TemplateResponse("admin/blog_form.html", blog_form_context(request=request, article=None, categories=categories))
+    error = None
+    try:
+        categories = db.query(BlogCategory).order_by(BlogCategory.name.asc()).all()
+    except SQLAlchemyError:
+        db.rollback()
+        categories = []
+        error = "Не удалось загрузить категории блога. Проверьте базу данных."
+    return templates.TemplateResponse(
+        "admin/blog_form.html",
+        blog_form_context(request=request, article=None, categories=categories, error=error),
+    )
 
 
 @router.post("/blog/new")
@@ -779,6 +789,18 @@ async def admin_blog_create(
     except ValueError as exc:
         db.rollback()
         return templates.TemplateResponse("admin/blog_form.html", blog_form_context(request=request, article=None, categories=categories, error=str(exc)), status_code=400)
+    except SQLAlchemyError:
+        db.rollback()
+        return templates.TemplateResponse(
+            "admin/blog_form.html",
+            blog_form_context(
+                request=request,
+                article=None,
+                categories=categories,
+                error="Ошибка базы данных при сохранении статьи. Проверьте заполненные поля и повторите попытку.",
+            ),
+            status_code=500,
+        )
     set_admin_flash(request, "success", "Статья добавлена.")
     return RedirectResponse(url="/admin/blog", status_code=303)
 
@@ -840,6 +862,18 @@ async def admin_blog_edit(
     except ValueError as exc:
         db.rollback()
         return templates.TemplateResponse("admin/blog_form.html", blog_form_context(request=request, article=article, categories=categories, error=str(exc)), status_code=400)
+    except SQLAlchemyError:
+        db.rollback()
+        return templates.TemplateResponse(
+            "admin/blog_form.html",
+            blog_form_context(
+                request=request,
+                article=article,
+                categories=categories,
+                error="Ошибка базы данных при обновлении статьи. Проверьте заполненные поля и повторите попытку.",
+            ),
+            status_code=500,
+        )
 
     set_admin_flash(request, "success", "Статья обновлена.")
     return RedirectResponse(url="/admin/blog", status_code=303)
