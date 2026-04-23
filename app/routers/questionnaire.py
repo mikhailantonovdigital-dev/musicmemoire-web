@@ -22,7 +22,12 @@ from app.core.templates import templates
 from app.models import LyricsVersion, MagicLoginToken, Order, OrderEvent, User, VoiceInput
 from app.models.order_payment import build_order_pricing_preview
 from app.services.email_log_service import create_email_log
-from app.services.email_service import EmailServiceError, magic_link_email_subject, send_magic_link_email
+from app.services.email_service import (
+    EmailServiceError,
+    MagicLinkDeliveryResult,
+    magic_link_email_subject,
+    send_magic_link_email,
+)
 from app.services.lyrics_generation_service import (
     DualGenerationResult,
     LyricsGenerationError,
@@ -32,7 +37,12 @@ from app.services.transcription_service import (
     TranscriptionServiceError,
     transcribe_audio_file,
 )
-from app.services.rate_limit_service import RateLimitRule, enforce_rate_limit, get_client_ip
+from app.services.rate_limit_service import (
+    RateLimitRule,
+    count_recent_security_events,
+    get_client_ip,
+    record_security_event,
+)
 from app.services.background_jobs import BackgroundJobError, enqueue_background_job
 from app.tasks import run_voice_transcription_task
 
@@ -1379,24 +1389,61 @@ async def questionnaire_access_submit(
             status_code=400,
         )
 
-    limit_decision = enforce_rate_limit(
-        db,
-        request=request,
-        action="questionnaire_magic_link_send",
-        user_message="Ссылка для входа уже отправлялась слишком часто. Подождите немного и попробуйте снова.",
-        rules=[
-            RateLimitRule("order", draft.public_id, settings.QUESTIONNAIRE_MAGIC_LINK_ORDER_LIMIT_PER_HOUR, 60 * 60),
-            RateLimitRule("email", email, settings.MAGIC_LINK_EMAIL_LIMIT_PER_HOUR, 60 * 60),
-            RateLimitRule("ip", get_client_ip(request), settings.MAGIC_LINK_IP_LIMIT_PER_HOUR, 60 * 60),
-        ],
-        order=draft,
-        extra_payload={
-            "order_public_id": draft.public_id,
-            "email": email,
-            "ip": get_client_ip(request),
-        },
-    )
-    if not limit_decision.allowed:
+    action = "questionnaire_magic_link_send"
+    limit_rules = [
+        RateLimitRule("order", draft.public_id, settings.QUESTIONNAIRE_MAGIC_LINK_ORDER_LIMIT_PER_HOUR, 60 * 60),
+        RateLimitRule("email", email, settings.MAGIC_LINK_EMAIL_LIMIT_PER_HOUR, 60 * 60),
+        RateLimitRule("ip", get_client_ip(request), settings.MAGIC_LINK_IP_LIMIT_PER_HOUR, 60 * 60),
+    ]
+    limit_payload = {
+        "order_public_id": draft.public_id,
+        "email": email,
+        "ip": get_client_ip(request),
+    }
+
+    triggered_limits: list[dict[str, int | str]] = []
+    for rule in limit_rules:
+        recent_count = count_recent_security_events(
+            db,
+            action=action,
+            scope_kind=rule.scope_kind,
+            scope_value=rule.scope_value,
+            window_seconds=rule.window_seconds,
+        )
+        if recent_count >= rule.limit:
+            triggered_limits.append(
+                {
+                    "scope_kind": rule.scope_kind,
+                    "scope_value": str(rule.scope_value or ""),
+                    "window_seconds": rule.window_seconds,
+                    "limit": rule.limit,
+                    "recent_count": recent_count,
+                }
+            )
+
+    if triggered_limits:
+        suspicious_limit = any(
+            item["recent_count"] >= max(int(item["limit"]) * 2, int(item["limit"]) + 3)
+            for item in triggered_limits
+        )
+        limit_status = "suspicious" if suspicious_limit else "blocked"
+        for item in triggered_limits:
+            record_security_event(
+                db,
+                action=action,
+                scope_kind=str(item["scope_kind"]),
+                scope_value=str(item["scope_value"]),
+                status=limit_status,
+                request=request,
+                order=draft,
+                payload={
+                    **limit_payload,
+                    "limit": item["limit"],
+                    "window_seconds": item["window_seconds"],
+                    "recent_count": item["recent_count"],
+                    "triggered": triggered_limits,
+                },
+            )
         db.commit()
         pricing = build_order_pricing_preview(db, draft)
         return templates.TemplateResponse(
@@ -1413,13 +1460,11 @@ async def questionnaire_access_submit(
                 "base_price_rub": int(pricing["base_price_rub"]),
                 "discount_rub": int(pricing["discount_rub"]),
                 "has_discount": bool(pricing["has_discount"]),
-                "error": limit_decision.message,
+                "error": "Ссылка для входа уже отправлялась слишком часто. Подождите немного и попробуйте снова.",
                 "form_email": email,
             },
             status_code=429,
         )
-
-    db.commit()
 
     user = db.query(User).filter(User.email == email).first()
     if user is None:
@@ -1458,11 +1503,28 @@ async def questionnaire_access_submit(
 
     login_url = f"{settings.BASE_URL.rstrip('/')}/account/magic-login?token={raw_token}"
 
+    delivery: MagicLinkDeliveryResult | None = None
+    email_send_failed = False
     try:
         delivery = send_magic_link_email(
             recipient_email=email,
             login_url=login_url,
         )
+        for rule in limit_rules:
+            record_security_event(
+                db,
+                action=action,
+                scope_kind=rule.scope_kind,
+                scope_value=rule.scope_value,
+                status="allowed",
+                request=request,
+                order=draft,
+                payload={
+                    **limit_payload,
+                    "limit": rule.limit,
+                    "window_seconds": rule.window_seconds,
+                },
+            )
         create_email_log(
             db,
             email_type="magic_link",
@@ -1476,6 +1538,24 @@ async def questionnaire_access_submit(
         )
         db.commit()
     except EmailServiceError as exc:
+        email_send_failed = True
+        delivery = MagicLinkDeliveryResult(mode="failed", login_url=login_url)
+        for rule in limit_rules:
+            record_security_event(
+                db,
+                action=action,
+                scope_kind=rule.scope_kind,
+                scope_value=rule.scope_value,
+                status="failed",
+                request=request,
+                order=draft,
+                payload={
+                    **limit_payload,
+                    "limit": rule.limit,
+                    "window_seconds": rule.window_seconds,
+                    "error": str(exc),
+                },
+            )
         create_email_log(
             db,
             email_type="magic_link",
@@ -1489,35 +1569,19 @@ async def questionnaire_access_submit(
             payload={"login_url": login_url, "source": "questionnaire_access"},
         )
         db.commit()
-        pricing = build_order_pricing_preview(db, draft)
-        return templates.TemplateResponse(
-            "questionnaire/access.html",
-            {
-                "request": request,
-                "page_title": "Анкета — доступ к кабинету",
-                "draft": draft,
-                "saved": False,
-                "sent": False,
-                "stub_mode": settings.MAGIC_LINK_STUB_MODE,
-                "stub_login_url": None,
-                "price_rub": int(pricing["final_price_rub"]),
-                "base_price_rub": int(pricing["base_price_rub"]),
-                "discount_rub": int(pricing["discount_rub"]),
-                "has_discount": bool(pricing["has_discount"]),
-                "error": str(exc),
-                "form_email": email,
-            },
-            status_code=400,
-        )
 
     request.session["account_user_id"] = user.id
 
-    if delivery.mode == "stub":
+    if delivery and delivery.mode == "stub":
         request.session["stub_questionnaire_login_url"] = delivery.login_url
     else:
         request.session.pop("stub_questionnaire_login_url", None)
 
+    checkout_url = f"/checkout/start/{draft.public_id}"
+    if email_send_failed:
+        checkout_url = f"{checkout_url}?email_delivery=failed"
+
     return RedirectResponse(
-        url=f"/checkout/start/{draft.public_id}",
+        url=checkout_url,
         status_code=303,
     )
