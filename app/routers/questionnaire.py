@@ -22,7 +22,12 @@ from app.core.templates import templates
 from app.models import LyricsVersion, MagicLoginToken, Order, OrderEvent, User, VoiceInput
 from app.models.order_payment import build_order_pricing_preview
 from app.services.email_log_service import create_email_log
-from app.services.email_service import EmailServiceError, magic_link_email_subject, send_magic_link_email
+from app.services.email_service import (
+    EmailServiceError,
+    MagicLinkDeliveryResult,
+    magic_link_email_subject,
+    send_magic_link_email,
+)
 from app.services.lyrics_generation_service import (
     DualGenerationResult,
     LyricsGenerationError,
@@ -1498,6 +1503,8 @@ async def questionnaire_access_submit(
 
     login_url = f"{settings.BASE_URL.rstrip('/')}/account/magic-login?token={raw_token}"
 
+    delivery: MagicLinkDeliveryResult | None = None
+    email_send_failed = False
     try:
         delivery = send_magic_link_email(
             recipient_email=email,
@@ -1531,6 +1538,8 @@ async def questionnaire_access_submit(
         )
         db.commit()
     except EmailServiceError as exc:
+        email_send_failed = True
+        delivery = MagicLinkDeliveryResult(mode="failed", login_url=login_url)
         for rule in limit_rules:
             record_security_event(
                 db,
@@ -1560,35 +1569,19 @@ async def questionnaire_access_submit(
             payload={"login_url": login_url, "source": "questionnaire_access"},
         )
         db.commit()
-        pricing = build_order_pricing_preview(db, draft)
-        return templates.TemplateResponse(
-            "questionnaire/access.html",
-            {
-                "request": request,
-                "page_title": "Анкета — доступ к кабинету",
-                "draft": draft,
-                "saved": False,
-                "sent": False,
-                "stub_mode": settings.MAGIC_LINK_STUB_MODE,
-                "stub_login_url": None,
-                "price_rub": int(pricing["final_price_rub"]),
-                "base_price_rub": int(pricing["base_price_rub"]),
-                "discount_rub": int(pricing["discount_rub"]),
-                "has_discount": bool(pricing["has_discount"]),
-                "error": str(exc),
-                "form_email": email,
-            },
-            status_code=400,
-        )
 
     request.session["account_user_id"] = user.id
 
-    if delivery.mode == "stub":
+    if delivery and delivery.mode == "stub":
         request.session["stub_questionnaire_login_url"] = delivery.login_url
     else:
         request.session.pop("stub_questionnaire_login_url", None)
 
+    checkout_url = f"/checkout/start/{draft.public_id}"
+    if email_send_failed:
+        checkout_url = f"{checkout_url}?email_delivery=failed"
+
     return RedirectResponse(
-        url=f"/checkout/start/{draft.public_id}",
+        url=checkout_url,
         status_code=303,
     )
