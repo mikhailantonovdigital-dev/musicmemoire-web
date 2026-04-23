@@ -160,15 +160,27 @@ def save_blog_image(upload: UploadFile | None) -> str | None:
     suffix = Path(upload.filename).suffix.lower()
     if suffix not in {".png", ".jpg", ".jpeg", ".webp"}:
         raise ValueError("Разрешены только изображения: png, jpg, jpeg, webp.")
+
     today = datetime.utcnow()
     relative_dir = Path("blog") / "images" / str(today.year) / f"{today.month:02d}"
     file_name = f"{uuid4().hex}{suffix}"
     absolute_dir = Path(settings.UPLOADS_DIR) / relative_dir
-    absolute_dir.mkdir(parents=True, exist_ok=True)
     absolute_path = absolute_dir / file_name
-    with absolute_path.open("wb") as out_file:
-        shutil.copyfileobj(upload.file, out_file)
+
+    try:
+        absolute_dir.mkdir(parents=True, exist_ok=True)
+        with absolute_path.open("wb") as out_file:
+            shutil.copyfileobj(upload.file, out_file)
+    except OSError as exc:
+        try:
+            absolute_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise StorageError("Не удалось сохранить изображение статьи. Освободите место на сервере и повторите попытку.") from exc
+
     return f"/uploads/{relative_dir.as_posix()}/{file_name}"
+
+
 def normalize_multiline_urls(value: str | None) -> list[str]:
     if not value:
         return []
@@ -789,6 +801,9 @@ async def admin_blog_create(
     except ValueError as exc:
         db.rollback()
         return templates.TemplateResponse("admin/blog_form.html", blog_form_context(request=request, article=None, categories=categories, error=str(exc)), status_code=400)
+    except StorageError as exc:
+        db.rollback()
+        return templates.TemplateResponse("admin/blog_form.html", blog_form_context(request=request, article=None, categories=categories, error=str(exc)), status_code=507)
     except SQLAlchemyError:
         db.rollback()
         return templates.TemplateResponse(
@@ -862,6 +877,9 @@ async def admin_blog_edit(
     except ValueError as exc:
         db.rollback()
         return templates.TemplateResponse("admin/blog_form.html", blog_form_context(request=request, article=article, categories=categories, error=str(exc)), status_code=400)
+    except StorageError as exc:
+        db.rollback()
+        return templates.TemplateResponse("admin/blog_form.html", blog_form_context(request=request, article=article, categories=categories, error=str(exc)), status_code=507)
     except SQLAlchemyError:
         db.rollback()
         return templates.TemplateResponse(
