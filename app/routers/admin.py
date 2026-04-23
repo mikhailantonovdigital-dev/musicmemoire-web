@@ -728,7 +728,20 @@ async def admin_blog_page(request: Request, db: Session = Depends(get_db)):
     if not has_admin_access(request):
         return RedirectResponse(url="/admin/login", status_code=303)
     articles = db.query(BlogArticle).order_by(BlogArticle.created_at.desc(), BlogArticle.id.desc()).all()
-    categories_count = db.query(func.count(BlogCategory.id)).scalar() or 0
+    category_rows = (
+        db.query(
+            BlogCategory,
+            func.count(BlogArticle.id).label("articles_count"),
+        )
+        .outerjoin(BlogArticle, BlogArticle.category_id == BlogCategory.id)
+        .group_by(BlogCategory.id)
+        .order_by(BlogCategory.name.asc())
+        .all()
+    )
+    categories = [
+        {"category": category, "articles_count": int(articles_count or 0)}
+        for category, articles_count in category_rows
+    ]
     return templates.TemplateResponse(
         "admin/blog_list.html",
         {
@@ -736,7 +749,8 @@ async def admin_blog_page(request: Request, db: Session = Depends(get_db)):
             "page_title": "Админка · Блог",
             "articles": articles,
             "articles_count": len(articles),
-            "categories_count": int(categories_count),
+            "categories_count": len(categories),
+            "categories": categories,
             "flash": pop_admin_flash(request),
         },
     )
@@ -778,10 +792,15 @@ async def admin_blog_create(
     if not has_admin_access(request):
         return RedirectResponse(url="/admin/login", status_code=303)
     categories = db.query(BlogCategory).order_by(BlogCategory.name.asc()).all()
+    image_warning: str | None = None
     try:
         slug = build_unique_article_slug(db, meta_keywords)
         category = upsert_blog_category(db, category_name)
-        image_path = save_blog_image(hero_image)
+        try:
+            image_path = save_blog_image(hero_image)
+        except StorageError as exc:
+            image_path = None
+            image_warning = str(exc)
         article = BlogArticle(
             title=title.strip(),
             slug=slug,
@@ -801,9 +820,6 @@ async def admin_blog_create(
     except ValueError as exc:
         db.rollback()
         return templates.TemplateResponse("admin/blog_form.html", blog_form_context(request=request, article=None, categories=categories, error=str(exc)), status_code=400)
-    except StorageError as exc:
-        db.rollback()
-        return templates.TemplateResponse("admin/blog_form.html", blog_form_context(request=request, article=None, categories=categories, error=str(exc)), status_code=507)
     except SQLAlchemyError:
         db.rollback()
         return templates.TemplateResponse(
@@ -816,7 +832,10 @@ async def admin_blog_create(
             ),
             status_code=500,
         )
-    set_admin_flash(request, "success", "Статья добавлена.")
+    if image_warning:
+        set_admin_flash(request, "warning", f"Статья добавлена без изображения: {image_warning}")
+    else:
+        set_admin_flash(request, "success", "Статья добавлена.")
     return RedirectResponse(url="/admin/blog", status_code=303)
 
 
@@ -857,10 +876,15 @@ async def admin_blog_edit(
         return RedirectResponse(url="/admin/blog", status_code=303)
 
     categories = db.query(BlogCategory).order_by(BlogCategory.name.asc()).all()
+    image_warning: str | None = None
     try:
         article.slug = build_unique_article_slug(db, meta_keywords, article_id=article.id)
         category = upsert_blog_category(db, category_name)
-        image_path = save_blog_image(hero_image)
+        try:
+            image_path = save_blog_image(hero_image)
+        except StorageError as exc:
+            image_path = None
+            image_warning = str(exc)
         article.title = title.strip()
         article.excerpt = excerpt.strip() or None
         article.content_text = content_text
@@ -877,9 +901,6 @@ async def admin_blog_edit(
     except ValueError as exc:
         db.rollback()
         return templates.TemplateResponse("admin/blog_form.html", blog_form_context(request=request, article=article, categories=categories, error=str(exc)), status_code=400)
-    except StorageError as exc:
-        db.rollback()
-        return templates.TemplateResponse("admin/blog_form.html", blog_form_context(request=request, article=article, categories=categories, error=str(exc)), status_code=507)
     except SQLAlchemyError:
         db.rollback()
         return templates.TemplateResponse(
@@ -893,7 +914,10 @@ async def admin_blog_edit(
             status_code=500,
         )
 
-    set_admin_flash(request, "success", "Статья обновлена.")
+    if image_warning:
+        set_admin_flash(request, "warning", f"Статья обновлена без нового изображения: {image_warning}")
+    else:
+        set_admin_flash(request, "success", "Статья обновлена.")
     return RedirectResponse(url="/admin/blog", status_code=303)
 
 
@@ -908,6 +932,27 @@ async def admin_blog_delete(article_id: int, request: Request, db: Session = Dep
     db.delete(article)
     db.commit()
     set_admin_flash(request, "success", "Статья удалена.")
+    return RedirectResponse(url="/admin/blog", status_code=303)
+
+
+@router.post("/blog/categories/{category_id}/delete")
+async def admin_blog_category_delete(category_id: int, request: Request, db: Session = Depends(get_db)):
+    if not has_admin_access(request):
+        return RedirectResponse(url="/admin/login", status_code=303)
+
+    category = db.query(BlogCategory).filter(BlogCategory.id == category_id).first()
+    if category is None:
+        set_admin_flash(request, "warning", "Категория уже удалена.")
+        return RedirectResponse(url="/admin/blog", status_code=303)
+
+    linked_articles_count = db.query(func.count(BlogArticle.id)).filter(BlogArticle.category_id == category.id).scalar() or 0
+    if linked_articles_count > 0:
+        set_admin_flash(request, "error", "Нельзя удалить категорию, пока к ней привязаны статьи.")
+        return RedirectResponse(url="/admin/blog", status_code=303)
+
+    db.delete(category)
+    db.commit()
+    set_admin_flash(request, "success", f"Категория «{category.name}» удалена.")
     return RedirectResponse(url="/admin/blog", status_code=303)
 
 
