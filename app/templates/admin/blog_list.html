@@ -27,6 +27,37 @@
       </div>
     </div>
 
+    <div class="admin-metrics-columns" style="margin-top: 20px;">
+      <div class="form-card">
+        <h2 class="form-title">Категории</h2>
+        {% if categories %}
+          <div class="admin-orders-list" style="margin-top: 12px;">
+            {% for item in categories %}
+              <article class="lyrics-card" style="padding: 14px 16px;">
+                <div class="lyrics-card-head">
+                  <div>
+                    <h3 style="margin: 0;">{{ item.category.name }}</h3>
+                    <p class="lyrics-angle" style="margin: 6px 0 0;">Статей в категории: {{ item.articles_count }}</p>
+                  </div>
+                  <div class="form-actions">
+                    {% if item.articles_count == 0 %}
+                      <form method="post" action="/admin/blog/categories/{{ item.category.id }}/delete" onsubmit="return confirm('Удалить пустую категорию?')">
+                        <button type="submit" class="btn btn-secondary">Удалить</button>
+                      </form>
+                    {% else %}
+                      <button type="button" class="btn btn-secondary" disabled>Нельзя удалить</button>
+                    {% endif %}
+                  </div>
+                </div>
+              </article>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="notice">Категорий пока нет.</div>
+        {% endif %}
+      </div>
+    </div>
+
     <div class="admin-orders-list" style="margin-top: 20px;">
       {% for article in articles %}
         <article class="lyrics-card">
